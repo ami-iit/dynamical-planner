@@ -30,11 +30,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 option(BUILD_SHARED_LIBS "Build libraries as shared as opposed to static" ON)
 
-option(BUILD_TESTING "Create tests using CMake" OFF)
-if(BUILD_TESTING)
-    enable_testing()
-endif()
-
 # Enable RPATH support for installed binaries and libraries
 include(AddInstallRPATHSupport)
 add_install_rpath_support(BIN_DIRS "${CMAKE_INSTALL_FULL_LIBDIR}"
@@ -55,11 +50,50 @@ find_package(iDynTree 0.10.0 REQUIRED)
 find_package(Eigen3 REQUIRED)
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
-set(DPLANNER_SOURCES )
+
 set(DPLANNER_HEADERS )
 
-#add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_SOURCES})
+set(DPLANNER_PRIVATE_HEADERS include/private/VariablesLabeller.h
+                             include/private/SpanUtils.h)
+
+set(DPLANNER_SOURCES src/VariablesLabeller.cpp)
+
+add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
+target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_include_directories(DynamicalPlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(DynamicalPlanner ${iDynTree_LIBRARIES})
 
 
 include(AddUninstallTarget)
 
+option(BUILD_TESTING "Create tests using CMake" OFF)
+
+option(RUN_VALGRIND_TESTS "Run tests with Valgrind" FALSE)
+mark_as_advanced(RUN_VALGRIND_TESTS)
+if(BUILD_TESTING)
+   include( CTest )
+   enable_testing()
+
+   # adding support for checking the tests with valgrind
+   if(RUN_VALGRIND_TESTS)
+        find_package(Valgrind REQUIRED)
+        if(VALGRIND_FOUND)
+            set(CTEST_MEMORYCHECK_COMMAND ${VALGRIND_PROGRAM})
+            set(MEMORYCHECK_COMMAND ${VALGRIND_PROGRAM})
+            if (APPLE)
+                set(MEMORYCHECK_SUPPRESSIONS "--suppressions=${PROJECT_SOURCE_DIR}/cmake/valgrind-macos.supp")
+            else ()
+                set(MEMORYCHECK_SUPPRESSIONS "")
+            endif ()
+            set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --error-exitcode=1 ${MEMORYCHECK_SUPPRESSIONS}"  CACHE STRING "Options to pass to the memory checker")
+            mark_as_advanced(MEMORYCHECK_COMMAND_OPTIONS)
+            set(MEMCHECK_COMMAND_COMPLETE "${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS}")
+            separate_arguments(MEMCHECK_COMMAND_COMPLETE)
+        endif()
+   endif()
+endif()
+
+
+if(BUILD_TESTING)
+    add_subdirectory(test)
+endif()
