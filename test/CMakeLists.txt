@@ -21,4 +21,6 @@ macro(add_dp_test classname)
 endmacro()
 
 add_dp_test(VariablesLabeller)
+add_dp_test(QuaternionDerivative)
+
 

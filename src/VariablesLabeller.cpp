@@ -8,6 +8,8 @@
 #include <iostream>
 #include <private/VariablesLabeller.h>
 
+using namespace DynamicalPlanner::Private;
+
 VariablesLabeller::VariablesLabeller()
 {
 }
@@ -29,7 +31,13 @@ bool VariablesLabeller::addLabel(const std::string &name, size_t dimension)
         return false;
     }
     m_fullVector.resize(m_fullVector.size() + dimension, 0.0);
+    m_labelsList.push_back(name);
     return true;
+}
+
+size_t VariablesLabeller::size() const
+{
+    return m_fullVector.size();
 }
 
 iDynTree::Span<double> VariablesLabeller::values()
@@ -42,7 +50,7 @@ iDynTree::Span<double> VariablesLabeller::values(size_t startIndex, size_t endIn
     return iDynTree::make_span(m_fullVector).subspan(static_cast<long>(startIndex), static_cast<long>(endIndex - startIndex+1));
 }
 
-iDynTree::Span<double> VariablesLabeller::values(const std::string &labelName)
+iDynTree::Span<double> VariablesLabeller::operator()(const std::string &labelName)
 {
     LabelMap::const_iterator label = m_labelMap.find(labelName);
 
@@ -57,7 +65,22 @@ iDynTree::Span<double> VariablesLabeller::values(const std::string &labelName)
     return iDynTree::make_span(m_fullVector).subspan(offset, dimension);
 }
 
-iDynTree::IndexRange VariablesLabeller::getIndexRange(const std::string &labelName)
+//iDynTree::Span<double> VariablesLabeller::values(const std::string &labelName)
+//{
+//    LabelMap::const_iterator label = m_labelMap.find(labelName);
+
+//    long offset = 0;
+//    long dimension = 0;
+
+//    if (label != m_labelMap.cend()) {
+//        offset = label->second.offset;
+//        dimension = label->second.size;
+//    }
+
+//    return iDynTree::make_span(m_fullVector).subspan(offset, dimension);
+//}
+
+iDynTree::IndexRange VariablesLabeller::getIndexRange(const std::string &labelName) const
 {
     LabelMap::const_iterator label = m_labelMap.find(labelName);
 
@@ -66,4 +89,14 @@ iDynTree::IndexRange VariablesLabeller::getIndexRange(const std::string &labelNa
     }
 
     return iDynTree::IndexRange::InvalidRange();
+}
+
+size_t VariablesLabeller::numberOfLabels() const
+{
+    return m_labelMap.size();
+}
+
+const std::vector<std::string> &VariablesLabeller::listOfLabels() const
+{
+    return m_labelsList;
 }

@@ -13,9 +13,14 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
-
-class VariablesLabeller {
+namespace DynamicalPlanner {
+    namespace Private {
+        class VariablesLabeller;
+    }
+}
+class DynamicalPlanner::Private::VariablesLabeller {
     std::vector<double> m_fullVector;
+    std::vector<std::string> m_labelsList;
 
     typedef std::unordered_map<std::string, iDynTree::IndexRange> LabelMap;
     LabelMap m_labelMap;
@@ -28,13 +33,21 @@ public:
 
      bool addLabel(const std::string& name, size_t dimension);
 
+     size_t size() const;
+
      iDynTree::Span<double> values();
 
      iDynTree::Span<double> values(size_t startIndex, size_t endIndex);
 
-     iDynTree::Span<double> values(const std::string& labelName);
+     //iDynTree::Span<double> values(const std::string& labelName);
 
-     iDynTree::IndexRange getIndexRange(const std::string& labelName);
+     iDynTree::Span<double> operator()(const std::string& labelName);
+
+     iDynTree::IndexRange getIndexRange(const std::string& labelName) const;
+
+     size_t numberOfLabels() const;
+
+     const std::vector<std::string> & listOfLabels() const;
 
 };
 

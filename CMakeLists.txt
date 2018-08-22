@@ -54,9 +54,13 @@ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 set(DPLANNER_HEADERS )
 
 set(DPLANNER_PRIVATE_HEADERS include/private/VariablesLabeller.h
-                             include/private/SpanUtils.h)
+                             include/private/SpanUtils.h
+                             include/private/DynamicalConstraints.h
+                             include/private/QuaternionUtils.h)
 
-set(DPLANNER_SOURCES src/VariablesLabeller.cpp)
+set(DPLANNER_SOURCES src/VariablesLabeller.cpp
+                     src/DynamicalConstraints.cpp
+                     src/QuaternionUtils.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
