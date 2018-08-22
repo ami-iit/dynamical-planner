@@ -37,9 +37,7 @@ public:
 
      iDynTree::Span<double> values();
 
-     iDynTree::Span<double> values(size_t startIndex, size_t endIndex);
-
-     //iDynTree::Span<double> values(const std::string& labelName);
+     iDynTree::Span<double> operator()(const iDynTree::IndexRange& indexRange);
 
      iDynTree::Span<double> operator()(const std::string& labelName);
 

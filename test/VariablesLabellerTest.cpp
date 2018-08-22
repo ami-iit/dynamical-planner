@@ -47,7 +47,7 @@ int main()
 
     range = variables.getIndexRange("part3");
     ASSERT_IS_TRUE(range.isValid());
-    iDynTree::toEigen(testPart) = spanToEigen(variables("part3"));
+    iDynTree::toEigen(testPart) = spanToEigen(variables(range));
     testVector.resize(3);
     iDynTree::toEigen(testVector) = iDynTree::toEigen(fullVector).segment(range.offset, range.size);
     ASSERT_EQUAL_VECTOR(testVector, testPart);
