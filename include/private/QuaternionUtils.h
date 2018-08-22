@@ -13,17 +13,24 @@
 namespace DynamicalPlanner {
     namespace Private {
 
-        iDynTree::MatrixFixSize<4, 3> QuaternionLeftTrivializedDerivative(iDynTree::Vector4 quaternion);
+        bool QuaternionBoundsRespected(const iDynTree::Vector4 &quaternion);
 
-        iDynTree::MatrixFixSize<3, 4> QuaternionLeftTrivializedDerivativeInverse(iDynTree::Vector4 quaternion);
+        iDynTree::MatrixFixSize<4, 3> QuaternionLeftTrivializedDerivative(const iDynTree::Vector4& quaternion);
 
-        iDynTree::Vector4 NormailizedQuaternion(iDynTree::Vector4 quaternion);
+        iDynTree::MatrixFixSize<3, 4> QuaternionLeftTrivializedDerivativeInverse(const iDynTree::Vector4& quaternion);
 
-        inline double Norm(iDynTree::Vector4 quaternion);
+        iDynTree::MatrixFixSize<4, 4> QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(const iDynTree::Vector3& omega);
 
-        inline double SquaredNorm(iDynTree::Vector4 quaternion);
+        iDynTree::Vector4 NormailizedQuaternion(const iDynTree::Vector4& quaternion);
 
-        iDynTree::Matrix4x4 NormalizedQuaternionDerivative(iDynTree::Vector4 quaternion);
+        inline double QuaternionNorm(const iDynTree::Vector4 &quaternion);
+
+        inline double QuaternionSquaredNorm(const iDynTree::Vector4& quaternion);
+
+        iDynTree::Matrix4x4 NormalizedQuaternionDerivative(const iDynTree::Vector4& quaternion);
+
+        iDynTree::MatrixFixSize<3,4> RotatedVectorQuaternionJacobian(const iDynTree::Vector3& originalVector, const iDynTree::Vector4& quaternion);
+
     }
 }
 

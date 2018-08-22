@@ -25,18 +25,6 @@ public:
     size_t leftPoints, rightPoints;
     iDynTree::Vector6 gravityVector;
     iDynTree::Rotation baseRotation;
-
-
-    bool quaternionBoundsRespected(const iDynTree::Vector4 &quaternion) {
-        bool ok = true;
-        ok = ok && quaternion(0) >= 0;
-        ok = ok && quaternion(0) <= 1.0;
-        for (unsigned int i = 1; i < 4; ++i) {
-            ok = ok && quaternion(i) >= -1.0;
-            ok = ok && quaternion(i) <= 1.0;
-        }
-        return ok;
-    }
 };
 
 
@@ -167,7 +155,7 @@ bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double
     iDynTree::Vector4 normalizedQuaternion;
     iDynTree::toEigen(normalizedQuaternion) = spanToEigen(m_pimpl->stateVariables("BaseQuaternion")).normalized();
 
-    assert(m_pimpl->quaternionBoundsRespected(normalizedQuaternion));
+    assert(QuaternionBoundsRespected(normalizedQuaternion));
 
     m_pimpl->baseRotation.fromQuaternion(normalizedQuaternion);
 

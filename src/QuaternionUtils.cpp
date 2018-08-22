@@ -8,7 +8,7 @@
 #include <private/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 
-iDynTree::MatrixFixSize<4, 3> DynamicalPlanner::Private::QuaternionLeftTrivializedDerivative(iDynTree::Vector4 quaternion)
+iDynTree::MatrixFixSize<4, 3> DynamicalPlanner::Private::QuaternionLeftTrivializedDerivative(const iDynTree::Vector4 &quaternion)
 {
     iDynTree::MatrixFixSize<4, 3> outputMatrix;
     Eigen::Map<Eigen::Matrix<double, 4, 3, Eigen::RowMajor> > map = iDynTree::toEigen(outputMatrix);
@@ -20,7 +20,7 @@ iDynTree::MatrixFixSize<4, 3> DynamicalPlanner::Private::QuaternionLeftTrivializ
     return outputMatrix;
 }
 
-iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverse(iDynTree::Vector4 quaternion)
+iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverse(const iDynTree::Vector4& quaternion)
 {
     iDynTree::MatrixFixSize<3, 4> outputMatrix;
     Eigen::Map<Eigen::Matrix<double, 3, 4, Eigen::RowMajor> > map = iDynTree::toEigen(outputMatrix);
@@ -35,32 +35,81 @@ iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::QuaternionLeftTrivializ
     return outputMatrix;
 }
 
-iDynTree::Vector4 DynamicalPlanner::Private::NormailizedQuaternion(iDynTree::Vector4 quaternion)
+iDynTree::Vector4 DynamicalPlanner::Private::NormailizedQuaternion(const iDynTree::Vector4& quaternion)
 {
     iDynTree::Vector4 normalized;
     iDynTree::toEigen(normalized) = iDynTree::toEigen(quaternion).normalized();
     return normalized;
 }
 
-double DynamicalPlanner::Private::Norm(iDynTree::Vector4 quaternion)
+double DynamicalPlanner::Private::QuaternionNorm(const iDynTree::Vector4 &quaternion)
 {
     return iDynTree::toEigen(quaternion).norm();
 }
 
-double DynamicalPlanner::Private::SquaredNorm(iDynTree::Vector4 quaternion)
+double DynamicalPlanner::Private::QuaternionSquaredNorm(const iDynTree::Vector4& quaternion)
 {
     return iDynTree::toEigen(quaternion).squaredNorm();
 }
 
-iDynTree::Matrix4x4 DynamicalPlanner::Private::NormalizedQuaternionDerivative(iDynTree::Vector4 quaternion)
+iDynTree::Matrix4x4 DynamicalPlanner::Private::NormalizedQuaternionDerivative(const iDynTree::Vector4 &quaternion)
 {
     iDynTree::Matrix4x4 derivative;
     Eigen::Map<Eigen::Matrix<double, 4, 4, Eigen::RowMajor> > derivativeMap = iDynTree::toEigen(derivative);
 
-    double threeHalfNorm = Norm(quaternion) * SquaredNorm(quaternion);
+    double powerThreeNorm = QuaternionNorm(quaternion) * QuaternionSquaredNorm(quaternion);
     Eigen::Matrix<double, 4, 4, Eigen::RowMajor> outerProduct = iDynTree::toEigen(quaternion) * iDynTree::toEigen(quaternion).transpose();
     Eigen::Matrix<double, 4, 4, Eigen::RowMajor> identity;
     identity.setIdentity();
-    derivativeMap = identity * SquaredNorm(quaternion) - outerProduct;
-    derivativeMap *= 1/threeHalfNorm;
+    derivativeMap = identity * QuaternionSquaredNorm(quaternion) - outerProduct;
+    derivativeMap *= 1/powerThreeNorm;
+    return derivative;
+}
+
+iDynTree::MatrixFixSize<4, 4> DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(const iDynTree::Vector3 &omega)
+{
+    iDynTree::Matrix4x4 jacobian;
+    Eigen::Map<Eigen::Matrix<double, 4, 4, Eigen::RowMajor> > jacobianMap = iDynTree::toEigen(jacobian);
+    Eigen::Map<const Eigen::Vector3d> omegaMap = iDynTree::toEigen(omega);
+
+    jacobianMap(0,0) = 0;
+    jacobianMap.topRightCorner<1, 3>() = -omegaMap.transpose();
+    jacobianMap.bottomLeftCorner<3,1>() = omegaMap;
+    jacobianMap.bottomRightCorner<3,3>() = -iDynTree::skew(omegaMap);
+    jacobianMap *= 0.5;
+
+    return jacobian;
+
+}
+
+iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::RotatedVectorQuaternionJacobian(const iDynTree::Vector3 &originalVector, const iDynTree::Vector4 &quaternion)
+{
+    iDynTree::MatrixFixSize<3, 4> jacobian;
+    Eigen::Map<Eigen::Matrix<double, 3, 4, Eigen::RowMajor> > jacobianMap = iDynTree::toEigen(jacobian);
+    Eigen::Map<const Eigen::Vector3d> vectorMap = iDynTree::toEigen(originalVector);
+    Eigen::Map<const Eigen::Vector4d> quaternionMap = iDynTree::toEigen(quaternion);
+
+    Eigen::Vector3d rCrossX = quaternionMap.bottomRows<3>().cross(vectorMap);
+    Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rCrossXskew = iDynTree::skew(rCrossX);
+    Eigen::Matrix<double, 3, 3, Eigen::RowMajor> xSkew = iDynTree::skew(vectorMap);
+    Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rSkew = iDynTree::skew(quaternionMap.bottomRows<3>());
+
+    jacobianMap.leftCols<1>() = rCrossX;
+    jacobianMap.rightCols<3>() = -quaternionMap(0) * xSkew - rCrossXskew - rSkew * xSkew;
+
+    jacobianMap *= 2;
+
+    return jacobian;
+}
+
+bool DynamicalPlanner::Private::QuaternionBoundsRespected(const iDynTree::Vector4 &quaternion)
+{
+    bool ok = true;
+    ok = ok && quaternion(0) >= 0;
+    ok = ok && quaternion(0) <= 1.0;
+    for (unsigned int i = 1; i < 4; ++i) {
+        ok = ok && quaternion(i) >= -1.0;
+        ok = ok && quaternion(i) <= 1.0;
+    }
+    return ok;
 }
