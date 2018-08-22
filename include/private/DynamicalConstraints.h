@@ -33,8 +33,7 @@ public:
     virtual bool dynamics(const iDynTree::VectorDynSize& state, double,
                           iDynTree::VectorDynSize& stateDynamics) override;
 
-    virtual bool dynamicsStateFirstDerivative(const iDynTree::VectorDynSize& state,
-                                              double time,
+    virtual bool dynamicsStateFirstDerivative(const iDynTree::VectorDynSize& state, double,
                                               iDynTree::MatrixDynSize& dynamicsDerivative) override;
 
     virtual bool dynamicsControlFirstDerivative(const iDynTree::VectorDynSize& state,

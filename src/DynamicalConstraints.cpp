@@ -25,6 +25,59 @@ public:
     size_t leftPoints, rightPoints;
     iDynTree::Vector6 gravityVector;
     iDynTree::Rotation baseRotation;
+
+    iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+
+    void computeFootRelatedDynamics(const std::string& footName, size_t numberOfPoints) {
+        Eigen::Vector3d distance, appliedForce;
+        std::string positionLabel, velocityLabel, forceLabel, velocityControlLabel, forceControlLabel;
+
+        for (size_t i; i < numberOfPoints; ++i) {
+            positionLabel = footName + "PositionPoint" + std::to_string(i);
+            velocityLabel = footName + "VelocityPoint" + std::to_string(i);
+            forceLabel = footName + "ForcePoint" + std::to_string(i);
+            velocityControlLabel = footName + "VelocityControlPoint" + std::to_string(i);
+            forceControlLabel = footName + "ForceControlPoint" + std::to_string(i);
+
+            spanToEigen(dynamics(forceLabel)) = spanToEigen(controlVariables(forceControlLabel));
+            spanToEigen(dynamics(velocityLabel)) = spanToEigen(controlVariables(velocityControlLabel));
+            spanToEigen(dynamics(positionLabel)) = spanToEigen(stateVariables(velocityLabel));
+
+            spanToEigen(dynamics("Momentum")).topRows<3>() +=  spanToEigen(stateVariables(forceLabel));
+
+            distance = spanToEigen(stateVariables(positionLabel)) - spanToEigen(stateVariables("CoMPosition"));
+            appliedForce = spanToEigen(stateVariables(forceLabel));
+            spanToEigen(dynamics("Momentum")).bottomRows<3>() += distance.cross(appliedForce);
+        }
+    }
+
+    void computeFootRelatedStateJacobian(const std::string& footName, size_t numberOfPoints) {
+        iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(stateJacobianBuffer);
+        iDynTree::IndexRange rowRange, columnRange;
+        Eigen::Vector3d distance, appliedForce;
+        std::string positionLabel, velocityLabel, forceLabel;
+
+        for (size_t i; i < numberOfPoints; ++i) {
+            positionLabel = footName + "PositionPoint" + std::to_string(i);
+            velocityLabel = footName + "VelocityPoint" + std::to_string(i);
+            forceLabel = footName + "ForcePoint" + std::to_string(i);
+
+            rowRange = stateVariables.getIndexRange(positionLabel);
+            columnRange = stateVariables.getIndexRange(velocityLabel);
+            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).setIdentity();
+
+            rowRange = stateVariables.getIndexRange("Momentum");
+            columnRange = stateVariables.getIndexRange(forceLabel);
+            distance = spanToEigen(stateVariables(positionLabel)) - spanToEigen(stateVariables("CoMPosition"));
+            appliedForce = spanToEigen(stateVariables(forceLabel));
+            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).topRows<3>().setIdentity();
+            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).bottomRows<3>() = iDynTree::skew(distance);
+            columnRange = stateVariables.getIndexRange(positionLabel);
+            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).bottomRows<3>() = -iDynTree::skew(appliedForce);
+            columnRange = stateVariables.getIndexRange("CoMPosition");
+            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).bottomRows<3>() = iDynTree::skew(appliedForce);
+        }
+    }
 };
 
 
@@ -42,6 +95,12 @@ DynamicalConstraints::DynamicalConstraints(VariablesLabeller &stateVariables, Va
 
     m_pimpl->leftPoints = 0;
     m_pimpl->rightPoints = 0;
+
+    m_pimpl->stateJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(stateVariables.size()));
+    m_pimpl->stateJacobianBuffer.zero();
+
+    m_pimpl->controlJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(controlVariables.size()));
+    m_pimpl->controlJacobianBuffer.zero();
 
     for (auto label : stateVariables.listOfLabels()) {
         if (label.find("LeftForcePoint") != std::string::npos) {
@@ -117,38 +176,16 @@ DynamicalConstraints::~DynamicalConstraints()
 
 bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double /*time*/, iDynTree::VectorDynSize &stateDynamics)
 {
-    spanToEigen(m_pimpl->stateVariables.values()) = iDynTree::toEigen(state);
-    spanToEigen(m_pimpl->dynamics.values()) = iDynTree::toEigen(state);
-    spanToEigen(m_pimpl->controlVariables.values()) = iDynTree::toEigen(controlInput());
+    spanToEigen(m_pimpl->stateVariables.values()) = iDynTree::toEigen(state); //this line must remain before those computing the feet related quantities
+    spanToEigen(m_pimpl->dynamics.values()) = iDynTree::toEigen(state); //this line must remain before those computing the feet related quantities
+    spanToEigen(m_pimpl->controlVariables.values()) = iDynTree::toEigen(controlInput()); //this line must remain before those computing the feet related quantities
 
 
-    spanToEigen(m_pimpl->dynamics("Momentum")) = m_pimpl->totalMass * iDynTree::toEigen(m_pimpl->gravityVector);
+    spanToEigen(m_pimpl->dynamics("Momentum")) = m_pimpl->totalMass * iDynTree::toEigen(m_pimpl->gravityVector); //this line must remain before those computing the feet related quantities
 
-    Eigen::Vector3d distance, appliedForce;
+    m_pimpl->computeFootRelatedDynamics("Left", m_pimpl->leftPoints);
 
-    for (size_t i; i < m_pimpl->leftPoints; ++i) {
-        spanToEigen(m_pimpl->dynamics("LeftForcePoint" + std::to_string(i))) = spanToEigen(m_pimpl->controlVariables("LeftForceControlPoint" + std::to_string(i)));
-        spanToEigen(m_pimpl->dynamics("LeftVelocityPoint" + std::to_string(i))) = spanToEigen(m_pimpl->controlVariables("LeftVelocityControlPoint" + std::to_string(i)));
-        spanToEigen(m_pimpl->dynamics("LeftPositionPoint" + std::to_string(i))) = spanToEigen(m_pimpl->controlVariables("LeftVelocityPoint" + std::to_string(i)));
-
-        spanToEigen(m_pimpl->dynamics("Momentum")).topRows<3>() +=  spanToEigen(m_pimpl->stateVariables("LeftForcePoint" + std::to_string(i)));
-
-        distance = spanToEigen(m_pimpl->stateVariables("LeftPositionPoint" + std::to_string(i))) - spanToEigen(m_pimpl->stateVariables("CoMPosition"));
-        appliedForce = spanToEigen(m_pimpl->stateVariables("LeftForcePoint" + std::to_string(i)));
-        spanToEigen(m_pimpl->dynamics("Momentum")).bottomRows<3>() += distance.cross(appliedForce);
-    }
-
-    for (size_t i; i < m_pimpl->rightPoints; ++i) {
-        spanToEigen(m_pimpl->dynamics("RightForcePoint" + std::to_string(i))) = spanToEigen(m_pimpl->controlVariables("RightForceControlPoint" + std::to_string(i)));
-        spanToEigen(m_pimpl->dynamics("RightVelocityPoint" + std::to_string(i))) = spanToEigen(m_pimpl->controlVariables("RightVelocityControlPoint" + std::to_string(i)));
-        spanToEigen(m_pimpl->dynamics("RightPositionPoint" + std::to_string(i))) = spanToEigen(m_pimpl->controlVariables("RightVelocityPoint" + std::to_string(i)));
-
-        spanToEigen(m_pimpl->dynamics("Momentum")).topRows<3>() +=  spanToEigen(m_pimpl->stateVariables("RightForcePoint" + std::to_string(i)));
-
-        distance = spanToEigen(m_pimpl->dynamics("RightPositionPoint" + std::to_string(i))) - spanToEigen(m_pimpl->stateVariables("CoMPosition"));
-        appliedForce = spanToEigen(m_pimpl->stateVariables("RightForcePoint" + std::to_string(i)));
-        spanToEigen(m_pimpl->dynamics("Momentum")).bottomRows<3>() += distance.cross(appliedForce);
-    }
+    m_pimpl->computeFootRelatedDynamics("Right", m_pimpl->rightPoints);
 
     spanToEigen(m_pimpl->dynamics("CoMPosition")) = spanToEigen(m_pimpl->stateVariables("Momentum")).topRows<3>()/m_pimpl->totalMass;
 
@@ -170,9 +207,39 @@ bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double
     return true;
 }
 
-bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDynSize &state, double time, iDynTree::MatrixDynSize &dynamicsDerivative)
+bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDynSize &state, double /*time*/, iDynTree::MatrixDynSize &dynamicsDerivative)
 {
+    spanToEigen(m_pimpl->stateVariables.values()) = iDynTree::toEigen(state);
+    spanToEigen(m_pimpl->controlVariables.values()) = iDynTree::toEigen(controlInput());
+    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
 
+    m_pimpl->computeFootRelatedStateJacobian("Left", m_pimpl->leftPoints);
+    m_pimpl->computeFootRelatedStateJacobian("Right", m_pimpl->rightPoints);
+
+    iDynTree::IndexRange rowRange, columnRange;
+    rowRange = m_pimpl->stateVariables.getIndexRange("CoMPosition");
+    columnRange = m_pimpl->stateVariables.getIndexRange("Momentum");
+    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).leftCols<3>().setIdentity();
+    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).leftCols<3>() *= 1/m_pimpl->totalMass;
+
+    rowRange = m_pimpl->stateVariables.getIndexRange("BasePosition");
+    columnRange = m_pimpl->stateVariables.getIndexRange("BaseQuaternion");
+
+    iDynTree::Vector4 normalizedQuaternion, quaternion;
+    iDynTree::toEigen(quaternion) = spanToEigen(m_pimpl->stateVariables("BaseQuaternion"));
+    normalizedQuaternion = NormailizedQuaternion(quaternion);
+    iDynTree::Vector3 baseLinearVelocity;
+    iDynTree::toEigen(baseLinearVelocity) = spanToEigen(m_pimpl->controlVariables("BaseVelocity")).topRows<3>();
+    iDynTree::Matrix4x4 normalizedQuaternionDerivative = NormalizedQuaternionDerivative(quaternion);
+    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size) = iDynTree::toEigen(RotatedVectorQuaternionJacobian(baseLinearVelocity, normalizedQuaternion)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+
+    rowRange = columnRange;
+    iDynTree::Vector3 baseAngularVelocity;
+    iDynTree::toEigen(baseAngularVelocity) = spanToEigen(m_pimpl->controlVariables("BaseVelocity")).bottomRows<3>();
+    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(baseAngularVelocity)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+
+    dynamicsDerivative = m_pimpl->stateJacobianBuffer;
+    return true;
 }
 
 bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::VectorDynSize &state, double time, iDynTree::MatrixDynSize &dynamicsDerivative)
