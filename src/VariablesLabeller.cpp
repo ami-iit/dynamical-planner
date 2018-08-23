@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <private/VariablesLabeller.h>
+#include <iDynTree/Core/EigenHelpers.h>
 
 using namespace DynamicalPlanner::Private;
 
@@ -30,7 +31,8 @@ bool VariablesLabeller::addLabel(const std::string &name, size_t dimension)
         std::cerr << "[ERROR][VariablesLabeller::addLabel] The label " << name << " seems to be already existing." << std::endl;
         return false;
     }
-    m_fullVector.resize(m_fullVector.size() + dimension, 0.0);
+    m_fullVector.resize(static_cast<unsigned int>(m_fullVector.size() + dimension));
+    iDynTree::toEigen(m_fullVector).bottomRows(static_cast<Eigen::Index>(dimension)).setZero();
     m_labelsList.push_back(name);
     return true;
 }
@@ -64,6 +66,15 @@ iDynTree::Span<double> VariablesLabeller::operator()(const std::string &labelNam
     }
 
     return iDynTree::make_span(m_fullVector).subspan(offset, dimension);
+}
+
+VariablesLabeller &VariablesLabeller::operator=(const iDynTree::VectorDynSize &iDynVector)
+{
+    assert(iDynVector.size() == m_fullVector.size());
+
+    m_fullVector = iDynVector;
+
+    return *this;
 }
 
 iDynTree::IndexRange VariablesLabeller::getIndexRange(const std::string &labelName) const

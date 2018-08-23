@@ -54,7 +54,6 @@ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 set(DPLANNER_HEADERS )
 
 set(DPLANNER_PRIVATE_HEADERS include/private/VariablesLabeller.h
-                             include/private/SpanUtils.h
                              include/private/DynamicalConstraints.h
                              include/private/QuaternionUtils.h)
 

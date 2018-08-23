@@ -10,6 +10,7 @@
 
 #include <iDynTree/Core/Span.h>
 #include <iDynTree/Core/Utils.h>
+#include <iDynTree/Core/VectorDynSize.h>
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -19,7 +20,7 @@ namespace DynamicalPlanner {
     }
 }
 class DynamicalPlanner::Private::VariablesLabeller {
-    std::vector<double> m_fullVector;
+    iDynTree::VectorDynSize m_fullVector;
     std::vector<std::string> m_labelsList;
 
     typedef std::unordered_map<std::string, iDynTree::IndexRange> LabelMap;
@@ -40,6 +41,8 @@ public:
      iDynTree::Span<double> operator()(const iDynTree::IndexRange& indexRange);
 
      iDynTree::Span<double> operator()(const std::string& labelName);
+
+     DynamicalPlanner::Private::VariablesLabeller& operator=(const iDynTree::VectorDynSize& iDynVector);
 
      iDynTree::IndexRange getIndexRange(const std::string& labelName) const;
 

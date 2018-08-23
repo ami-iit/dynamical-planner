@@ -6,7 +6,6 @@
  */
 
 #include <private/VariablesLabeller.h>
-#include <private/SpanUtils.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/EigenHelpers.h>
@@ -23,39 +22,39 @@ int main()
     ASSERT_IS_TRUE(variables.addLabel("part2", 3));
     ASSERT_IS_TRUE(variables.addLabel("part3", 3));
 
-    spanToEigen(variables.values()) = iDynTree::toEigen(fullVector);
-    iDynTree::toEigen(testVector) = spanToEigen(variables.values());
+    variables = fullVector;
+    testVector = variables.values();
     ASSERT_EQUAL_VECTOR(testVector, fullVector);
     iDynTree::IndexRange range;
 
     range = variables.getIndexRange("part2");
     ASSERT_IS_TRUE(range.isValid());
-    iDynTree::toEigen(testPart) = spanToEigen(variables("part2"));
+    testPart = variables("part2");
     testVector.resize(3);
     iDynTree::toEigen(testVector) = iDynTree::toEigen(fullVector).segment(range.offset, range.size);
     ASSERT_EQUAL_VECTOR(testVector, testPart);
-    spanToEigen(variables("part2")).setZero();
+    iDynTree::toEigen(variables("part2")).setZero();
 
     range = variables.getIndexRange("part1");
     ASSERT_IS_TRUE(range.isValid());
-    iDynTree::toEigen(testPart) = spanToEigen(variables("part1"));
+    testPart = variables("part1");
     testVector.resize(3);
     iDynTree::toEigen(testVector) = iDynTree::toEigen(fullVector).segment(range.offset, range.size);
     ASSERT_EQUAL_VECTOR(testVector, testPart);
-    spanToEigen(variables("part1")).setZero();
+    iDynTree::toEigen(variables("part1")).setZero();
 
 
     range = variables.getIndexRange("part3");
     ASSERT_IS_TRUE(range.isValid());
-    iDynTree::toEigen(testPart) = spanToEigen(variables(range));
+    testPart = variables(range);
     testVector.resize(3);
     iDynTree::toEigen(testVector) = iDynTree::toEigen(fullVector).segment(range.offset, range.size);
     ASSERT_EQUAL_VECTOR(testVector, testPart);
-    spanToEigen(variables("part3")).setZero();
+    iDynTree::toEigen(variables("part3")).setZero();
 
     iDynTree::toEigen(fullVector).setZero();
     testVector.resize(9);
-    iDynTree::toEigen(testVector) = spanToEigen(variables.values());
+    testVector = variables.values();
     ASSERT_EQUAL_VECTOR(testVector, fullVector);
 
     ASSERT_IS_TRUE(variables.listOfLabels().size() == 3);
