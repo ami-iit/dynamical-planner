@@ -26,7 +26,7 @@ class DynamicalPlanner::Private::DynamicalConstraints : public iDynTree::optimal
 
 public:
 
-    DynamicalConstraints(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, double totalMass);
+    DynamicalConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, double totalMass);
 
     ~DynamicalConstraints() override;
 

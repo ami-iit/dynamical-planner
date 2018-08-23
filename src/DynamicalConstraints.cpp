@@ -140,7 +140,7 @@ public:
 };
 
 
-DynamicalConstraints::DynamicalConstraints(VariablesLabeller &stateVariables, VariablesLabeller &controlVariables, double totalMass)
+DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, double totalMass)
    : iDynTree::optimalcontrol::DynamicalSystem (stateVariables.size(), controlVariables.size())
    , m_pimpl(new Implementation)
 {
