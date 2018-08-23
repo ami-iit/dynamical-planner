@@ -23,7 +23,6 @@ public:
     VariablesLabeller stateVariables;
     VariablesLabeller controlVariables;
     iDynTree::KinDynComputations kinDyn;
-    double totalMass;
     iDynTree::IndexRange comPositionRange, jointsPositionRange, basePositionRange, baseQuaternionRange;
     iDynTree::VectorDynSize constraintValueBuffer, jointsPositionBuffer, dummyJointsVelocity;
     iDynTree::Position basePosition;
@@ -69,13 +68,6 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
 
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
-
-    m_pimpl->totalMass = 0.0;
-
-    for(size_t l=0; l < model.getNrOfLinks(); l++)
-    {
-        m_pimpl->totalMass += model.getLink(static_cast<iDynTree::LinkIndex>(l))->getInertia().getMass();
-    }
 
     m_isLowerBounded = true;
     m_isUpperBounded = true;
