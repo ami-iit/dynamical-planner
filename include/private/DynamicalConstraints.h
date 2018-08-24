@@ -11,6 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/Position.h>
 #include <private/VariablesLabeller.h>
+#include <private/SharedKinDynComputations.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -26,7 +27,7 @@ class DynamicalPlanner::Private::DynamicalConstraints : public iDynTree::optimal
 
 public:
 
-    DynamicalConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, double totalMass);
+    DynamicalConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn);
 
     ~DynamicalConstraints() override;
 

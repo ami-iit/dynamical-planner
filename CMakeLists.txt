@@ -57,13 +57,18 @@ set(DPLANNER_PRIVATE_HEADERS include/private/VariablesLabeller.h
                              include/private/DynamicalConstraints.h
                              include/private/QuaternionUtils.h
                              include/private/CoMPositionConstraint.h
-                             include/private/QuaternionNormConstraint.h)
+                             include/private/QuaternionNormConstraint.h
+                             #include/private/ContactPositionConsistencyConstraint.h
+                             include/private/SharedKinDynComputations.h
+                             include/private/CheckEqualVector.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp
                      src/QuaternionUtils.cpp
                      src/CoMPositionConstraint.cpp
-                     src/QuaternionNormConstraint.cpp)
+                     src/QuaternionNormConstraint.cpp
+                     #src/ContactPositionConsistencyConstraint.cpp
+                     src/SharedKinDynComputations.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

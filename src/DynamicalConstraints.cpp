@@ -21,7 +21,6 @@ public:
     VariablesLabeller controlVariables;
     VariablesLabeller dynamics;
     double totalMass;
-    //size_t leftPoints, rightPoints;
     iDynTree::Vector6 gravityVector;
     iDynTree::Rotation baseRotation;
 
@@ -140,14 +139,25 @@ public:
 };
 
 
-DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, double totalMass)
+DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn)
    : iDynTree::optimalcontrol::DynamicalSystem (stateVariables.size(), controlVariables.size())
    , m_pimpl(new Implementation)
 {
+    assert(sharedKinDyn);
+    assert(sharedKinDyn->isValid());
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
     m_pimpl->dynamics = m_pimpl->stateVariables;
-    m_pimpl->totalMass = totalMass;
+
+    m_pimpl->totalMass = 0.0;
+
+    const iDynTree::Model & model = sharedKinDyn->model();
+
+    for(size_t l=0; l < model.getNrOfLinks(); l++)
+    {
+        m_pimpl->totalMass += model.getLink(l)->getInertia().getMass();
+    }
+
 
     m_pimpl->gravityVector.zero();
     m_pimpl->gravityVector(2) = -9.81;

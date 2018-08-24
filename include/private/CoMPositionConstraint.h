@@ -8,10 +8,10 @@
 #define DPLANNER_COMPOSITIONCONSTRAINT_H
 
 #include <iDynTree/Constraint.h>
-#include <iDynTree/Model/Model.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <private/VariablesLabeller.h>
+#include <private/SharedKinDynComputations.h>
 #include <memory>
 #include <string>
 
@@ -28,7 +28,7 @@ class DynamicalPlanner::Private::CoMPositionConstraint : public iDynTree::optima
 
 public:
 
-    CoMPositionConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, const iDynTree::Model &model, const std::string &floatingBase);
+    CoMPositionConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn);
 
     virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
 

@@ -9,7 +9,6 @@
 #include <private/QuaternionUtils.h>
 
 #include <iDynTree/Core/EigenHelpers.h>
-#include <iDynTree/KinDynComputations.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/Transform.h>
 #include <iDynTree/Core/MatrixDynSize.h>
@@ -22,45 +21,43 @@ class CoMPositionConstraint::Implementation {
 public:
     VariablesLabeller stateVariables;
     VariablesLabeller controlVariables;
-    iDynTree::KinDynComputations kinDyn;
     iDynTree::IndexRange comPositionRange, jointsPositionRange, basePositionRange, baseQuaternionRange;
-    iDynTree::VectorDynSize constraintValueBuffer, jointsPositionBuffer, dummyJointsVelocity;
+    iDynTree::VectorDynSize constraintValueBuffer;
     iDynTree::Position basePosition;
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
     iDynTree::Rotation baseRotation;
-    iDynTree::Transform baseTransform;
     iDynTree::Vector3 gravity;
     iDynTree::MatrixDynSize comJacobianBuffer, stateJacobianBuffer;
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
 
+    RobotState robotState;
+    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+
     void updateRobotState() {
+
+        robotState = sharedKinDyn->currentState();
+
         iDynTree::toEigen(basePosition) = iDynTree::toEigen(stateVariables(basePositionRange));
         baseQuaternion = stateVariables(baseQuaternionRange);
         baseQuaternionNormalized = NormailizedQuaternion(baseQuaternion);
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
 
-        baseTransform.setRotation(baseRotation);
-        baseTransform.setPosition(basePosition);
+        robotState.world_T_base.setRotation(baseRotation);
+        robotState.world_T_base.setPosition(basePosition);
 
-        jointsPositionBuffer = stateVariables(jointsPositionRange);
-
-        bool ok = kinDyn.setRobotState(baseTransform, jointsPositionBuffer, iDynTree::Twist::Zero(), dummyJointsVelocity, gravity);
-
-        assert(ok);
+        robotState.s = stateVariables(jointsPositionRange);
     }
 };
 
 
-CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const iDynTree::Model& model, const std::string& floatingBase)
+CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn)
     : iDynTree::optimalcontrol::Constraint (3, "CoMPosition")
     , m_pimpl(new Implementation)
 {
-    m_pimpl->kinDyn.loadRobotModel(model);
-    assert(m_pimpl->kinDyn.isValid());
-    bool floatingBaseCorrect = m_pimpl->kinDyn.setFloatingBase(floatingBase);
-    assert(floatingBaseCorrect);
-    m_pimpl->kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+    assert(sharedKinDyn);
+    assert(sharedKinDyn->isValid());
+    m_pimpl->sharedKinDyn = sharedKinDyn;
 
     m_pimpl->gravity.zero();
     m_pimpl->gravity(2) = -9.81;
@@ -86,10 +83,7 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
 
     m_pimpl->constraintValueBuffer.resize(3);
     m_pimpl->constraintValueBuffer.zero();
-    m_pimpl->jointsPositionBuffer.resize(static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
-    m_pimpl->dummyJointsVelocity.resize(m_pimpl->jointsPositionBuffer.size());
-    m_pimpl->dummyJointsVelocity.zero();
-    m_pimpl->comJacobianBuffer.resize(3, 6 + m_pimpl->jointsPositionBuffer.size());
+    m_pimpl->comJacobianBuffer.resize(3, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->stateJacobianBuffer.resize(3, static_cast<unsigned int>(stateVariables.size()));
     m_pimpl->stateJacobianBuffer.zero();
 }
@@ -100,7 +94,7 @@ bool CoMPositionConstraint::evaluateConstraint(double /*time*/, const iDynTree::
 
     m_pimpl->updateRobotState();
 
-    iDynTree::toEigen(m_pimpl->constraintValueBuffer) = iDynTree::toEigen(m_pimpl->kinDyn.getCenterOfMassPosition()) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->comPositionRange));
+    iDynTree::toEigen(m_pimpl->constraintValueBuffer) = iDynTree::toEigen(m_pimpl->sharedKinDyn->getCenterOfMassPosition(m_pimpl->robotState)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->comPositionRange));
 
     constraint = m_pimpl->constraintValueBuffer;
 
@@ -114,7 +108,7 @@ bool CoMPositionConstraint::constraintJacobianWRTState(double /*time*/, const iD
 
     m_pimpl->updateRobotState();
 
-    bool ok = m_pimpl->kinDyn.getCenterOfMassJacobian(m_pimpl->comJacobianBuffer);
+    bool ok = m_pimpl->sharedKinDyn->getCenterOfMassJacobian(m_pimpl->robotState, m_pimpl->comJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
     assert(ok);
 
     iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
