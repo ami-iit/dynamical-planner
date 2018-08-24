@@ -68,6 +68,22 @@ public:
                                  iDynTree::FrameVelocityRepresentation trivialization =
                                     iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
+    iDynTree::Transform getWorldTransform(const RobotState &currentState, std::string frameName);
+
+    iDynTree::Transform getWorldTransform(const RobotState &currentState, const iDynTree::FrameIndex frameIndex);
+
+    bool getFrameFreeFloatingJacobian(const RobotState &currentState,
+                                      const std::string & frameName,
+                                      iDynTree::MatrixDynSize & outJacobian,
+                                      iDynTree::FrameVelocityRepresentation trivialization =
+                                         iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+    bool getFrameFreeFloatingJacobian(const RobotState &currentState,
+                                      const iDynTree::FrameIndex frameIndex,
+                                      iDynTree::MatrixDynSize & outJacobian,
+                                      iDynTree::FrameVelocityRepresentation trivialization =
+                                         iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
 };
 
 

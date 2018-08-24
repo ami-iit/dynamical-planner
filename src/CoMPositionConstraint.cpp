@@ -86,6 +86,8 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
     m_pimpl->comJacobianBuffer.resize(3, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->stateJacobianBuffer.resize(3, static_cast<unsigned int>(stateVariables.size()));
     m_pimpl->stateJacobianBuffer.zero();
+
+    m_pimpl->robotState = sharedKinDyn->currentState();
 }
 
 bool CoMPositionConstraint::evaluateConstraint(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::VectorDynSize &constraint)

@@ -128,4 +128,68 @@ bool SharedKinDynComputation::getCenterOfMassJacobian(const RobotState &currentS
 
 }
 
+iDynTree::Transform SharedKinDynComputation::getWorldTransform(const RobotState &currentState, std::string frameName)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (m_updateNecessary || !sameState(currentState)) {
+        bool ok = m_kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_gravity);
+        assert(ok);
+        m_updateNecessary = false;
+        m_state = currentState;
+    }
+
+    return m_kinDyn.getWorldTransform(frameName);
+}
+
+iDynTree::Transform SharedKinDynComputation::getWorldTransform(const RobotState &currentState, const iDynTree::FrameIndex frameIndex)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (m_updateNecessary || !sameState(currentState)) {
+        bool ok = m_kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_gravity);
+        assert(ok);
+        m_updateNecessary = false;
+        m_state = currentState;
+    }
+
+    return m_kinDyn.getWorldTransform(frameIndex);
+}
+
+bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &currentState, const std::string &frameName, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
+
+    if (m_updateNecessary || !sameState(currentState)) {
+        bool ok = m_kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_gravity);
+        if (!ok) {
+            return false;
+        }
+        m_updateNecessary = false;
+        m_state = currentState;
+    }
+
+    return m_kinDyn.getFrameFreeFloatingJacobian(frameName, outJacobian);
+}
+
+bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &currentState, const iDynTree::FrameIndex frameIndex, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
+
+    if (m_updateNecessary || !sameState(currentState)) {
+        bool ok = m_kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_gravity);
+        if (!ok) {
+            return false;
+        }
+        m_updateNecessary = false;
+        m_state = currentState;
+    }
+
+    return m_kinDyn.getFrameFreeFloatingJacobian(frameIndex, outJacobian);
+}
+
 
