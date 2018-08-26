@@ -27,7 +27,7 @@ public:
 
     iDynTree::VectorDynSize constraintValueBuffer;
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
-    iDynTree::MatrixDynSize footJacobianBuffer, stateJacobianBuffer;
+    iDynTree::MatrixDynSize footJacobianBuffer, stateJacobianBuffer, controlJacobianBuffer;
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
     iDynTree::MatrixFixSize<3, 6> footInternalTransformation, footTransformationBuffer;
 
@@ -77,9 +77,10 @@ public:
 
 
 
-ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
+ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const VariablesLabeller& stateVariables,
+                                                                           const VariablesLabeller& controlVariables,
                                                                            std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
-                                                                           const iDynTree::FrameIndex &footFrame, const std::string &footName,
+                                                                           iDynTree::FrameIndex footFrame, const std::string &footName,
                                                                            const iDynTree::Position &positionInFoot, size_t contactIndex)
     : iDynTree::optimalcontrol::Constraint(3, "ContactPositionConsistency" + footName + std::to_string(contactIndex))
     , m_pimpl(new Implementation)
@@ -104,11 +105,16 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     m_pimpl->footJacobianBuffer.resize(6, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->stateJacobianBuffer.resize(3, static_cast<unsigned int>(stateVariables.size()));
     m_pimpl->stateJacobianBuffer.zero();
+    m_pimpl->controlJacobianBuffer.resize(3, static_cast<unsigned int>(controlVariables.size()));
+    m_pimpl->controlJacobianBuffer.zero();
 
     m_pimpl->robotState = sharedKinDyn->currentState();
 
     iDynTree::toEigen(m_pimpl->footInternalTransformation).leftCols<3>().setIdentity();
     iDynTree::toEigen(m_pimpl->footInternalTransformation).rightCols<3>() = iDynTree::skew(-iDynTree::toEigen(m_pimpl->positionInFoot));
+
+    m_isLowerBounded = true;
+    m_isUpperBounded = true;
 
 }
 
@@ -159,7 +165,7 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double, co
 
 bool ContactPositionConsistencyConstraint::constraintJacobianWRTControl(double, const iDynTree::VectorDynSize &, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &jacobian)
 {
-    jacobian.zero();
+    jacobian = m_pimpl->controlJacobianBuffer;
     return true;
 }
 

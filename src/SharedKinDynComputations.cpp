@@ -192,4 +192,54 @@ bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &cur
     return m_kinDyn.getFrameFreeFloatingJacobian(frameIndex, outJacobian);
 }
 
+iDynTree::Transform SharedKinDynComputation::getRelativeTransform(const RobotState &currentState,
+                                                                  const iDynTree::FrameIndex refFrameIndex,
+                                                                  const iDynTree::FrameIndex frameIndex)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (m_updateNecessary || !sameState(currentState)) {
+        bool ok = m_kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_gravity);
+        assert(ok);
+        m_updateNecessary = false;
+        m_state = currentState;
+    }
+
+    return m_kinDyn.getRelativeTransform(refFrameIndex, frameIndex);
+}
+
+iDynTree::Transform SharedKinDynComputation::getRelativeTransform(const RobotState &currentState,
+                                                                  const std::string &refFrameName,
+                                                                  const std::string &frameName)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (m_updateNecessary || !sameState(currentState)) {
+        bool ok = m_kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_gravity);
+        assert(ok);
+        m_updateNecessary = false;
+        m_state = currentState;
+    }
+
+    return m_kinDyn.getRelativeTransform(refFrameName, frameName);
+}
+
+bool SharedKinDynComputation::getRelativeJacobian(const RobotState &currentState, const iDynTree::FrameIndex refFrameIndex, const iDynTree::FrameIndex frameIndex, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
+
+    if (m_updateNecessary || !sameState(currentState)) {
+        bool ok = m_kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_gravity);
+        if (!ok) {
+            return false;
+        }
+        m_updateNecessary = false;
+        m_state = currentState;
+    }
+
+    return m_kinDyn.getRelativeJacobian(refFrameIndex, frameIndex, outJacobian);
+}
+
 

@@ -24,6 +24,7 @@ int main()
 
     variables = fullVector;
     testVector = variables.values();
+    ASSERT_IS_TRUE(variables.size() == 9);
     ASSERT_EQUAL_VECTOR(testVector, fullVector);
     iDynTree::IndexRange range;
 

@@ -27,7 +27,7 @@ public:
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
     iDynTree::Rotation baseRotation;
     iDynTree::Vector3 gravity;
-    iDynTree::MatrixDynSize comJacobianBuffer, stateJacobianBuffer;
+    iDynTree::MatrixDynSize comJacobianBuffer, stateJacobianBuffer, controlJacobianBuffer;
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
 
     RobotState robotState;
@@ -86,6 +86,8 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
     m_pimpl->comJacobianBuffer.resize(3, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->stateJacobianBuffer.resize(3, static_cast<unsigned int>(stateVariables.size()));
     m_pimpl->stateJacobianBuffer.zero();
+    m_pimpl->controlJacobianBuffer.resize(3, static_cast<unsigned int>(controlVariables.size()));
+    m_pimpl->controlJacobianBuffer.zero();
 
     m_pimpl->robotState = sharedKinDyn->currentState();
 }
@@ -132,7 +134,7 @@ bool CoMPositionConstraint::constraintJacobianWRTState(double /*time*/, const iD
 
 bool CoMPositionConstraint::constraintJacobianWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &jacobian)
 {
-    jacobian.zero();
+    jacobian = m_pimpl->controlJacobianBuffer;
     return true;
 }
 

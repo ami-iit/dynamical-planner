@@ -20,7 +20,7 @@ public:
     VariablesLabeller controlVariables;
     iDynTree::IndexRange baseQuaternionRange;
     iDynTree::Vector4 baseQuaternion;
-    iDynTree::MatrixDynSize stateJacobianBuffer;
+    iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
 };
 
 
@@ -38,6 +38,8 @@ QuaternionNormConstraint::QuaternionNormConstraint(const VariablesLabeller &stat
     assert(m_pimpl->baseQuaternionRange.isValid());
     m_pimpl->stateJacobianBuffer.resize(1, static_cast<unsigned int>(m_pimpl->stateVariables.size()));
     m_pimpl->stateJacobianBuffer.zero();
+    m_pimpl->controlJacobianBuffer.resize(1, static_cast<unsigned int>(controlVariables.size()));
+    m_pimpl->controlJacobianBuffer.zero();
 }
 
 bool QuaternionNormConstraint::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
@@ -59,7 +61,7 @@ bool QuaternionNormConstraint::constraintJacobianWRTState(double, const iDynTree
 
 bool QuaternionNormConstraint::constraintJacobianWRTControl(double, const iDynTree::VectorDynSize &, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &jacobian)
 {
-    jacobian.zero();
+    jacobian = m_pimpl->controlJacobianBuffer;
     return true;
 }
 

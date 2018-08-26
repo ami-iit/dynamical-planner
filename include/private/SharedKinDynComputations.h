@@ -84,6 +84,21 @@ public:
                                       iDynTree::FrameVelocityRepresentation trivialization =
                                          iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
+    iDynTree::Transform getRelativeTransform(const RobotState &currentState,
+                                             const iDynTree::FrameIndex refFrameIndex,
+                                             const iDynTree::FrameIndex frameIndex);
+
+    iDynTree::Transform getRelativeTransform(const RobotState &currentState,
+                                             const std::string & refFrameName,
+                                             const std::string & frameName);
+
+    bool getRelativeJacobian(const RobotState &currentState,
+                             const iDynTree::FrameIndex refFrameIndex,
+                             const iDynTree::FrameIndex frameIndex,
+                             iDynTree::MatrixDynSize & outJacobian,
+                             iDynTree::FrameVelocityRepresentation trivialization =
+                                iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
 };
 
 
