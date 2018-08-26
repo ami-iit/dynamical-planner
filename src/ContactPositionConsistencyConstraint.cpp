@@ -22,7 +22,7 @@ public:
     size_t contactIndex;
     iDynTree::Position positionInFoot;
 
-    iDynTree::IndexRange positionPointRange, velocityPointRange, forcePointRange;
+    iDynTree::IndexRange positionPointRange, velocityPointRange;
     iDynTree::IndexRange jointsPositionRange, basePositionRange, baseQuaternionRange;
 
     iDynTree::VectorDynSize constraintValueBuffer;
@@ -38,9 +38,6 @@ public:
     std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
 
     void getRanges() {
-
-        forcePointRange = stateVariables.getIndexRange(footName + "ForcePoint" + std::to_string(contactIndex));
-        assert(forcePointRange.isValid());
 
         velocityPointRange = stateVariables.getIndexRange(footName + "VelocityPoint" + std::to_string(contactIndex));
         assert(velocityPointRange.isValid());
