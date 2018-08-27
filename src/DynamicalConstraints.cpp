@@ -155,7 +155,7 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
 
     for(size_t l=0; l < model.getNrOfLinks(); l++)
     {
-        m_pimpl->totalMass += model.getLink(l)->getInertia().getMass();
+        m_pimpl->totalMass += model.getLink(static_cast<iDynTree::LinkIndex>(l))->getInertia().getMass();
     }
 
 
@@ -303,6 +303,10 @@ bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::Vector
     rowRange = m_pimpl->baseQuaternionRange;
     columnRange = m_pimpl->baseVelocityRange;
     jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).rightCols<3>() = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(normalizedQuaternion));
+
+    rowRange = m_pimpl->jointsPositionRange;
+    columnRange = m_pimpl->jointsVelocityRange;
+    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).setIdentity();
 
 
     dynamicsDerivative = m_pimpl->controlJacobianBuffer;

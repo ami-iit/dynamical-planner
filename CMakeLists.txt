@@ -62,7 +62,8 @@ set(DPLANNER_PRIVATE_HEADERS include/private/VariablesLabeller.h
                              include/private/SharedKinDynComputations.h
                              include/private/CheckEqualVector.h
                              include/private/FeetLateralDistanceConstraint.h
-                             include/private/ContactFrictionConstraint.h)
+                             include/private/ContactFrictionConstraint.h
+                             include/private/CentroidalMomentumConstraint.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp
@@ -72,7 +73,8 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/ContactPositionConsistencyConstraint.cpp
                      src/SharedKinDynComputations.cpp
                      src/FeetLateralDistanceConstraint.cpp
-                     src/ContactFrictionConstraint.cpp)
+                     src/ContactFrictionConstraint.cpp
+                     src/CentroidalMomentumConstraint.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

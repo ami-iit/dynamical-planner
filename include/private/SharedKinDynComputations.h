@@ -13,7 +13,9 @@
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/Twist.h>
 #include <iDynTree/Core/Transform.h>
+#include <iDynTree/Model/Traversal.h>
 #include <mutex>
+#include <vector>
 
 namespace DynamicalPlanner {
     namespace Private {
@@ -25,6 +27,14 @@ namespace DynamicalPlanner {
             iDynTree::Twist base_velocity;
             iDynTree::VectorDynSize s_dot;
         } RobotState;
+
+        typedef struct {
+            iDynTree::IJointConstPtr jointPtr;
+            iDynTree::SpatialMomentum successorsMomentum, velocityDerivative;
+            iDynTree::SpatialMotionVector childMotionVector;
+            iDynTree::LinkIndex childIndex, parentIndex;
+            bool alreadyVisited;
+        } JointInfos;
     }
 }
 
@@ -34,10 +44,21 @@ class DynamicalPlanner::Private::SharedKinDynComputation {
     std::mutex m_mutex;
     RobotState m_state;
     iDynTree::Vector3 m_gravity;
+    std::vector<JointInfos> m_jointsInfos;
+    iDynTree::Traversal m_traversal;
+
     bool m_updateNecessary;
     double m_tol;
 
     bool sameState(const RobotState& other);
+
+    bool updateRobotState(const RobotState &currentState);
+
+    void fillJointsInfo();
+
+    void getChildSpatialMotionVectors();
+
+    void resetVisits();
 
 public:
 
@@ -98,6 +119,24 @@ public:
                              iDynTree::MatrixDynSize & outJacobian,
                              iDynTree::FrameVelocityRepresentation trivialization =
                                 iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+    iDynTree::Twist getFrameVel(const RobotState &currentState, const std::string & frameName,
+                                iDynTree::FrameVelocityRepresentation trivialization =
+                                   iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+    iDynTree::Twist getFrameVel(const RobotState &currentState, const iDynTree::FrameIndex frameIdx,
+                                iDynTree::FrameVelocityRepresentation trivialization =
+                                   iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+    iDynTree::SpatialMomentum getLinearAngularMomentum(const RobotState &currentState,
+                                                       iDynTree::FrameVelocityRepresentation trivialization =
+                                                           iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+    bool getLinearAngularMomentumJacobian(const RobotState &currentState, iDynTree::MatrixDynSize & linAngMomentumJacobian,
+                                          iDynTree::FrameVelocityRepresentation trivialization =
+                                              iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+    bool getLinearAngularMomentumJointsDerivative(const RobotState &currentState, iDynTree::MatrixDynSize & linAngMomentumDerivative); //Implemented only for BODY_REPRESENTATION
 
 };
 

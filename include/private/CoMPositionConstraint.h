@@ -13,7 +13,6 @@
 #include <private/VariablesLabeller.h>
 #include <private/SharedKinDynComputations.h>
 #include <memory>
-#include <string>
 
 namespace DynamicalPlanner {
     namespace Private {

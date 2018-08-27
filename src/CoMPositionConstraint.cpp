@@ -13,6 +13,8 @@
 #include <iDynTree/Core/Transform.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 
+#include <string>
+
 #include <cassert>
 
 using namespace DynamicalPlanner::Private;
@@ -26,7 +28,6 @@ public:
     iDynTree::Position basePosition;
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
     iDynTree::Rotation baseRotation;
-    iDynTree::Vector3 gravity;
     iDynTree::MatrixDynSize comJacobianBuffer, stateJacobianBuffer, controlJacobianBuffer;
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
 
@@ -58,10 +59,6 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
     assert(sharedKinDyn);
     assert(sharedKinDyn->isValid());
     m_pimpl->sharedKinDyn = sharedKinDyn;
-
-    m_pimpl->gravity.zero();
-    m_pimpl->gravity(2) = -9.81;
-
 
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
