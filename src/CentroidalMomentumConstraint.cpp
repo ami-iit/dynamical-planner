@@ -183,7 +183,7 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTState(double /*time*/, c
 
     jacobianMap.block<3,4>(3, m_pimpl->baseQuaternionRange.offset) = iDynTree::skew(iDynTree::toEigen(m_pimpl->robotState.world_T_base.getPosition() - m_pimpl->comPosition)) * iDynTree::toEigen(linearPartDerivative) +
             iDynTree::toEigen(RotatedVectorQuaternionJacobian(momentumInBase.getAngularVec3(), m_pimpl->baseQuaternionNormalized)) *
-                        iDynTree::toEigen(normalizedQuaternionDerivative);
+            iDynTree::toEigen(normalizedQuaternionDerivative);
 
     jacobian = m_pimpl->stateJacobianBuffer;
 

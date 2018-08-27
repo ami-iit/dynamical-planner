@@ -99,41 +99,33 @@ public:
 
     void computeFootRelatedStateJacobian(FootRanges& foot) {
         iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(stateJacobianBuffer);
-        iDynTree::IndexRange rowRange, columnRange;
         Eigen::Vector3d distance, appliedForce;
 
 
         for (size_t i; i < foot.positionPoints.size(); ++i) {
 
-            rowRange = foot.positionPoints[i];
-            columnRange = foot.velocityPoints[i];
-            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).setIdentity();
 
-            rowRange = momentumRange;
-            columnRange = foot.forcePoints[i];
+            jacobianMap.block<3,3>(foot.positionPoints[i].offset, foot.velocityPoints[i].offset).setIdentity();
+
+
             distance = iDynTree::toEigen(stateVariables(foot.positionPoints[i])) - iDynTree::toEigen(stateVariables(comPositionRange));
             appliedForce = iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
-            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).topRows<3>().setIdentity();
-            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).bottomRows<3>() = iDynTree::skew(distance);
-            columnRange = foot.positionPoints[i];
-            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).bottomRows<3>() = -iDynTree::skew(appliedForce);
-            columnRange = comPositionRange;
-            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).bottomRows<3>() = iDynTree::skew(appliedForce);
+
+            jacobianMap.block<3,3>(momentumRange.offset, foot.forcePoints[i].offset).setIdentity();
+            jacobianMap.block<3,3>(momentumRange.offset+3, foot.forcePoints[i].offset) = iDynTree::skew(distance);
+            jacobianMap.block<3,3>(momentumRange.offset+3, foot.positionPoints[i].offset) = -iDynTree::skew(appliedForce);
+             jacobianMap.block<3,3>(momentumRange.offset+3, comPositionRange.offset) = iDynTree::skew(appliedForce);
         }
     }
 
     void computeFootRelatedControlJacobian(FootRanges& foot) {
         iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(controlJacobianBuffer);
-        iDynTree::IndexRange rowRange, columnRange;
 
         for (size_t i; i < foot.positionPoints.size(); ++i) {
-            rowRange = foot.forcePoints[i];
-            columnRange = foot.forceControlPoints[i];
-            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).setIdentity();
 
-            rowRange = foot.velocityPoints[i];
-            columnRange = foot.velocityControlPoints[i];
-            jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).setIdentity();
+            jacobianMap.block<3,3>(foot.forcePoints[i].offset, foot.forceControlPoints[i].offset).setIdentity();
+
+            jacobianMap.block<3,3>(foot.velocityPoints[i].offset, foot.velocityControlPoints[i].offset).setIdentity();
         }
     }
 };
@@ -252,14 +244,8 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
     m_pimpl->computeFootRelatedStateJacobian(m_pimpl->leftRanges);
     m_pimpl->computeFootRelatedStateJacobian(m_pimpl->rightRanges);
 
-    iDynTree::IndexRange rowRange, columnRange;
-    rowRange = m_pimpl->comPositionRange;
-    columnRange = m_pimpl->momentumRange;
-    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).leftCols<3>().setIdentity();
-    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).leftCols<3>() *= 1/m_pimpl->totalMass;
-
-    rowRange = m_pimpl->basePositionRange;
-    columnRange = m_pimpl->baseQuaternionRange;
+    jacobianMap.block<3,3>(m_pimpl->comPositionRange.offset, m_pimpl->momentumRange.offset).setIdentity();
+    jacobianMap.block<3,3>(m_pimpl->comPositionRange.offset, m_pimpl->momentumRange.offset) *= 1/m_pimpl->totalMass;
 
     iDynTree::Vector4 normalizedQuaternion, quaternion;
     iDynTree::toEigen(quaternion) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->baseQuaternionRange));
@@ -269,12 +255,11 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
     iDynTree::Vector3 baseLinearVelocity;
     iDynTree::toEigen(baseLinearVelocity) = iDynTree::toEigen(m_pimpl->controlVariables(m_pimpl->baseVelocityRange)).topRows<3>();
     iDynTree::Matrix4x4 normalizedQuaternionDerivative = NormalizedQuaternionDerivative(quaternion);
-    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size) = iDynTree::toEigen(RotatedVectorQuaternionJacobian(baseLinearVelocity, normalizedQuaternion)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+    jacobianMap.block<3,4>(m_pimpl->basePositionRange.offset, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(RotatedVectorQuaternionJacobian(baseLinearVelocity, normalizedQuaternion)) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
-    rowRange = columnRange;
     iDynTree::Vector3 baseAngularVelocity;
     iDynTree::toEigen(baseAngularVelocity) = iDynTree::toEigen(m_pimpl->controlVariables(m_pimpl->baseVelocityRange)).bottomRows<3>();
-    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(baseAngularVelocity)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+    jacobianMap.block<4,4>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(baseAngularVelocity)) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
     dynamicsDerivative = m_pimpl->stateJacobianBuffer;
     return true;
@@ -289,25 +274,17 @@ bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::Vector
     m_pimpl->computeFootRelatedControlJacobian(m_pimpl->leftRanges);
     m_pimpl->computeFootRelatedControlJacobian(m_pimpl->rightRanges);
 
-    iDynTree::IndexRange rowRange, columnRange;
-
     iDynTree::Vector4 normalizedQuaternion;
     iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->baseQuaternionRange)).normalized();
     assert(QuaternionBoundsRespected(normalizedQuaternion));
 
     m_pimpl->baseRotation.fromQuaternion(normalizedQuaternion);
-    rowRange = m_pimpl->basePositionRange;
-    columnRange = m_pimpl->baseVelocityRange;
-    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).leftCols<3>() = iDynTree::toEigen(m_pimpl->baseRotation);
 
-    rowRange = m_pimpl->baseQuaternionRange;
-    columnRange = m_pimpl->baseVelocityRange;
-    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).rightCols<3>() = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(normalizedQuaternion));
+    jacobianMap.block<3,3>(m_pimpl->basePositionRange.offset, m_pimpl->baseVelocityRange.offset) = iDynTree::toEigen(m_pimpl->baseRotation);
 
-    rowRange = m_pimpl->jointsPositionRange;
-    columnRange = m_pimpl->jointsVelocityRange;
-    jacobianMap.block(rowRange.offset, columnRange.offset, rowRange.size, columnRange.size).setIdentity();
+    jacobianMap.block<4,3>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseVelocityRange.offset + 3) = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(normalizedQuaternion));
 
+    jacobianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsVelocityRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->jointsVelocityRange.size).setIdentity();
 
     dynamicsDerivative = m_pimpl->controlJacobianBuffer;
     return true;
