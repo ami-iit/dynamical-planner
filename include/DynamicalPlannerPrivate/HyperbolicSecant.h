@@ -20,9 +20,9 @@ public:
 
     void setScaling(double k);
 
-    inline double eval(double x) const;
+    double eval(double x) const;
 
-    inline double evalDerivative(double x) const;
+    double evalDerivative(double x) const;
 };
 
 #endif // DPLANNER_HYPERBOLICSECANT_H

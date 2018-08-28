@@ -64,7 +64,9 @@ set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/FeetLateralDistanceConstraint.h
                              include/DynamicalPlannerPrivate/ContactFrictionConstraint.h
                              include/DynamicalPlannerPrivate/CentroidalMomentumConstraint.h
-                             include/DynamicalPlannerPrivate/HyperbolicSecant.h)
+                             include/DynamicalPlannerPrivate/HyperbolicSecant.h
+                             include/DynamicalPlannerPrivate/ContactForceControlConstraints.h
+                             include/DynamicalPlannerPrivate/ContactVelocityControlConstraints.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp
@@ -76,7 +78,9 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/FeetLateralDistanceConstraint.cpp
                      src/ContactFrictionConstraint.cpp
                      src/CentroidalMomentumConstraint.cpp
-                     src/HyperbolicSecant.cpp)
+                     src/HyperbolicSecant.cpp
+                     src/ContactForceControlConstraints.cpp
+                     src/ContactVelocityControlConstraints.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
