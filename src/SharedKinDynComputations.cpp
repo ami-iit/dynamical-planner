@@ -332,30 +332,32 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
         iDynTree::LinkIndex linkIndex = static_cast<iDynTree::LinkIndex>(l);
         assert(model.isValidLinkIndex(linkIndex));
         linkPtr = model.getLink(linkIndex);
+        iDynTree::LinkIndex visitedLink = linkIndex;
+        iDynTree::Twist linkVelocity = m_kinDyn.getFrameVel(linkIndex);
+        iDynTree::Transform b_T_link = m_kinDyn.getRelativeTransform(baseIndex, linkIndex);
 
-        while (linkIndex != baseIndex) {
-            jointPtr = m_traversal.getParentJointFromLinkIndex(linkIndex);
+        while (visitedLink != baseIndex) { //check all the joints which belong to the tree from the base to linkIndex
+            jointPtr = m_traversal.getParentJointFromLinkIndex(visitedLink);
             jointIndex = static_cast<size_t>(jointPtr->getIndex());
             if (!m_jointsInfos[jointIndex].alreadyVisited) {
                 m_jointsInfos[jointIndex].successorsMomentum = m_kinDyn.getRelativeTransform(m_jointsInfos[jointIndex].childIndex, linkIndex) *
-                        linkPtr->getInertia() * m_kinDyn.getFrameVel(linkIndex);
+                        linkPtr->getInertia() * linkVelocity;
 
-                m_jointsInfos[jointIndex].velocityDerivative = m_kinDyn.getRelativeTransform(baseIndex, linkIndex) * linkPtr->getInertia() *
+                m_jointsInfos[jointIndex].velocityDerivative = b_T_link * linkPtr->getInertia() *
                         (m_kinDyn.getRelativeTransform(linkIndex, m_jointsInfos[jointIndex].childIndex) * m_jointsInfos[jointIndex].childMotionVector);
-
 
                 m_jointsInfos[jointIndex].alreadyVisited = true;
             } else {
                 m_jointsInfos[jointIndex].successorsMomentum = m_jointsInfos[jointIndex].successorsMomentum +
                         m_kinDyn.getRelativeTransform(m_jointsInfos[jointIndex].childIndex, linkIndex) *
-                        linkPtr->getInertia() * m_kinDyn.getFrameVel(linkIndex);
+                        linkPtr->getInertia() * linkVelocity;
 
-                m_jointsInfos[jointIndex].velocityDerivative = m_jointsInfos[jointIndex].velocityDerivative + m_kinDyn.getRelativeTransform(baseIndex, linkIndex) * linkPtr->getInertia() *
+                m_jointsInfos[jointIndex].velocityDerivative = m_jointsInfos[jointIndex].velocityDerivative + b_T_link * linkPtr->getInertia() *
                         (m_kinDyn.getRelativeTransform(linkIndex, m_jointsInfos[jointIndex].childIndex) * m_jointsInfos[jointIndex].childMotionVector);
 
             }
 
-            linkIndex = m_traversal.getParentLinkFromLinkIndex(linkIndex)->getIndex();
+            visitedLink = m_traversal.getParentLinkFromLinkIndex(linkIndex)->getIndex();
 
         }
 
