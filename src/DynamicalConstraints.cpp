@@ -5,8 +5,8 @@
  *
  */
 
-#include <private/DynamicalConstraints.h>
-#include <private/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/DynamicalConstraints.h>
+#include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/Utils.h>
 #include <cassert>

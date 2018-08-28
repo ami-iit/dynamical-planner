@@ -4,10 +4,10 @@
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
-#include <private/ContactPositionConsistencyConstraint.h>
+#include <DynamicalPlannerPrivate/ContactPositionConsistencyConstraint.h>
 #include <iDynTree/KinDynComputations.h>
 #include <iDynTree/Core/EigenHelpers.h>
-#include <private/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <cassert>
 
 using namespace DynamicalPlanner::Private;

@@ -5,8 +5,8 @@
  *
  */
 
-#include <private/SharedKinDynComputations.h>
-#include <private/CheckEqualVector.h>
+#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
 

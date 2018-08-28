@@ -7,7 +7,7 @@
 #ifndef DPLANNER_QUATERNIONNORMCONSTRAINT_H
 #define DPLANNER_QUATERNIONNORMCONSTRAINT_H
 
-#include <private/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <iDynTree/Constraint.h>
 #include <memory>
 

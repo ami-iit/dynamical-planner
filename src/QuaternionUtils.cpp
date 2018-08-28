@@ -5,7 +5,7 @@
  *
  */
 
-#include <private/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 
 iDynTree::MatrixFixSize<4, 3> DynamicalPlanner::Private::QuaternionLeftTrivializedDerivative(const iDynTree::Vector4 &quaternion)

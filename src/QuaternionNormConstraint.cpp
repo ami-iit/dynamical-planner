@@ -5,8 +5,8 @@
  *
  */
 
-#include <private/QuaternionNormConstraint.h>
-#include <private/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/QuaternionNormConstraint.h>
+#include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <iDynTree/Core/EigenHelpers.h>

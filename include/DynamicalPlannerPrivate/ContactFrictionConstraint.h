@@ -8,7 +8,7 @@
 #define DPLANNER_CONTACTFRICTIONCONSTRAINT_H
 
 #include <iDynTree/Constraint.h>
-#include <private/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <iDynTree/Core/Position.h>
 #include <memory>
 #include <string>

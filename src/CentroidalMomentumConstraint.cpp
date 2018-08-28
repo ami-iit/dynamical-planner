@@ -5,9 +5,9 @@
  *
  */
 
-#include <private/CentroidalMomentumConstraint.h>
+#include <DynamicalPlannerPrivate/CentroidalMomentumConstraint.h>
 #include <iDynTree/Core/EigenHelpers.h>
-#include <private/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <cassert>
 
 using namespace DynamicalPlanner::Private;

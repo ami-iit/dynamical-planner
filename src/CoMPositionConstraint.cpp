@@ -5,8 +5,8 @@
  *
  */
 
-#include <private/CoMPositionConstraint.h>
-#include <private/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/CoMPositionConstraint.h>
+#include <DynamicalPlannerPrivate/QuaternionUtils.h>
 
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/VectorFixSize.h>

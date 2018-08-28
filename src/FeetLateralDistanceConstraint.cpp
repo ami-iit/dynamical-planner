@@ -5,8 +5,8 @@
  *
  */
 
-#include <private/FeetLateralDistanceConstraint.h>
-#include <private/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/FeetLateralDistanceConstraint.h>
+#include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
 

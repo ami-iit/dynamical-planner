@@ -10,8 +10,8 @@
 #include <iDynTree/Constraint.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
-#include <private/VariablesLabeller.h>
-#include <private/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
 #include <iDynTree/Core/Position.h>
 #include <memory>
 #include <string>
