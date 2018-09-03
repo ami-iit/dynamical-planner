@@ -115,7 +115,7 @@ public:
             jacobianMap.block<3,3>(momentumRange.offset, foot.forcePoints[i].offset).setIdentity();
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.forcePoints[i].offset) = iDynTree::skew(distance);
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.positionPoints[i].offset) = -iDynTree::skew(appliedForce);
-            jacobianMap.block<3,3>(momentumRange.offset+3, comPositionRange.offset) = iDynTree::skew(appliedForce);
+            jacobianMap.block<3,3>(momentumRange.offset+3, comPositionRange.offset) += iDynTree::skew(appliedForce);
         }
     }
 
@@ -241,6 +241,8 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = controlInput();
     iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
+
+    jacobianMap.block<3,3>(m_pimpl->momentumRange.offset+3, m_pimpl->comPositionRange.offset).setZero();
 
     m_pimpl->computeFootRelatedStateJacobian(m_pimpl->leftRanges);
     m_pimpl->computeFootRelatedStateJacobian(m_pimpl->rightRanges);

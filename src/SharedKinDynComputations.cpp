@@ -357,7 +357,7 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
 
             }
 
-            visitedLink = m_traversal.getParentLinkFromLinkIndex(linkIndex)->getIndex();
+            visitedLink = m_traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
 
         }
 

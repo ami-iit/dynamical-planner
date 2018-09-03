@@ -51,8 +51,8 @@ void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& cont
 
 void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, size_t numberOfPoints) {
 
-    setFootVariables(stateVariables, controlVariables, "left", numberOfPoints);
-    setFootVariables(stateVariables, controlVariables, "right", numberOfPoints);
+    setFootVariables(stateVariables, controlVariables, "Left", numberOfPoints);
+    setFootVariables(stateVariables, controlVariables, "Right", numberOfPoints);
 
     bool ok;
     ok = stateVariables.addLabel("Momentum", 6);
@@ -99,15 +99,15 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
                            iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
     iDynTree::Vector3 forceMaximumDerivative, forceDissipationRatios, velocityMaximumDerivative, velocityDissipatioRatio;
 
-    iDynTree::toEigen(forceMaximumDerivative).setConstant(100);
-    iDynTree::toEigen(forceDissipationRatios).setConstant(100);
-    iDynTree::toEigen(velocityMaximumDerivative).setConstant(100);
-    iDynTree::toEigen(velocityDissipatioRatio).setConstant(100);
+    iDynTree::toEigen(forceMaximumDerivative).setConstant(100.0);
+    iDynTree::toEigen(forceDissipationRatios).setConstant(100.0);
+    iDynTree::toEigen(velocityMaximumDerivative).setConstant(100.0);
+    iDynTree::toEigen(velocityDissipatioRatio).setConstant(100.0);
 
     HyperbolicSecant forceActivation, velocityActivationXY, velocityActivationZ;
-    forceActivation.setScaling(100);
-    velocityActivationXY.setScaling(100);
-    velocityActivationZ.setScaling(100);
+    forceActivation.setScaling(0.1);
+    velocityActivationXY.setScaling(0.1);
+    velocityActivationZ.setScaling(0.1);
 
     iDynTree::FrameIndex leftFrame = sharedKinDyn->model().getFrameIndex("l_sole"),
             rightFrame = sharedKinDyn->model().getFrameIndex("r_sole");
@@ -132,70 +132,70 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     ASSERT_IS_TRUE(ok);
 
     for (size_t i = 0; i < numberOfPoints; ++i) {
-        constraints.leftContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
-                                                                                                         "left", i, velocityActivationXY,
-                                                                                                         velocityActivationZ,
-                                                                                                         velocityMaximumDerivative,
-                                                                                                         velocityDissipatioRatio);
-        ok = ocProblem.addConstraint(constraints.leftContactsVelocityControl[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.leftContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
+//                                                                                                         "Left", i, velocityActivationXY,
+//                                                                                                         velocityActivationZ,
+//                                                                                                         velocityMaximumDerivative,
+//                                                                                                         velocityDissipatioRatio);
+//        ok = ocProblem.addConstraint(constraints.leftContactsVelocityControl[i]);
+//        ASSERT_IS_TRUE(ok);
 
-        constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "left",
-                                                                                                   i, forceActivation, forceMaximumDerivative,
-                                                                                                   forceDissipationRatios);
-        ok = ocProblem.addConstraint(constraints.leftContactsForceControl[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Left",
+//                                                                                                   i, forceActivation, forceMaximumDerivative,
+//                                                                                                   forceDissipationRatios);
+//        ok = ocProblem.addConstraint(constraints.leftContactsForceControl[i]);
+//        ASSERT_IS_TRUE(ok);
 
-        constraints.leftContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateVariables, controlVariables, "left", i);
-        ok = ocProblem.addConstraint(constraints.leftContactsFriction[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.leftContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateVariables, controlVariables, "Left", i);
+//        ok = ocProblem.addConstraint(constraints.leftContactsFriction[i]);
+//        ASSERT_IS_TRUE(ok);
 
-        constraints.leftContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
-                                                                                                     sharedKinDyn, leftFrame, "left",
-                                                                                                     leftPositions[i], i);
-        ok = ocProblem.addConstraint(constraints.leftContactsPosition[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.leftContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
+//                                                                                                     sharedKinDyn, leftFrame, "Left",
+//                                                                                                     leftPositions[i], i);
+//        ok = ocProblem.addConstraint(constraints.leftContactsPosition[i]);
+//        ASSERT_IS_TRUE(ok);
 
-        constraints.rightContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
-                                                                                                         "right", i, velocityActivationXY,
-                                                                                                         velocityActivationZ,
-                                                                                                         velocityMaximumDerivative,
-                                                                                                         velocityDissipatioRatio);
-        ok = ocProblem.addConstraint(constraints.rightContactsVelocityControl[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.rightContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
+//                                                                                                         "Right", i, velocityActivationXY,
+//                                                                                                         velocityActivationZ,
+//                                                                                                         velocityMaximumDerivative,
+//                                                                                                         velocityDissipatioRatio);
+//        ok = ocProblem.addConstraint(constraints.rightContactsVelocityControl[i]);
+//        ASSERT_IS_TRUE(ok);
 
-        constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "right",
-                                                                                                   i, forceActivation, forceMaximumDerivative,
-                                                                                                   forceDissipationRatios);
-        ok = ocProblem.addConstraint(constraints.rightContactsForceControl[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Right",
+//                                                                                                   i, forceActivation, forceMaximumDerivative,
+//                                                                                                   forceDissipationRatios);
+//        ok = ocProblem.addConstraint(constraints.rightContactsForceControl[i]);
+//        ASSERT_IS_TRUE(ok);
 
-        constraints.rightContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateVariables, controlVariables, "right", i);
-        ok = ocProblem.addConstraint(constraints.rightContactsFriction[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.rightContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateVariables, controlVariables, "Right", i);
+//        ok = ocProblem.addConstraint(constraints.rightContactsFriction[i]);
+//        ASSERT_IS_TRUE(ok);
 
-        constraints.rightContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
-                                                                                                     sharedKinDyn, rightFrame, "right",
-                                                                                                     rightPositions[i], i);
-        ok = ocProblem.addConstraint(constraints.rightContactsPosition[i]);
-        ASSERT_IS_TRUE(ok);
+//        constraints.rightContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
+//                                                                                                     sharedKinDyn, rightFrame, "Right",
+//                                                                                                     rightPositions[i], i);
+//        ok = ocProblem.addConstraint(constraints.rightContactsPosition[i]);
+//        ASSERT_IS_TRUE(ok);
     }
-    constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables, sharedKinDyn);
-    ok = ocProblem.addConstraint(constraints.centroidalMomentum);
-    ASSERT_IS_TRUE(ok);
+//    constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables, sharedKinDyn);
+//    ok = ocProblem.addConstraint(constraints.centroidalMomentum);
+//    ASSERT_IS_TRUE(ok);
 
-    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, sharedKinDyn);
-    ok = ocProblem.addConstraint(constraints.comPosition);
-    ASSERT_IS_TRUE(ok);
+//    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, sharedKinDyn);
+//    ok = ocProblem.addConstraint(constraints.comPosition);
+//    ASSERT_IS_TRUE(ok);
 
-    constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, sharedKinDyn,
-                                                                                      1, rightFrame, leftFrame);
-    ok = ocProblem.addConstraint(constraints.feetLateralDistance);
-    ASSERT_IS_TRUE(ok);
+//    constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, sharedKinDyn,
+//                                                                                      1, rightFrame, leftFrame);
+//    ok = ocProblem.addConstraint(constraints.feetLateralDistance);
+//    ASSERT_IS_TRUE(ok);
 
-    constraints.quaternionNorm = std::make_shared<QuaternionNormConstraint>(stateVariables, controlVariables);
-    ok = ocProblem.addConstraint(constraints.quaternionNorm);
-    ASSERT_IS_TRUE(ok);
+//    constraints.quaternionNorm = std::make_shared<QuaternionNormConstraint>(stateVariables, controlVariables);
+//    ok = ocProblem.addConstraint(constraints.quaternionNorm);
+//    ASSERT_IS_TRUE(ok);
 }
 
 void checkDynamicalConstraintDerivative(const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
@@ -209,6 +209,8 @@ void checkDynamicalConstraintDerivative(const iDynTree::VectorDynSize& originalS
     ASSERT_IS_TRUE(ok);
     ok = constraints.dynamical->dynamics(originalStateVector, 0.0, originalDynamics);
     ASSERT_IS_TRUE(ok);
+//    std::cerr << "Original dynamics:" << std::endl << originalDynamics.toString() << std::endl;
+
 
     ok = constraints.dynamical->dynamicsStateFirstDerivative(originalStateVector, 0.0, stateJacobian);
     ASSERT_IS_TRUE(ok);
@@ -225,7 +227,7 @@ void checkDynamicalConstraintDerivative(const iDynTree::VectorDynSize& originalS
 
         iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalDynamics) +
                 iDynTree::toEigen(stateJacobian) * (iDynTree::toEigen(perturbedState) - iDynTree::toEigen(originalStateVector));
-        ASSERT_EQUAL_VECTOR_TOL(perturbedDynamics, firstOrderTaylor, perturbation/10);
+        ASSERT_EQUAL_VECTOR_TOL(perturbedDynamics, firstOrderTaylor, perturbation/50);
     }
 
     for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
@@ -239,9 +241,57 @@ void checkDynamicalConstraintDerivative(const iDynTree::VectorDynSize& originalS
 
         iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalDynamics) +
                 iDynTree::toEigen(controlJacobian) * (iDynTree::toEigen(perturbedControl) - iDynTree::toEigen(originalControlVector));
-        ASSERT_EQUAL_VECTOR_TOL(perturbedDynamics, firstOrderTaylor, perturbation/10);
+        ASSERT_EQUAL_VECTOR_TOL(perturbedDynamics, firstOrderTaylor, perturbation/50);
     }
 }
+
+void checkConstraintsDerivative(const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
+                                double perturbation, iDynTree::optimalcontrol::OptimalControlProblem &ocProblem, const VariablesLabeller& stateVariables,
+                                const VariablesLabeller& controlVariables) {
+
+    iDynTree::VectorDynSize originalConstraints, perturbedConstraints, perturbedState, perturbedControl, firstOrderTaylor;
+    iDynTree::MatrixDynSize stateJacobian, controlJacobian;
+    originalConstraints.resize(ocProblem.getConstraintsDimension());
+    perturbedConstraints = originalConstraints;
+    firstOrderTaylor = originalConstraints;
+    bool ok = false;
+
+    ok = ocProblem.constraintsEvaluation(0.0, originalStateVector, originalControlVector, originalConstraints);
+    ASSERT_IS_TRUE(ok);
+
+    ok = ocProblem.constraintsJacobianWRTState(0.0, originalStateVector, originalControlVector, stateJacobian);
+    ASSERT_IS_TRUE(ok);
+
+    ok = ocProblem.constraintsJacobianWRTControl(0.0, originalStateVector, originalControlVector, controlJacobian);
+    ASSERT_IS_TRUE(ok);
+
+    for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
+        std::cerr << "State: " << i << std::endl;
+        perturbedState = originalStateVector;
+        perturbedState(i) = perturbedState(i) + perturbation;
+
+        ok = ocProblem.constraintsEvaluation(0.0, perturbedState, originalControlVector, perturbedConstraints);
+        ASSERT_IS_TRUE(ok);
+
+        iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalConstraints) +
+                iDynTree::toEigen(stateJacobian) * (iDynTree::toEigen(perturbedState) - iDynTree::toEigen(originalStateVector));
+        ASSERT_EQUAL_VECTOR_TOL(perturbedConstraints, firstOrderTaylor, perturbation/10);
+    }
+
+    for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
+        std::cerr << "Control: " << i << std::endl;
+        perturbedControl = originalControlVector;
+        perturbedControl(i) = perturbedControl(i) + perturbation;
+
+        ok = ocProblem.constraintsEvaluation(0.0, originalStateVector, perturbedControl, perturbedConstraints);
+        ASSERT_IS_TRUE(ok);
+
+        iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalConstraints) +
+                iDynTree::toEigen(controlJacobian) * (iDynTree::toEigen(perturbedControl) - iDynTree::toEigen(originalControlVector));
+        ASSERT_EQUAL_VECTOR_TOL(perturbedConstraints, firstOrderTaylor, perturbation/10);
+    }
+}
+
 
 int main() {
 
@@ -269,10 +319,15 @@ int main() {
     iDynTree::VectorDynSize stateVector, controlVector;
     stateVector.resize(static_cast<unsigned int>(stateVariables.size()));
     iDynTree::getRandomVector(stateVector);
+//    std::cerr << "Original state:" << std::endl << stateVector.toString() << std::endl;
     controlVector.resize(static_cast<unsigned int>(controlVariables.size()));
     iDynTree::getRandomVector(controlVector);
+//    std::cerr << "Original control:" << std::endl << controlVector.toString() << std::endl;
+
 
     checkDynamicalConstraintDerivative(stateVector, controlVector, 0.01, constraints);
+
+    checkConstraintsDerivative(stateVector, controlVector, 0.01, ocProblem, stateVariables, controlVariables);
 
     return EXIT_SUCCESS;
 }
