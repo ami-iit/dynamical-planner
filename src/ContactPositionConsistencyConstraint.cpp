@@ -29,7 +29,7 @@ public:
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
     iDynTree::MatrixDynSize footJacobianBuffer, pointJacobianBuffer, stateJacobianBuffer, controlJacobianBuffer;
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
-    iDynTree::MatrixFixSize<3, 6> footInternalTransformation, footTransformationBuffer;
+    iDynTree::MatrixFixSize<3, 6> /*footInternalTransformation,*/ footTransformationBuffer;
 
     iDynTree::Rotation baseRotation;
     iDynTree::Position basePosition;
@@ -108,8 +108,10 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
 
     m_pimpl->robotState = sharedKinDyn->currentState();
 
-    iDynTree::toEigen(m_pimpl->footInternalTransformation).leftCols<3>().setIdentity();
-    iDynTree::toEigen(m_pimpl->footInternalTransformation).rightCols<3>() = iDynTree::skew(-iDynTree::toEigen(m_pimpl->positionInFoot));
+//    iDynTree::toEigen(m_pimpl->footInternalTransformation).leftCols<3>().setIdentity();
+//    iDynTree::toEigen(m_pimpl->footInternalTransformation).rightCols<3>() = iDynTree::skew(-iDynTree::toEigen(m_pimpl->positionInFoot));
+    iDynTree::toEigen(m_pimpl->footTransformationBuffer).leftCols<3>().setIdentity();
+
 
     m_isLowerBounded = true;
     m_isUpperBounded = true;
@@ -139,22 +141,26 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double, co
 
     m_pimpl->updateRobotState();
 
-    bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->footFrame, m_pimpl->footJacobianBuffer, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+    bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->footFrame, m_pimpl->footJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
     assert(ok);
 
     iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
 
     Eigen::Map<Eigen::Matrix<double, 3, 6, Eigen::RowMajor> > footTransformationMap = iDynTree::toEigen(m_pimpl->footTransformationBuffer);
 
-    footTransformationMap = iDynTree::toEigen(m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame).getRotation()) * iDynTree::toEigen(m_pimpl->footInternalTransformation);
+//    footTransformationMap = iDynTree::toEigen(m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame).getRotation()) * iDynTree::toEigen(m_pimpl->footInternalTransformation);
+    iDynTree::Transform footTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame);
+    footTransformationMap.rightCols<3>() = iDynTree::skew(iDynTree::toEigen(footTransform.getPosition() - (footTransform * m_pimpl->positionInFoot)));
 
     iDynTree::iDynTreeEigenMatrixMap footJacobianMap = iDynTree::toEigen(m_pimpl->footJacobianBuffer);
     iDynTree::iDynTreeEigenMatrixMap pointJacobianMap = iDynTree::toEigen(m_pimpl->pointJacobianBuffer);
 
-    iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
+//    iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
+    iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) = iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
 
     pointJacobianMap = footTransformationMap * footJacobianMap;
 
+    jacobianMap.block<3, 3>(0, m_pimpl->basePositionRange.offset) = pointJacobianMap.leftCols<3>();
     jacobianMap.block<3, 3>(0, m_pimpl->basePositionRange.offset) = pointJacobianMap.leftCols<3>();
     jacobianMap.block<3, 4>(0, m_pimpl->baseQuaternionRange.offset) = pointJacobianMap.block<3, 3>(0, 3) * iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap);
     jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size) = pointJacobianMap.rightCols(m_pimpl->jointsPositionRange.size);
