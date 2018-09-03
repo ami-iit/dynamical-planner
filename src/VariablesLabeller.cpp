@@ -47,6 +47,11 @@ iDynTree::Span<double> VariablesLabeller::values()
     return iDynTree::make_span(m_fullVector);
 }
 
+void VariablesLabeller::zero()
+{
+    m_fullVector.zero();
+}
+
 iDynTree::Span<double> VariablesLabeller::operator()(const iDynTree::IndexRange& indexRange)
 {
     assert(indexRange.isValid());

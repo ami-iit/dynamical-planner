@@ -21,7 +21,7 @@ void HyperbolicSecant::setScaling(double k)
 
 double HyperbolicSecant::eval(double x) const
 {
-    return 1/std::cosh(m_K * x);
+    return 1.0/std::cosh(m_K * x);
 }
 
 double HyperbolicSecant::evalDerivative(double x) const

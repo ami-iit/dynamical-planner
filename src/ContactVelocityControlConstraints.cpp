@@ -71,6 +71,9 @@ ContactVelocityControlConstraints::ContactVelocityControlConstraints(const Varia
     m_isUpperBounded = false;
 }
 
+ContactVelocityControlConstraints::~ContactVelocityControlConstraints()
+{ }
+
 bool ContactVelocityControlConstraints::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;

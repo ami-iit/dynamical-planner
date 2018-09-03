@@ -34,6 +34,8 @@ public:
                                       const HyperbolicSecant& activationZ,
                                       const iDynTree::Vector3& maximumDerivatives, const iDynTree::Vector3& dissipationRatios);
 
+    ~ContactVelocityControlConstraints() override;
+
     virtual bool evaluateConstraint(double,
                                     const iDynTree::VectorDynSize& state,
                                     const iDynTree::VectorDynSize& control,

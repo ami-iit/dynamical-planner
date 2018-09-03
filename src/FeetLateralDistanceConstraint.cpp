@@ -95,6 +95,9 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
 
 }
 
+FeetLateralDistanceConstraint::~FeetLateralDistanceConstraint()
+{ }
+
 bool FeetLateralDistanceConstraint::setMinimumDistance(double minDistance)
 {
     if (minDistance < 0)

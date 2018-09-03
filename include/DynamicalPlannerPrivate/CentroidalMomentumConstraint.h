@@ -29,6 +29,8 @@ public:
 
     CentroidalMomentumConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn);
 
+    ~CentroidalMomentumConstraint() override;
+
     virtual bool evaluateConstraint(double,
                                     const iDynTree::VectorDynSize& state,
                                     const iDynTree::VectorDynSize& control,

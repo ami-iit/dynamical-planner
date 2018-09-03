@@ -115,6 +115,9 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
 
 }
 
+ContactPositionConsistencyConstraint::~ContactPositionConsistencyConstraint()
+{ }
+
 bool ContactPositionConsistencyConstraint::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;

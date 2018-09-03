@@ -122,6 +122,9 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
 
 }
 
+CentroidalMomentumConstraint::~CentroidalMomentumConstraint()
+{ }
+
 bool CentroidalMomentumConstraint::evaluateConstraint(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;

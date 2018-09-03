@@ -42,6 +42,9 @@ QuaternionNormConstraint::QuaternionNormConstraint(const VariablesLabeller &stat
     m_pimpl->controlJacobianBuffer.zero();
 }
 
+QuaternionNormConstraint::~QuaternionNormConstraint()
+{ }
+
 bool QuaternionNormConstraint::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;

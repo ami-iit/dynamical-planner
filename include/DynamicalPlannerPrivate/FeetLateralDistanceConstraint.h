@@ -31,6 +31,8 @@ public:
                                   std::shared_ptr<SharedKinDynComputation> sharedKinDyn, unsigned int lateralIndex,
                                   iDynTree::FrameIndex referenceFootFrame, iDynTree::FrameIndex otherFootFrame);
 
+    ~FeetLateralDistanceConstraint() override;
+
     bool setMinimumDistance(double minDistance);
 
     virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;

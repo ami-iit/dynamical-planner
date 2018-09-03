@@ -62,7 +62,7 @@ iDynTree::Matrix4x4 DynamicalPlanner::Private::NormalizedQuaternionDerivative(co
     Eigen::Matrix<double, 4, 4, Eigen::RowMajor> identity;
     identity.setIdentity();
     derivativeMap = identity * QuaternionSquaredNorm(quaternion) - outerProduct;
-    derivativeMap *= 1/powerThreeNorm;
+    derivativeMap *= 1.0/powerThreeNorm;
     return derivative;
 }
 

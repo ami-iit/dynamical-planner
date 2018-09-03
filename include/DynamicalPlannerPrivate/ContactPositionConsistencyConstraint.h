@@ -34,6 +34,8 @@ public:
                                          iDynTree::FrameIndex footFrame, const std::string &footName,
                                          const iDynTree::Position &positionInFoot, size_t contactIndex);
 
+    ~ContactPositionConsistencyConstraint() override;
+
     virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
 
     virtual bool constraintJacobianWRTState(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;

@@ -29,6 +29,8 @@ public:
     ContactFrictionConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
                               const std::string &footName, size_t contactIndex);
 
+    ~ContactFrictionConstraint() override;
+
     bool setFrictionCoefficient(double frictionCoefficient);
 
     virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&,

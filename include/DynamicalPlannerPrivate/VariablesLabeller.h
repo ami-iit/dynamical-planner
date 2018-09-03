@@ -38,6 +38,8 @@ public:
 
      iDynTree::Span<double> values();
 
+     void zero();
+
      iDynTree::Span<double> operator()(const iDynTree::IndexRange& indexRange);
 
      iDynTree::Span<double> operator()(const std::string& labelName);

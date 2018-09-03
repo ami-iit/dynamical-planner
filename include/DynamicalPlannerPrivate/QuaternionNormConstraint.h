@@ -26,6 +26,8 @@ public:
 
     QuaternionNormConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables);
 
+    ~QuaternionNormConstraint() override;
+
     virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
 
     virtual bool constraintJacobianWRTState(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;

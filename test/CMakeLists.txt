@@ -6,6 +6,10 @@
 # https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 # at your option.
 
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/data)
+
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/data/URDFdir.h.in" "${CMAKE_CURRENT_BINARY_DIR}/data/URDFdir.h" @ONLY)
+
 macro(add_dp_test classname)
     set(testsrc ${classname}Test.cpp)
     set(testbinary ${classname}UnitTest)
@@ -22,5 +26,6 @@ endmacro()
 
 add_dp_test(VariablesLabeller)
 add_dp_test(QuaternionDerivative)
+add_dp_test(ConstraintsDerivative)
 
 

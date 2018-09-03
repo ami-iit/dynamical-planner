@@ -89,6 +89,9 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
     m_pimpl->robotState = sharedKinDyn->currentState();
 }
 
+CoMPositionConstraint::~CoMPositionConstraint()
+{ }
+
 bool CoMPositionConstraint::evaluateConstraint(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;

@@ -33,6 +33,8 @@ public:
                                    const std::string &footName, size_t contactIndex, const HyperbolicSecant& forceActivation,
                                    const iDynTree::Vector3& maximumDerivatives, const iDynTree::Vector3& dissipationRatios);
 
+    ~ContactForceControlConstraints() override;
+
     virtual bool evaluateConstraint(double,
                                     const iDynTree::VectorDynSize& state,
                                     const iDynTree::VectorDynSize& control,

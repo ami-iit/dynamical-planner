@@ -68,6 +68,9 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
     m_isUpperBounded = false;
 }
 
+ContactForceControlConstraints::~ContactForceControlConstraints()
+{ }
+
 bool ContactForceControlConstraints::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;

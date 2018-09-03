@@ -11,7 +11,6 @@
 #include <cassert>
 #include <iostream>
 
-using namespace DynamicalPlanner;
 using namespace DynamicalPlanner::Private;
 
 class FrameOrientationCost::Implementation {

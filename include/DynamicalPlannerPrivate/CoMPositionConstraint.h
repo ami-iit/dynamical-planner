@@ -29,6 +29,8 @@ public:
 
     CoMPositionConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn);
 
+    ~CoMPositionConstraint() override;
+
     virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
 
     virtual bool constraintJacobianWRTState(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;

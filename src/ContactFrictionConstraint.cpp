@@ -53,6 +53,9 @@ ContactFrictionConstraint::ContactFrictionConstraint(const VariablesLabeller &st
 
 }
 
+ContactFrictionConstraint::~ContactFrictionConstraint()
+{ }
+
 bool ContactFrictionConstraint::setFrictionCoefficient(double frictionCoefficient)
 {
     if (frictionCoefficient <= 0.0)
