@@ -128,6 +128,8 @@ public:
                                 iDynTree::FrameVelocityRepresentation trivialization =
                                    iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
+    bool getFrameVelJointsDerivative(const RobotState &currentState, const iDynTree::FrameIndex frameIdx, iDynTree::MatrixDynSize& velocityDerivative);
+
     iDynTree::SpatialMomentum getLinearAngularMomentum(const RobotState &currentState,
                                                        iDynTree::FrameVelocityRepresentation trivialization =
                                                            iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
