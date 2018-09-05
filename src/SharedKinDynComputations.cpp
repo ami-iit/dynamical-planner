@@ -132,6 +132,11 @@ bool SharedKinDynComputation::setToleranceForUpdate(double tol)
     return true;
 }
 
+double SharedKinDynComputation::getUpdateTolerance() const
+{
+    return m_tol;
+}
+
 bool SharedKinDynComputation::setFloatingBase(const std::string &floatingBaseName)
 {
     std::lock_guard<std::mutex> guard(m_mutex);

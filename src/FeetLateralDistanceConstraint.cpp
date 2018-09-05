@@ -6,6 +6,7 @@
  */
 
 #include <DynamicalPlannerPrivate/FeetLateralDistanceConstraint.h>
+#include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
@@ -21,15 +22,26 @@ public:
     iDynTree::IndexRange jointsPositionRange;
 
     iDynTree::MatrixDynSize relativeJacobianBuffer, stateJacobianBuffer, controlJacobianBuffer;
+    double feetDistance = 0.0;
 
     RobotState robotState;
     std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+
+    bool updateDoneOnceConstraint = false;
+    bool updateDoneOnceStateJacobian = false;
+    double tolerance;
 
     void updateRobotState() {
 
         robotState = sharedKinDyn->currentState();
 
         robotState.s = stateVariables(jointsPositionRange);
+    }
+
+    bool sameVariables(bool updateDoneOnce) {
+        bool same = updateDoneOnce;
+        same = same && VectorsAreEqual(robotState.s, stateVariables(jointsPositionRange), tolerance);
+        return same;
     }
 
 };
@@ -67,6 +79,7 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
     m_pimpl->controlJacobianBuffer.zero();
 
     m_pimpl->robotState = sharedKinDyn->currentState();
+    m_pimpl->tolerance = sharedKinDyn->getUpdateTolerance();
 
     m_lowerBound(0) = 0.1;
 
@@ -91,13 +104,16 @@ bool FeetLateralDistanceConstraint::setMinimumDistance(double minDistance)
 bool FeetLateralDistanceConstraint::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;
+    if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
-    m_pimpl->updateRobotState();
+        m_pimpl->updateDoneOnceConstraint = true;
+        m_pimpl->updateRobotState();
 
-    double value = m_pimpl->sharedKinDyn->getRelativeTransform(m_pimpl->robotState,
-                                                               m_pimpl->referenceFootFrame,
-                                                               m_pimpl->otherFootFrame).getPosition()(m_pimpl->lateralIndex);
-    constraint(0) = value;
+        m_pimpl->feetDistance = m_pimpl->sharedKinDyn->getRelativeTransform(m_pimpl->robotState,
+                                                                   m_pimpl->referenceFootFrame,
+                                                                   m_pimpl->otherFootFrame).getPosition()(m_pimpl->lateralIndex);
+    }
+    constraint(0) = m_pimpl->feetDistance;
     return true;
 }
 
@@ -105,18 +121,22 @@ bool FeetLateralDistanceConstraint::constraintJacobianWRTState(double, const iDy
 {
     m_pimpl->stateVariables = state;
 
-    m_pimpl->updateRobotState();
+    if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 
-    bool ok = m_pimpl->sharedKinDyn->getRelativeJacobian(m_pimpl->robotState, m_pimpl->referenceFootFrame,
-                                                         m_pimpl->otherFootFrame, m_pimpl->relativeJacobianBuffer,
-                                                         iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
-    assert(ok);
+        m_pimpl->updateDoneOnceStateJacobian = true;
+        m_pimpl->updateRobotState();
 
-    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
-    iDynTree::iDynTreeEigenMatrixMap relativeJacobianMap = iDynTree::toEigen(m_pimpl->relativeJacobianBuffer);
+        bool ok = m_pimpl->sharedKinDyn->getRelativeJacobian(m_pimpl->robotState, m_pimpl->referenceFootFrame,
+                                                             m_pimpl->otherFootFrame, m_pimpl->relativeJacobianBuffer,
+                                                             iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+        assert(ok);
 
-    jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, 1, m_pimpl->jointsPositionRange.size) =
-            relativeJacobianMap.block(m_pimpl->lateralIndex, 0, 1, m_pimpl->jointsPositionRange.size);
+        iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
+        iDynTree::iDynTreeEigenMatrixMap relativeJacobianMap = iDynTree::toEigen(m_pimpl->relativeJacobianBuffer);
+
+        jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, 1, m_pimpl->jointsPositionRange.size) =
+                relativeJacobianMap.block(m_pimpl->lateralIndex, 0, 1, m_pimpl->jointsPositionRange.size);
+    }
 
     jacobian = m_pimpl->stateJacobianBuffer;
 

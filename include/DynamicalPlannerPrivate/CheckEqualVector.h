@@ -12,8 +12,8 @@
 namespace DynamicalPlanner {
     namespace Private {
 
-        template<typename VectorType>
-        bool VectorsAreEqual(const VectorType& vec1, const VectorType& vec2, double tol = iDynTree::DEFAULT_TOL){
+        template<typename VectorType1, typename VectorType2>
+        bool VectorsAreEqual(const VectorType1& vec1, const VectorType2& vec2, double tol = iDynTree::DEFAULT_TOL){
             if (vec1.size() != vec2.size()) {
                 return false;
             }

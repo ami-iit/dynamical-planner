@@ -5,7 +5,7 @@
  *
  */
 #include <DynamicalPlannerPrivate/ContactPositionConsistencyConstraint.h>
-#include <iDynTree/KinDynComputations.h>
+#include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <cassert>
@@ -22,11 +22,12 @@ public:
     size_t contactIndex;
     iDynTree::Position positionInFoot;
 
-    iDynTree::IndexRange positionPointRange, velocityPointRange;
+    iDynTree::IndexRange positionPointRange;
     iDynTree::IndexRange jointsPositionRange, basePositionRange, baseQuaternionRange;
 
     iDynTree::VectorDynSize constraintValueBuffer;
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
+    iDynTree::Vector3 pointPosition;
     iDynTree::MatrixDynSize footJacobianBuffer, pointJacobianBuffer, stateJacobianBuffer, controlJacobianBuffer;
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
     iDynTree::MatrixFixSize<3, 6> /*footInternalTransformation,*/ footTransformationBuffer;
@@ -37,10 +38,11 @@ public:
     RobotState robotState;
     std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
 
-    void getRanges() {
+    bool updateDoneOnceConstraint = false;
+    bool updateDoneOnceStateJacobian = false;
+    double tolerance;
 
-        velocityPointRange = stateVariables.getIndexRange(footName + "VelocityPoint" + std::to_string(contactIndex));
-        assert(velocityPointRange.isValid());
+    void getRanges() {
 
         positionPointRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(contactIndex));
         assert(positionPointRange.isValid());
@@ -69,6 +71,21 @@ public:
         robotState.world_T_base.setPosition(basePosition);
 
         robotState.s = stateVariables(jointsPositionRange);
+    }
+
+    void updateVariables (){
+        updateRobotState();
+        pointPosition = stateVariables(positionPointRange);
+    }
+
+    bool sameVariables(bool updateDoneOnce) {
+        bool same = updateDoneOnce;
+        same = same && VectorsAreEqual(pointPosition, stateVariables(positionPointRange), tolerance);
+        same = same && VectorsAreEqual(basePosition, stateVariables(basePositionRange), tolerance);
+        same = same && VectorsAreEqual(baseQuaternion, stateVariables(baseQuaternionRange), tolerance);
+        same = same && VectorsAreEqual(robotState.s, stateVariables(jointsPositionRange), tolerance);
+
+        return same;
     }
 };
 
@@ -107,9 +124,8 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     m_pimpl->controlJacobianBuffer.zero();
 
     m_pimpl->robotState = sharedKinDyn->currentState();
+    m_pimpl->tolerance = sharedKinDyn->getUpdateTolerance();
 
-//    iDynTree::toEigen(m_pimpl->footInternalTransformation).leftCols<3>().setIdentity();
-//    iDynTree::toEigen(m_pimpl->footInternalTransformation).rightCols<3>() = iDynTree::skew(-iDynTree::toEigen(m_pimpl->positionInFoot));
     iDynTree::toEigen(m_pimpl->footTransformationBuffer).leftCols<3>().setIdentity();
 
 
@@ -125,10 +141,14 @@ bool ContactPositionConsistencyConstraint::evaluateConstraint(double, const iDyn
 {
     m_pimpl->stateVariables = state;
 
-    m_pimpl->updateRobotState();
+    if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
-    iDynTree::toEigen(m_pimpl->constraintValueBuffer) = iDynTree::toEigen(m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame) * m_pimpl->positionInFoot)
-                                                            - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->positionPointRange));
+        m_pimpl->updateDoneOnceConstraint = true;
+        m_pimpl->updateVariables();
+
+        iDynTree::toEigen(m_pimpl->constraintValueBuffer) = iDynTree::toEigen(m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame) * m_pimpl->positionInFoot)
+                - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->positionPointRange));
+    }
 
     constraint = m_pimpl->constraintValueBuffer;
 
@@ -139,34 +159,39 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double, co
 {
     m_pimpl->stateVariables = state;
 
-    m_pimpl->updateRobotState();
+    if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 
-    bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->footFrame, m_pimpl->footJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
-    assert(ok);
+        m_pimpl->updateDoneOnceStateJacobian = true;
+        m_pimpl->updateVariables();
 
-    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
+        bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->footFrame, m_pimpl->footJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+        assert(ok);
 
-    Eigen::Map<Eigen::Matrix<double, 3, 6, Eigen::RowMajor> > footTransformationMap = iDynTree::toEigen(m_pimpl->footTransformationBuffer);
+        iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
 
-//    footTransformationMap = iDynTree::toEigen(m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame).getRotation()) * iDynTree::toEigen(m_pimpl->footInternalTransformation);
-    iDynTree::Transform footTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame);
-    footTransformationMap.rightCols<3>() = iDynTree::skew(iDynTree::toEigen(footTransform.getPosition() - (footTransform * m_pimpl->positionInFoot)));
+        Eigen::Map<Eigen::Matrix<double, 3, 6, Eigen::RowMajor> > footTransformationMap = iDynTree::toEigen(m_pimpl->footTransformationBuffer);
 
-    iDynTree::iDynTreeEigenMatrixMap footJacobianMap = iDynTree::toEigen(m_pimpl->footJacobianBuffer);
-    iDynTree::iDynTreeEigenMatrixMap pointJacobianMap = iDynTree::toEigen(m_pimpl->pointJacobianBuffer);
+        //    footTransformationMap = iDynTree::toEigen(m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame).getRotation()) * iDynTree::toEigen(m_pimpl->footInternalTransformation);
+        iDynTree::Transform footTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame);
+        footTransformationMap.rightCols<3>() = iDynTree::skew(iDynTree::toEigen(footTransform.getPosition() - (footTransform * m_pimpl->positionInFoot)));
 
-//    iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
-    iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) = iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
+        iDynTree::iDynTreeEigenMatrixMap footJacobianMap = iDynTree::toEigen(m_pimpl->footJacobianBuffer);
+        iDynTree::iDynTreeEigenMatrixMap pointJacobianMap = iDynTree::toEigen(m_pimpl->pointJacobianBuffer);
 
-    pointJacobianMap = footTransformationMap * footJacobianMap;
+        //    iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
+        iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) = iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
 
-    jacobianMap.block<3, 3>(0, m_pimpl->basePositionRange.offset) = pointJacobianMap.leftCols<3>();
-    jacobianMap.block<3, 3>(0, m_pimpl->basePositionRange.offset) = pointJacobianMap.leftCols<3>();
-    jacobianMap.block<3, 4>(0, m_pimpl->baseQuaternionRange.offset) = pointJacobianMap.block<3, 3>(0, 3) * iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap);
-    jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size) = pointJacobianMap.rightCols(m_pimpl->jointsPositionRange.size);
+        pointJacobianMap = footTransformationMap * footJacobianMap;
 
-    jacobianMap.block<3,3>(0, m_pimpl->positionPointRange.offset).setIdentity();
-    jacobianMap.block<3,3>(0, m_pimpl->positionPointRange.offset) *= -1;
+        jacobianMap.block<3, 3>(0, m_pimpl->basePositionRange.offset) = pointJacobianMap.leftCols<3>();
+        jacobianMap.block<3, 3>(0, m_pimpl->basePositionRange.offset) = pointJacobianMap.leftCols<3>();
+        jacobianMap.block<3, 4>(0, m_pimpl->baseQuaternionRange.offset) = pointJacobianMap.block<3, 3>(0, 3) * iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap);
+        jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size) = pointJacobianMap.rightCols(m_pimpl->jointsPositionRange.size);
+
+        jacobianMap.block<3,3>(0, m_pimpl->positionPointRange.offset).setIdentity();
+        jacobianMap.block<3,3>(0, m_pimpl->positionPointRange.offset) *= -1;
+
+    }
 
     jacobian = m_pimpl->stateJacobianBuffer;
 

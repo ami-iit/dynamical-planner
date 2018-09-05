@@ -77,6 +77,8 @@ public:
 
     bool setToleranceForUpdate(double tol);
 
+    double getUpdateTolerance() const;
+
     bool setFloatingBase(const std::string & floatingBaseName);
 
     //
