@@ -51,21 +51,21 @@ void SharedKinDynComputation::fillJointsInfo()
     }
 }
 
-void SharedKinDynComputation::getChildSpatialMotionVectors()
+void SharedKinDynComputation::updateChildInformations()
 {
+    iDynTree::LinkIndex baseIndex = m_kinDyn.model().getLinkIndex(m_kinDyn.getFloatingBase());
+    assert(baseIndex != iDynTree::LINK_INVALID_INDEX);
+
     for (size_t j = 0; j < m_jointsInfos.size(); ++j) {
 
-        m_jointsInfos[j].childMotionVector = m_jointsInfos[j].jointPtr->getMotionSubspaceVector(0,
+        m_jointsInfos[j].motionVectorTimesChildVelocity = m_jointsInfos[j].jointPtr->getMotionSubspaceVector(0,
                                                                                                 m_jointsInfos[j].childIndex,
                                                                                                 m_jointsInfos[j].parentIndex).cross(
                     -m_kinDyn.getFrameVel(m_jointsInfos[j].childIndex));
-    }
-}
 
-void SharedKinDynComputation::resetVisits()
-{
-    for (unsigned int j = 0; j < m_jointsInfos.size(); ++j) {
-        m_jointsInfos[j].alreadyVisited = false;
+        m_jointsInfos[j].childVelocity = m_kinDyn.getFrameVel(m_jointsInfos[j].childIndex);
+
+        m_jointsInfos[j].baseTC = m_kinDyn.getRelativeTransform(baseIndex, m_jointsInfos[j].childIndex);
     }
 }
 
@@ -367,72 +367,11 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
     if (!updateRobotState(currentState))
         return false;
 
-//    resetVisits();
-//    getChildSpatialMotionVectors();
-
-//    const iDynTree::Model& model = m_kinDyn.model();
-//    iDynTree::LinkIndex baseIndex = model.getLinkIndex(m_kinDyn.getFloatingBase());
-//    assert(baseIndex != iDynTree::LINK_INVALID_INDEX);
-
-//    iDynTree::IJointConstPtr jointPtr;
-//    iDynTree::LinkConstPtr linkPtr;
-//    size_t jointIndex;
-//    for (size_t l = 0; l < model.getNrOfLinks(); ++l) {
-
-//        iDynTree::LinkIndex linkIndex = static_cast<iDynTree::LinkIndex>(l);
-//        assert(model.isValidLinkIndex(linkIndex));
-//        linkPtr = model.getLink(linkIndex);
-//        iDynTree::LinkIndex visitedLink = linkIndex;
-//        iDynTree::Twist linkVelocity = m_kinDyn.getFrameVel(linkIndex);
-//        iDynTree::Transform b_T_link = m_kinDyn.getRelativeTransform(baseIndex, linkIndex);
-
-//        while (visitedLink != baseIndex) { //check all the joints which belong to the tree from the base to linkIndex
-//            jointPtr = m_traversal.getParentJointFromLinkIndex(visitedLink);
-//            jointIndex = static_cast<size_t>(jointPtr->getIndex());
-//            if (!m_jointsInfos[jointIndex].alreadyVisited) {
-//                m_jointsInfos[jointIndex].successorsMomentum = m_kinDyn.getRelativeTransform(m_jointsInfos[jointIndex].childIndex, linkIndex) *
-//                        linkPtr->getInertia() * linkVelocity;
-
-//                m_jointsInfos[jointIndex].velocityDerivative = b_T_link * linkPtr->getInertia() *
-//                        (m_kinDyn.getRelativeTransform(linkIndex, m_jointsInfos[jointIndex].childIndex) *
-//                         m_jointsInfos[jointIndex].childMotionVector);
-
-//                m_jointsInfos[jointIndex].alreadyVisited = true;
-//            } else {
-//                m_jointsInfos[jointIndex].successorsMomentum = m_jointsInfos[jointIndex].successorsMomentum +
-//                        m_kinDyn.getRelativeTransform(m_jointsInfos[jointIndex].childIndex, linkIndex) *
-//                        linkPtr->getInertia() * linkVelocity;
-
-//                m_jointsInfos[jointIndex].velocityDerivative = m_jointsInfos[jointIndex].velocityDerivative + b_T_link * linkPtr->getInertia() *
-//                        (m_kinDyn.getRelativeTransform(linkIndex, m_jointsInfos[jointIndex].childIndex) *
-//                         m_jointsInfos[jointIndex].childMotionVector);
-
-//            }
-
-//            visitedLink = m_traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
-
-//        }
-
-//    }
-
-//    linAngMomentumDerivative.resize(6, static_cast<unsigned int>(m_jointsInfos.size()));
-//    iDynTree::iDynTreeEigenMatrixMap derivativeMap = iDynTree::toEigen(linAngMomentumDerivative);
-//    iDynTree::SpatialMomentum colBuffer;
-
-//    for (size_t j = 0; j < m_jointsInfos.size(); ++j) {
-//        assert(m_jointsInfos[j].alreadyVisited);
-
-//        colBuffer = m_kinDyn.getRelativeTransform(baseIndex, m_jointsInfos[j].childIndex) *
-//                m_jointsInfos[j].jointPtr->getMotionSubspaceVector(0,
-//                                                                   m_jointsInfos[j].childIndex,
-//                                                                   m_jointsInfos[j].parentIndex).cross(m_jointsInfos[j].successorsMomentum) +
-//                m_jointsInfos[j].velocityDerivative;
-
-//        derivativeMap.col(static_cast<Eigen::Index>(j)) = iDynTree::toEigen(colBuffer);
-//    }
-
     linAngMomentumDerivative.resize(6, static_cast<unsigned int>(m_jointsInfos.size()));
     linAngMomentumDerivative.zero();
+
+    updateChildInformations();
+
     iDynTree::iDynTreeEigenMatrixMap derivativeMap = iDynTree::toEigen(linAngMomentumDerivative);
 
     const iDynTree::Model& model = m_kinDyn.model();
@@ -444,6 +383,7 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
     iDynTree::LinkConstPtr linkPtr;
     size_t jointIndex;
     iDynTree::SpatialMomentum linkMomentum, linkMomentumInChildFrame, jointMomentumDerivative;
+    iDynTree::SpatialMomentum transformDerivative, velocityDerivative;
     iDynTree::LinkIndex visitedLink, childLink, parentLink;
     iDynTree::Transform b_T_link;
     iDynTree::Twist childVelocity;
@@ -463,20 +403,16 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
             childLink = m_jointsInfos[jointIndex].childIndex;
             parentLink = m_jointsInfos[jointIndex].parentIndex;
 
-            childVelocity = m_kinDyn.getFrameVel(childLink);
+            childVelocity = m_jointsInfos[jointIndex].childVelocity;
             linkMomentumInChildFrame = m_kinDyn.getRelativeTransform(childLink, linkIndex) * linkMomentum;
 
-            iDynTree::SpatialMomentum transformDerivative, velocityDerivative;
-
-            transformDerivative = m_kinDyn.getRelativeTransform(baseIndex, childLink) *
+            transformDerivative = m_jointsInfos[jointIndex].baseTC *
                     jointPtr->getMotionSubspaceVector(0,
                                                       childLink,
                                                       parentLink).cross(linkMomentumInChildFrame);
 
             velocityDerivative = b_T_link * (linkPtr->getInertia() * (m_kinDyn.getRelativeTransform(linkIndex, childLink) *
-                                                                      jointPtr->getMotionSubspaceVector(0,
-                                                                                                        childLink,
-                                                                                                        parentLink).cross(-childVelocity)));
+                                                                      m_jointsInfos[jointIndex].motionVectorTimesChildVelocity));
 
             jointMomentumDerivative = transformDerivative + velocityDerivative;
 
@@ -484,7 +420,6 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
 
             visitedLink = m_traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
         }
-
     }
     return true;
 }

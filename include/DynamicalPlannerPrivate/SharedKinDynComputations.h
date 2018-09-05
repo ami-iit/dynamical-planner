@@ -31,9 +31,10 @@ namespace DynamicalPlanner {
         typedef struct {
             iDynTree::IJointConstPtr jointPtr;
             iDynTree::SpatialMomentum successorsMomentum, velocityDerivative;
-            iDynTree::SpatialMotionVector childMotionVector;
+            iDynTree::SpatialMotionVector motionVectorTimesChildVelocity;
             iDynTree::LinkIndex childIndex, parentIndex;
-            bool alreadyVisited;
+            iDynTree::Twist childVelocity;
+            iDynTree::Transform baseTC;
         } JointInfos;
     }
 }
@@ -56,7 +57,7 @@ class DynamicalPlanner::Private::SharedKinDynComputation {
 
     void fillJointsInfo();
 
-    void getChildSpatialMotionVectors();
+    void updateChildInformations();
 
     void resetVisits();
 
