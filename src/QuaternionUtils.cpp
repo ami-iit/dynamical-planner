@@ -86,18 +86,19 @@ iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::RotatedVectorQuaternion
 {
     iDynTree::MatrixFixSize<3, 4> jacobian;
     Eigen::Map<Eigen::Matrix<double, 3, 4, Eigen::RowMajor> > jacobianMap = iDynTree::toEigen(jacobian);
-    Eigen::Map<const Eigen::Vector3d> vectorMap = iDynTree::toEigen(originalVector);
+    double vectorNorm = iDynTree::toEigen(originalVector).norm();
+    Eigen::Vector3d vectorNormalized = iDynTree::toEigen(originalVector).normalized();
     Eigen::Map<const Eigen::Vector4d> quaternionMap = iDynTree::toEigen(quaternion);
 
-    Eigen::Vector3d rCrossX = quaternionMap.bottomRows<3>().cross(vectorMap);
+    Eigen::Vector3d rCrossX = quaternionMap.bottomRows<3>().cross(vectorNormalized);
     Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rCrossXskew = iDynTree::skew(rCrossX);
-    Eigen::Matrix<double, 3, 3, Eigen::RowMajor> xSkew = iDynTree::skew(vectorMap);
+    Eigen::Matrix<double, 3, 3, Eigen::RowMajor> xSkew = iDynTree::skew(vectorNormalized);
     Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rSkew = iDynTree::skew(quaternionMap.bottomRows<3>());
 
     jacobianMap.leftCols<1>() = rCrossX;
     jacobianMap.rightCols<3>() = -quaternionMap(0) * xSkew - rCrossXskew - rSkew * xSkew;
 
-    jacobianMap *= 2;
+    jacobianMap *= 2 * vectorNorm;
 
     return jacobian;
 }

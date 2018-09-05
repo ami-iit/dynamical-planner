@@ -19,7 +19,7 @@ public:
 
     iDynTree::IndexRange momentumRange, comPositionRange, basePositionRange, baseQuaternionRange, jointsPositionRange, baseVelocityRange, jointsVelocityRange;
     iDynTree::VectorDynSize constraintValueBuffer;
-    iDynTree::Position basePosition, comPosition;
+    iDynTree::Position basePosition, comPositionInverse;
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
     iDynTree::Rotation baseRotation;
     iDynTree::Transform comTransform;
@@ -81,8 +81,8 @@ public:
     }
 
     void updateCoMTransformFromVariables (){
-        iDynTree::toEigen(comPosition) = -1 * iDynTree::toEigen(stateVariables(comPositionRange));
-        comTransform.setPosition(comPosition);
+        iDynTree::toEigen(comPositionInverse) = -1 * iDynTree::toEigen(stateVariables(comPositionRange));
+        comTransform.setPosition(comPositionInverse);
         comTransform.setRotation(iDynTree::Rotation::Identity());
     }
 
@@ -135,8 +135,8 @@ bool CentroidalMomentumConstraint::evaluateConstraint(double /*time*/, const iDy
 
     iDynTree::SpatialMomentum expectedMomentum;
     expectedMomentum = m_pimpl->comTransform *
-            m_pimpl->robotState.world_T_base *
-            m_pimpl->sharedKinDyn->getLinearAngularMomentum(m_pimpl->robotState, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+            (m_pimpl->robotState.world_T_base *
+             m_pimpl->sharedKinDyn->getLinearAngularMomentum(m_pimpl->robotState, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION));
 
     iDynTree::toEigen(m_pimpl->constraintValueBuffer) = iDynTree::toEigen(expectedMomentum) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->momentumRange));
 
@@ -184,7 +184,9 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTState(double /*time*/, c
 
     jacobianMap.block<3,4>(0, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(linearPartDerivative);
 
-    jacobianMap.block<3,4>(3, m_pimpl->baseQuaternionRange.offset) = iDynTree::skew(iDynTree::toEigen(m_pimpl->robotState.world_T_base.getPosition() - m_pimpl->comPosition)) * iDynTree::toEigen(linearPartDerivative) +
+    iDynTree::Position baseCoMDistance = m_pimpl->robotState.world_T_base.getPosition() + m_pimpl->comPositionInverse;
+
+    jacobianMap.block<3,4>(3, m_pimpl->baseQuaternionRange.offset) = iDynTree::skew(iDynTree::toEigen(baseCoMDistance)) * iDynTree::toEigen(linearPartDerivative) +
             iDynTree::toEigen(RotatedVectorQuaternionJacobian(momentumInBase.getAngularVec3(), m_pimpl->baseQuaternionNormalized)) *
             iDynTree::toEigen(normalizedQuaternionDerivative);
 

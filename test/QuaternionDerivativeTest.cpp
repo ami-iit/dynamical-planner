@@ -162,12 +162,12 @@ void validateNormalizeQuaternionJacobian() {
 }
 
 void validateRotatedVectorJacobian(const iDynTree::Rotation & R) {
-    double perturbationValue = 1e-2;
+    double perturbationValue = 1e-3;
     iDynTree::Vector4 quaternion = R.asQuaternion();
     iDynTree::Vector4 quaternionPerturbed, perturbation;
     iDynTree::Rotation perturbedRotation;
     iDynTree::Vector3 vector, output, perturbedOutput, firstOrderTaylor;
-    iDynTree::getRandomVector(vector);
+    iDynTree::getRandomVector(vector, -10, 10);
 
     Eigen::Vector4d maxQuaternion;
     maxQuaternion.setConstant(1.0);
