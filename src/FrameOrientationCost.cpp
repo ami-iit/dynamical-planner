@@ -8,6 +8,7 @@
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/FrameOrientationCost.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <cassert>
 #include <iostream>
 
@@ -32,6 +33,13 @@ public:
 
     std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredTrajectory;
 
+    bool updateDoneOnceCost = false;
+    bool updateDoneOnceStateJacobian = false;
+    double lastUpdateTimeCost = -1;
+    double lastUpdateTimeStateJacobian = -1;
+    double costBuffer;
+    double tolerance;
+
 
     void updateRobotState() {
 
@@ -48,6 +56,16 @@ public:
 
         robotState.s = stateVariables(jointsPositionRange);
 
+    }
+
+    bool sameVariables(bool updateDoneOnce, double newTime, double lastUpdateTime) {
+        bool same = updateDoneOnce;
+        same = same && iDynTree::checkDoublesAreEqual(lastUpdateTime, newTime, tolerance);
+        same = same && VectorsAreEqual(basePosition, stateVariables(basePositionRange), tolerance);
+        same = same && VectorsAreEqual(baseQuaternion, stateVariables(baseQuaternionRange), tolerance);
+        same = same && VectorsAreEqual(robotState.s, stateVariables(jointsPositionRange), tolerance);
+
+        return same;
     }
 
 };
@@ -115,25 +133,31 @@ bool FrameOrientationCost::costEvaluation(double time, const iDynTree::VectorDyn
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
 
-    m_pimpl->updateRobotState();
+    if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceCost, time, m_pimpl->lastUpdateTimeCost))) {
 
-    bool isValid = false;
-    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+        m_pimpl->updateDoneOnceCost = true;
+        m_pimpl->lastUpdateTimeCost = time;
+        m_pimpl->updateRobotState();
 
-    if (!isValid) {
-        std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid rotation at time " << time
-                  << "." << std::endl;
-        return false;
+        bool isValid = false;
+        const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+        if (!isValid) {
+            std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid rotation at time " << time
+                      << "." << std::endl;
+            return false;
+        }
+
+        m_pimpl->frameTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->desiredFrame);
+
+        m_pimpl->quaternionError = ErrorQuaternion(m_pimpl->frameTransform.getRotation(), desiredRotation);
+
+        iDynTree::toEigen(m_pimpl->quaternionDifference) = iDynTree::toEigen(m_pimpl->quaternionError) -
+                iDynTree::toEigen(m_pimpl->identityQuaternion);
+        m_pimpl->costBuffer = 0.5 * QuaternionSquaredNorm(m_pimpl->quaternionDifference);
     }
 
-    m_pimpl->frameTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->desiredFrame);
-
-    m_pimpl->quaternionError = ErrorQuaternion(m_pimpl->frameTransform.getRotation(), desiredRotation);
-
-    iDynTree::toEigen(m_pimpl->quaternionDifference) = iDynTree::toEigen(m_pimpl->quaternionError) -
-            iDynTree::toEigen(m_pimpl->identityQuaternion);
-
-    costValue = 0.5 * QuaternionSquaredNorm(m_pimpl->quaternionDifference);
+    costValue = m_pimpl->costBuffer;
 
     return true;
 }
@@ -144,57 +168,61 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
 
-    m_pimpl->updateRobotState();
+    if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian, time, m_pimpl->lastUpdateTimeStateJacobian))) {
 
-    bool isValid = false;
-    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+        m_pimpl->updateDoneOnceStateJacobian = true;
+        m_pimpl->lastUpdateTimeStateJacobian = time;
+        m_pimpl->updateRobotState();
 
-    if (!isValid) {
-        std::cerr << "[ERROR][FrameOrientationCost::costFirstPartialDerivativeWRTState] Unable to retrieve a valid rotation at time " << time
-                  << "." << std::endl;
-        return false;
+        bool isValid = false;
+        const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+        if (!isValid) {
+            std::cerr << "[ERROR][FrameOrientationCost::costFirstPartialDerivativeWRTState] Unable to retrieve a valid rotation at time " << time
+                      << "." << std::endl;
+            return false;
+        }
+
+        m_pimpl->frameTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->desiredFrame);
+
+        m_pimpl->quaternionError = ErrorQuaternion(m_pimpl->frameTransform.getRotation(), desiredRotation);
+
+        iDynTree::toEigen(m_pimpl->quaternionDifference) = iDynTree::toEigen(m_pimpl->quaternionError) -
+                iDynTree::toEigen(m_pimpl->identityQuaternion);
+
+        bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->desiredFrame, m_pimpl->frameJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+        assert(ok);
+
+        iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) =
+                iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) *
+                iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
+
+        iDynTree::iDynTreeEigenMatrixMap originalJacobian = iDynTree::toEigen(m_pimpl->frameJacobianBuffer);
+        iDynTree::iDynTreeEigenMatrixMap jacobianModifiedMap = iDynTree::toEigen(m_pimpl->frameJacobianTimesMap);
+
+        jacobianModifiedMap.leftCols<3>() = originalJacobian.block<3,3>(3,0);
+        jacobianModifiedMap.block<3,4>(0, 3) = originalJacobian.block<3,3>(3,3) * iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap);
+        jacobianModifiedMap.rightCols(m_pimpl->jointsPositionRange.size) = originalJacobian.block(3, 6, 3, m_pimpl->jointsPositionRange.size);
+
+        iDynTree::iDynTreeEigenMatrixMap quaternionErrorDerivativeMap = iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative);
+
+        quaternionErrorDerivativeMap = iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivative(m_pimpl->quaternionError)) *
+                iDynTree::toEigen(desiredRotation).transpose() * jacobianModifiedMap;
+
+
+        iDynTree::iDynTreeEigenVector reducedGradientMap = iDynTree::toEigen(m_pimpl->reducedGradientBuffer);
+
+        reducedGradientMap = iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative).transpose() * iDynTree::toEigen(m_pimpl->quaternionDifference);
+
+        iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
+
+        gradientMap.segment<3>(m_pimpl->basePositionRange.offset) = reducedGradientMap.segment<3>(0);
+        gradientMap.segment<4>(m_pimpl->baseQuaternionRange.offset) = reducedGradientMap.segment<4>(3);
+        gradientMap.segment(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.size) =
+                reducedGradientMap.segment(7, m_pimpl->jointsPositionRange.size);
+
     }
-
-    m_pimpl->frameTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->desiredFrame);
-
-    m_pimpl->quaternionError = ErrorQuaternion(m_pimpl->frameTransform.getRotation(), desiredRotation);
-
-    iDynTree::toEigen(m_pimpl->quaternionDifference) = iDynTree::toEigen(m_pimpl->quaternionError) -
-            iDynTree::toEigen(m_pimpl->identityQuaternion);
-
-    bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->desiredFrame, m_pimpl->frameJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
-
-    assert(ok);
-
-    iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap) =
-            iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) *
-            iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
-
-    iDynTree::iDynTreeEigenMatrixMap originalJacobian = iDynTree::toEigen(m_pimpl->frameJacobianBuffer);
-    iDynTree::iDynTreeEigenMatrixMap jacobianModifiedMap = iDynTree::toEigen(m_pimpl->frameJacobianTimesMap);
-
-    jacobianModifiedMap.leftCols<3>() = originalJacobian.block<3,3>(3,0);
-    jacobianModifiedMap.block<3,4>(0, 3) = originalJacobian.block<3,3>(3,3) * iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap);
-    jacobianModifiedMap.rightCols(m_pimpl->jointsPositionRange.size) = originalJacobian.block(3, 6, 3, m_pimpl->jointsPositionRange.size);
-
-    iDynTree::iDynTreeEigenMatrixMap quaternionErrorDerivativeMap = iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative);
-
-    quaternionErrorDerivativeMap = iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivative(m_pimpl->quaternionError)) *
-            iDynTree::toEigen(desiredRotation).transpose() * jacobianModifiedMap;
-
-
-    iDynTree::iDynTreeEigenVector reducedGradientMap = iDynTree::toEigen(m_pimpl->reducedGradientBuffer);
-
-    reducedGradientMap = iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative).transpose() * iDynTree::toEigen(m_pimpl->quaternionDifference);
-
-    iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
-
-    gradientMap.segment<3>(m_pimpl->basePositionRange.offset) = reducedGradientMap.segment<3>(0);
-    gradientMap.segment<4>(m_pimpl->baseQuaternionRange.offset) = reducedGradientMap.segment<4>(3);
-    gradientMap.segment(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.size) =
-            reducedGradientMap.segment(7, m_pimpl->jointsPositionRange.size);
-
-
     partialDerivative = m_pimpl->stateGradientBuffer;
 
     return true;
