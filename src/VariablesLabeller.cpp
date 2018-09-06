@@ -47,12 +47,23 @@ iDynTree::Span<double> VariablesLabeller::values()
     return iDynTree::make_span(m_fullVector);
 }
 
+iDynTree::Span<const double> VariablesLabeller::values() const
+{
+    return iDynTree::make_span(m_fullVector);
+}
+
 void VariablesLabeller::zero()
 {
     m_fullVector.zero();
 }
 
 iDynTree::Span<double> VariablesLabeller::operator()(const iDynTree::IndexRange& indexRange)
+{
+    assert(indexRange.isValid());
+    return iDynTree::make_span(m_fullVector).subspan(indexRange.offset, indexRange.size);
+}
+
+iDynTree::Span<const double> VariablesLabeller::operator()(const iDynTree::IndexRange &indexRange) const
 {
     assert(indexRange.isValid());
     return iDynTree::make_span(m_fullVector).subspan(indexRange.offset, indexRange.size);
@@ -71,6 +82,31 @@ iDynTree::Span<double> VariablesLabeller::operator()(const std::string &labelNam
     }
 
     return iDynTree::make_span(m_fullVector).subspan(offset, dimension);
+}
+
+iDynTree::Span<const double> VariablesLabeller::operator()(const std::string &labelName) const
+{
+    LabelMap::const_iterator label = m_labelMap.find(labelName);
+
+    long offset = 0;
+    long dimension = 0;
+
+    if (label != m_labelMap.cend()) {
+        offset = label->second.offset;
+        dimension = label->second.size;
+    }
+
+    return iDynTree::make_span(m_fullVector).subspan(offset, dimension);
+}
+
+double VariablesLabeller::operator()(unsigned int index) const
+{
+    return m_fullVector(index);
+}
+
+double &VariablesLabeller::operator()(const unsigned int index)
+{
+    return m_fullVector(index);
 }
 
 VariablesLabeller &VariablesLabeller::operator=(const iDynTree::VectorDynSize &iDynVector)

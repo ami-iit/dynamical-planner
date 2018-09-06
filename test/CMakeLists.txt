@@ -28,4 +28,5 @@ add_dp_test(VariablesLabeller)
 add_dp_test(QuaternionDerivative)
 add_dp_test(ConstraintsDerivative)
 add_dp_test(MomentumDerivative)
+add_dp_test(CostsDerivative)
 

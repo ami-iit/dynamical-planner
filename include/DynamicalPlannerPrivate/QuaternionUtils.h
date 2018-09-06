@@ -9,6 +9,7 @@
 
 #include <iDynTree/Core/MatrixFixSize.h>
 #include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/Core/Rotation.h>
 
 namespace DynamicalPlanner {
     namespace Private {
@@ -21,7 +22,7 @@ namespace DynamicalPlanner {
 
         iDynTree::MatrixFixSize<4, 4> QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(const iDynTree::Vector3& omega);
 
-        iDynTree::Vector4 NormailizedQuaternion(const iDynTree::Vector4& quaternion);
+        iDynTree::Vector4 NormalizedQuaternion(const iDynTree::Vector4& quaternion);
 
         double QuaternionNorm(const iDynTree::Vector4 &quaternion);
 
@@ -31,6 +32,7 @@ namespace DynamicalPlanner {
 
         iDynTree::MatrixFixSize<3,4> RotatedVectorQuaternionJacobian(const iDynTree::Vector3& originalVector, const iDynTree::Vector4& quaternion);
 
+        iDynTree::Vector4 ErrorQuaternion(const iDynTree::Rotation& frameRotation, const iDynTree::Rotation& desiredRotation);
     }
 }
 

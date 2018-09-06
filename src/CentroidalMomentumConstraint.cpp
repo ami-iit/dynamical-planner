@@ -68,7 +68,7 @@ public:
 
         iDynTree::toEigen(basePosition) = iDynTree::toEigen(stateVariables(basePositionRange));
         baseQuaternion = stateVariables(baseQuaternionRange);
-        baseQuaternionNormalized = NormailizedQuaternion(baseQuaternion);
+        baseQuaternionNormalized = NormalizedQuaternion(baseQuaternion);
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
 

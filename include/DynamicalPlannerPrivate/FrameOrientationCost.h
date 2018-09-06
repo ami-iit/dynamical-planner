@@ -31,6 +31,8 @@ public:
 
     FrameOrientationCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn, const iDynTree::FrameIndex& desiredFrame);
 
+    ~FrameOrientationCost() override;
+
     void setDesiredRotation(const iDynTree::Rotation& desiredRotation);
 
     bool setDesiredRotationTrajectory(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredRotationTrajectory);

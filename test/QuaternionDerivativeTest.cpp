@@ -126,7 +126,7 @@ void validateNormalizeQuaternionJacobian() {
     iDynTree::getRandomVector(quaternion, -1.0, 1.0);
     quaternion(0) = iDynTree::getRandomDouble();
 
-    iDynTree::Vector4 originalQuaternionNormalized = DynamicalPlanner::Private::NormailizedQuaternion(quaternion);
+    iDynTree::Vector4 originalQuaternionNormalized = DynamicalPlanner::Private::NormalizedQuaternion(quaternion);
 
     iDynTree::Vector4 quaternionPerturbed, perturbation, firstOrderTaylor, perturbedQuaternionNormalized;
 
@@ -149,7 +149,7 @@ void validateNormalizeQuaternionJacobian() {
 
         toEigen(perturbation) = toEigen(quaternionPerturbed) - toEigen(quaternion);
 
-        perturbedQuaternionNormalized = DynamicalPlanner::Private::NormailizedQuaternion(quaternionPerturbed);
+        perturbedQuaternionNormalized = DynamicalPlanner::Private::NormalizedQuaternion(quaternionPerturbed);
 
         toEigen(firstOrderTaylor) = toEigen(DynamicalPlanner::Private::NormalizedQuaternionDerivative(quaternion)) * toEigen(perturbation);
 

@@ -252,7 +252,7 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
 
     iDynTree::Vector4 normalizedQuaternion, quaternion;
     iDynTree::toEigen(quaternion) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->baseQuaternionRange));
-    normalizedQuaternion = NormailizedQuaternion(quaternion);
+    normalizedQuaternion = NormalizedQuaternion(quaternion);
     assert(QuaternionBoundsRespected(normalizedQuaternion));
 
     iDynTree::Vector3 baseLinearVelocity;

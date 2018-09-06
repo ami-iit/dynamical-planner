@@ -38,11 +38,21 @@ public:
 
      iDynTree::Span<double> values();
 
+     iDynTree::Span<const double> values() const;
+
      void zero();
 
      iDynTree::Span<double> operator()(const iDynTree::IndexRange& indexRange);
 
+     iDynTree::Span<const double> operator()(const iDynTree::IndexRange& indexRange) const;
+
      iDynTree::Span<double> operator()(const std::string& labelName);
+
+     iDynTree::Span<const double> operator()(const std::string& labelName) const;
+
+     double operator()(unsigned int index) const;
+
+     double& operator()(const unsigned int index);
 
      DynamicalPlanner::Private::VariablesLabeller& operator=(const iDynTree::VectorDynSize& iDynVector);
 

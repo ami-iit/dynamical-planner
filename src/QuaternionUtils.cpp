@@ -35,7 +35,7 @@ iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::QuaternionLeftTrivializ
     return outputMatrix;
 }
 
-iDynTree::Vector4 DynamicalPlanner::Private::NormailizedQuaternion(const iDynTree::Vector4& quaternion)
+iDynTree::Vector4 DynamicalPlanner::Private::NormalizedQuaternion(const iDynTree::Vector4& quaternion)
 {
     iDynTree::Vector4 normalized;
     iDynTree::toEigen(normalized) = iDynTree::toEigen(quaternion).normalized();
@@ -114,3 +114,10 @@ bool DynamicalPlanner::Private::QuaternionBoundsRespected(const iDynTree::Vector
     }
     return ok;
 }
+
+iDynTree::Vector4 DynamicalPlanner::Private::ErrorQuaternion(const iDynTree::Rotation &frameRotation, const iDynTree::Rotation &desiredRotation)
+{
+    iDynTree::Rotation rotationError = desiredRotation.inverse() * frameRotation;
+    return rotationError.asQuaternion();
+}
+

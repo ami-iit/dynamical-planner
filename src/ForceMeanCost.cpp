@@ -55,6 +55,9 @@ ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const Vari
     m_pimpl->controlGradientBuffer.zero();
 }
 
+ForceMeanCost::~ForceMeanCost()
+{ }
+
 bool ForceMeanCost::costEvaluation(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control,
                                    double &costValue)
 {
@@ -62,8 +65,8 @@ bool ForceMeanCost::costEvaluation(double /*time*/, const iDynTree::VectorDynSiz
     m_pimpl->controlVariables = control;
 
     m_pimpl->sumOfForces = m_pimpl->stateVariables(m_pimpl->forcePointRange);
-    for (size_t i = i; i < m_pimpl->otherPointsRanges.size(); ++i) {
-        iDynTree::toEigen(m_pimpl->sumOfForces) += iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->otherPointsRanges[i]));
+    for (auto force : m_pimpl->otherPointsRanges) {
+        iDynTree::toEigen(m_pimpl->sumOfForces) += iDynTree::toEigen(m_pimpl->stateVariables(force));
     }
 
     double numberOfPoints = m_pimpl->otherPointsRanges.size() + 1.0;

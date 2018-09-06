@@ -18,10 +18,9 @@ public:
     VariablesLabeller stateVariables, controlVariables;
     iDynTree::FrameIndex desiredFrame;
 
-    iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
-    Eigen::RowVectorXd reducedGradientBuffer;
+    iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer, reducedGradientBuffer;
     iDynTree::IndexRange jointsPositionRange, basePositionRange, baseQuaternionRange;
-    iDynTree::MatrixDynSize frameJacobianBuffer, frameJacobianTimesMap;
+    iDynTree::MatrixDynSize frameJacobianBuffer, frameJacobianTimesMap, quaternionErrorPartialDerivative;
     iDynTree::Position basePosition;
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized, identityQuaternion, quaternionError, quaternionDifference;
     iDynTree::Rotation baseRotation, rotationError;
@@ -40,7 +39,7 @@ public:
 
         iDynTree::toEigen(basePosition) = iDynTree::toEigen(stateVariables(basePositionRange));
         baseQuaternion = stateVariables(baseQuaternionRange);
-        baseQuaternionNormalized = NormailizedQuaternion(baseQuaternion);
+        baseQuaternionNormalized = NormalizedQuaternion(baseQuaternion);
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
 
@@ -62,6 +61,8 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
     assert(desiredFrame != iDynTree::FRAME_INVALID_INDEX);
     assert(sharedKinDyn->model().isValidFrameIndex(desiredFrame));
 
+    m_pimpl->desiredFrame = desiredFrame;
+
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
 
@@ -77,20 +78,24 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
     assert(m_pimpl->jointsPositionRange.isValid());
 
     m_pimpl->frameJacobianBuffer.resize(6, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
-    m_pimpl->frameJacobianBuffer.resize(3, 7 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
+    m_pimpl->frameJacobianTimesMap.resize(3, 7 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
+    m_pimpl->frameJacobianTimesMap.zero();
+    m_pimpl->quaternionErrorPartialDerivative.resize(4, 7 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->stateGradientBuffer.resize(static_cast<unsigned int>(stateVariables.size()));
     m_pimpl->stateGradientBuffer.zero();
     m_pimpl->controlGradientBuffer.resize(static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlGradientBuffer.zero();
-    m_pimpl->reducedGradientBuffer.resize(6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
-    m_pimpl->reducedGradientBuffer.setZero();
+    m_pimpl->reducedGradientBuffer.resize(7 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
+    m_pimpl->reducedGradientBuffer.zero();
 
     m_pimpl->robotState = sharedKinDyn->currentState();
     m_pimpl->desiredTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantRotation>(iDynTree::Rotation::Identity());
-    m_pimpl->identityQuaternion.zero();
-    m_pimpl->identityQuaternion(0) = 1;
+    m_pimpl->identityQuaternion = iDynTree::Rotation::Identity().asQuaternion();
 
 }
+
+FrameOrientationCost::~FrameOrientationCost()
+{ }
 
 void FrameOrientationCost::setDesiredRotation(const iDynTree::Rotation &desiredRotation)
 {
@@ -123,8 +128,7 @@ bool FrameOrientationCost::costEvaluation(double time, const iDynTree::VectorDyn
 
     m_pimpl->frameTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->desiredFrame);
 
-    m_pimpl->rotationError = desiredRotation.inverse() * m_pimpl->frameTransform.getRotation();
-    m_pimpl->quaternionError = m_pimpl->rotationError.asQuaternion();
+    m_pimpl->quaternionError = ErrorQuaternion(m_pimpl->frameTransform.getRotation(), desiredRotation);
 
     iDynTree::toEigen(m_pimpl->quaternionDifference) = iDynTree::toEigen(m_pimpl->quaternionError) -
             iDynTree::toEigen(m_pimpl->identityQuaternion);
@@ -153,8 +157,7 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
 
     m_pimpl->frameTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->desiredFrame);
 
-    m_pimpl->rotationError = desiredRotation.inverse() * m_pimpl->frameTransform.getRotation();
-    m_pimpl->quaternionError = m_pimpl->rotationError.asQuaternion();
+    m_pimpl->quaternionError = ErrorQuaternion(m_pimpl->frameTransform.getRotation(), desiredRotation);
 
     iDynTree::toEigen(m_pimpl->quaternionDifference) = iDynTree::toEigen(m_pimpl->quaternionError) -
             iDynTree::toEigen(m_pimpl->identityQuaternion);
@@ -170,20 +173,27 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
     iDynTree::iDynTreeEigenMatrixMap originalJacobian = iDynTree::toEigen(m_pimpl->frameJacobianBuffer);
     iDynTree::iDynTreeEigenMatrixMap jacobianModifiedMap = iDynTree::toEigen(m_pimpl->frameJacobianTimesMap);
 
-    jacobianModifiedMap.leftCols<3>() = originalJacobian.bottomLeftCorner<3,3>();
+    jacobianModifiedMap.leftCols<3>() = originalJacobian.block<3,3>(3,0);
     jacobianModifiedMap.block<3,4>(0, 3) = originalJacobian.block<3,3>(3,3) * iDynTree::toEigen(m_pimpl->notNormalizedQuaternionMap);
-    jacobianModifiedMap.rightCols(m_pimpl->jointsPositionRange.size) = originalJacobian.bottomRightCorner(3, m_pimpl->jointsPositionRange.size);
+    jacobianModifiedMap.rightCols(m_pimpl->jointsPositionRange.size) = originalJacobian.block(3, 6, 3, m_pimpl->jointsPositionRange.size);
 
-    m_pimpl->reducedGradientBuffer = iDynTree::toEigen(m_pimpl->quaternionDifference).transpose() *
-            iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivative(m_pimpl->baseQuaternionNormalized)) *
+    iDynTree::iDynTreeEigenMatrixMap quaternionErrorDerivativeMap = iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative);
+
+    quaternionErrorDerivativeMap = iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivative(m_pimpl->quaternionError)) *
             iDynTree::toEigen(desiredRotation).transpose() * jacobianModifiedMap;
+
+
+    iDynTree::iDynTreeEigenVector reducedGradientMap = iDynTree::toEigen(m_pimpl->reducedGradientBuffer);
+
+    reducedGradientMap = iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative).transpose() * iDynTree::toEigen(m_pimpl->quaternionDifference);
 
     iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
 
-    gradientMap.segment<3>(m_pimpl->basePositionRange.offset) = m_pimpl->reducedGradientBuffer.segment<3>(0).transpose();
-    gradientMap.segment<4>(m_pimpl->baseQuaternionRange.offset) = m_pimpl->reducedGradientBuffer.segment<4>(3).transpose();
+    gradientMap.segment<3>(m_pimpl->basePositionRange.offset) = reducedGradientMap.segment<3>(0);
+    gradientMap.segment<4>(m_pimpl->baseQuaternionRange.offset) = reducedGradientMap.segment<4>(3);
     gradientMap.segment(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.size) =
-            m_pimpl->reducedGradientBuffer.segment(7, m_pimpl->jointsPositionRange.size);
+            reducedGradientMap.segment(7, m_pimpl->jointsPositionRange.size);
+
 
     partialDerivative = m_pimpl->stateGradientBuffer;
 

@@ -29,6 +29,8 @@ public:
     ForceMeanCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
                   const std::string &footName, size_t contactIndex);
 
+    ~ForceMeanCost() override;
+
     virtual bool costEvaluation(double,
                                 const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&control,
                                 double& costValue) override;
