@@ -574,48 +574,21 @@ bool SharedKinDynComputation::getStaticForcesJointsDerivative(const RobotState &
     iDynTree::LinkIndex baseIndex = model.getLinkIndex(m_kinDyn.getFloatingBase());
     assert(baseIndex != iDynTree::LINK_INVALID_INDEX);
 
-    iDynTree::LinkIndex lIndex;
-    iDynTree::IJointConstPtr visitedJoint;
-    iDynTree::SpatialInertia iInertia;
-    iDynTree::Transform l_T_c;
-    size_t visitedJointIndex;
-
-    for (size_t l = 0; l < model.getNrOfLinks(); ++l) {
-        lIndex = static_cast<iDynTree::LinkIndex>(l);
-
-        iInertia = model.getLink(lIndex)->getInertia();
-        visitedJoint = m_traversal.getParentJointFromLinkIndex(lIndex);
-
-        if (visitedJoint) {
-            visitedJointIndex = static_cast<size_t>(visitedJoint->getIndex());
-            m_childrenForceDerivatives[l][visitedJointIndex] = m_childrenForceDerivatives[l][visitedJointIndex] + m_jointsInfos[visitedJointIndex].childStaticForceDerivative;
-        }
-
-        while (visitedJoint) {
-
-            visitedJointIndex = static_cast<size_t>(visitedJoint->getIndex());
-            l_T_c = m_kinDyn.getRelativeTransform(lIndex, m_jointsInfos[visitedJointIndex].childIndex);
-            m_childrenForceDerivatives[l][visitedJointIndex] = m_childrenForceDerivatives[l][visitedJointIndex] - iInertia * (l_T_c * m_jointsInfos[visitedJointIndex].motionVectorTimesChildAcceleration);
-
-//            std::cerr <<"First run. Filling (" <<l << ", " << visitedJointIndex << ")" <<std::endl;
-
-            visitedJoint = m_traversal.getParentJointFromLinkIndex(m_jointsInfos[visitedJointIndex].parentIndex);
-        }
-    }
-
     iDynTree::LinkIndex parentLinkIndex, associatedLinkIndex;
     iDynTree::LinkConstPtr ancestor_ptr;
     iDynTree::TraversalIndex elIndex;
-    iDynTree::IJointConstPtr associatedJoint;
-    size_t associatedJointIndex, parentLink, associatedLink, ancestorLink;
-    iDynTree::Transform p_T_c, ancestor_T_associated;
+    iDynTree::IJointConstPtr visitedJoint, associatedJoint_ptr;
+    iDynTree::SpatialInertia linkInertia;
+    size_t visitedJointIndex, associatedJoint, parentLink, associatedLink, ancestorLink;
+    iDynTree::Transform l_T_c, p_T_c, ancestor_T_associated;
 
     for (unsigned int el = m_traversal.getNrOfVisitedLinks() -1; el > 0; el--) {
 
         elIndex = static_cast<iDynTree::TraversalIndex>(el);
-        associatedJoint = m_traversal.getParentJoint(elIndex);
-        associatedJointIndex = static_cast<size_t>(associatedJoint->getIndex());
+        associatedJoint_ptr = m_traversal.getParentJoint(elIndex);
+        associatedJoint = static_cast<size_t>(associatedJoint_ptr->getIndex());
         associatedLinkIndex = m_traversal.getLink(elIndex)->getIndex();
+        linkInertia = model.getLink(associatedLinkIndex)->getInertia();
         associatedLink = static_cast<size_t>(associatedLinkIndex);
 
         parentLinkIndex = m_traversal.getParentLink(elIndex)->getIndex();
@@ -623,30 +596,32 @@ bool SharedKinDynComputation::getStaticForcesJointsDerivative(const RobotState &
 
         p_T_c = m_kinDyn.getRelativeTransform(parentLinkIndex, associatedLinkIndex);
 
+        m_childrenForceDerivatives[associatedLink][associatedJoint] = m_childrenForceDerivatives[associatedLink][associatedJoint] + m_jointsInfos[associatedJoint].childStaticForceDerivative;
+
+        // Propagate joints which are before the joint
+        visitedJoint = associatedJoint_ptr;
+        while (visitedJoint) {
+            visitedJointIndex = static_cast<size_t>(visitedJoint->getIndex());
+
+            l_T_c = m_kinDyn.getRelativeTransform(associatedLinkIndex, m_jointsInfos[visitedJointIndex].childIndex);
+            m_childrenForceDerivatives[associatedLink][visitedJointIndex] = m_childrenForceDerivatives[associatedLink][visitedJointIndex] - linkInertia * (l_T_c * m_jointsInfos[visitedJointIndex].motionVectorTimesChildAcceleration);
+
+            if (parentLinkIndex != baseIndex) {
+                m_childrenForceDerivatives[parentLink][visitedJointIndex] = m_childrenForceDerivatives[parentLink][visitedJointIndex] + (p_T_c * m_childrenForceDerivatives[associatedLink][visitedJointIndex]);
+            }
+            visitedJoint = m_traversal.getParentJointFromLinkIndex(m_jointsInfos[visitedJointIndex].parentIndex);
+        }
 
         if (parentLinkIndex != baseIndex) {
-
-            // Propagate joints which are before the joint
-            visitedJoint = associatedJoint;
-            while (visitedJoint) {
-                visitedJointIndex = static_cast<size_t>(visitedJoint->getIndex());
-                m_childrenForceDerivatives[parentLink][visitedJointIndex] = m_childrenForceDerivatives[parentLink][visitedJointIndex] + (p_T_c * m_childrenForceDerivatives[associatedLink][visitedJointIndex]);
-//                std::cerr <<"Second run. Filling (" <<parentLink << ", " << visitedJointIndex << ") using (" << associatedLink << ", " << visitedJointIndex << ")" <<std::endl;
-                visitedJoint = m_traversal.getParentJointFromLinkIndex(m_jointsInfos[visitedJointIndex].parentIndex);
-            }
-
-
             //Propagate associated joint to the top, otherwise the partial derivative of the last joint is not included in the first joint
             ancestor_ptr = m_traversal.getParentLinkFromLinkIndex(parentLinkIndex);
 
             while (ancestor_ptr && (ancestor_ptr->getIndex() != baseIndex)) {
                 ancestorLink = static_cast<size_t>(ancestor_ptr->getIndex());
                 ancestor_T_associated = m_kinDyn.getRelativeTransform(ancestor_ptr->getIndex(), associatedLinkIndex);
-                m_childrenForceDerivatives[ancestorLink][associatedJointIndex] = m_childrenForceDerivatives[ancestorLink][associatedJointIndex] + (ancestor_T_associated * m_childrenForceDerivatives[associatedLink][associatedJointIndex]);
-//                std::cerr <<"Third run. Filling (" <<ancestorLink << ", " << associatedJointIndex << ") using (" << associatedLink << ", " << associatedJointIndex << ")" <<std::endl;
+                m_childrenForceDerivatives[ancestorLink][associatedJoint] = m_childrenForceDerivatives[ancestorLink][associatedJoint] + (ancestor_T_associated * m_childrenForceDerivatives[associatedLink][associatedJoint]);
                 ancestor_ptr = m_traversal.getParentLinkFromLinkIndex(ancestor_ptr->getIndex());
             }
-
 
         }
     }
