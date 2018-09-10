@@ -33,6 +33,11 @@ namespace DynamicalPlanner {
         iDynTree::MatrixFixSize<3,4> RotatedVectorQuaternionJacobian(const iDynTree::Vector3& originalVector, const iDynTree::Vector4& quaternion);
 
         iDynTree::Vector4 ErrorQuaternion(const iDynTree::Rotation& frameRotation, const iDynTree::Rotation& desiredRotation);
+
+        iDynTree::Vector4 InverseQuaternion(const iDynTree::Vector4& quaternion);
+
+        iDynTree::Matrix4x4 InverseQuaternionDerivative();
+
     }
 }
 

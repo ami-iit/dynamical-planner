@@ -206,6 +206,54 @@ void validateRotatedVectorJacobian(const iDynTree::Rotation & R) {
 
 }
 
+void validateInverseQuaternion(const iDynTree::Rotation & R) {
+    double perturbationValue = 1e-3;
+    iDynTree::Vector4 quaternion = R.asQuaternion();
+    iDynTree::Vector4 quaternionPerturbed, perturbation;
+    iDynTree::Vector4 invertedQuaternion, identityCheck, perturbedInvertedQuaternion, firstOrderTaylor;
+
+    Eigen::Vector4d maxQuaternion;
+    maxQuaternion.setConstant(1.0);
+    Eigen::Vector4d minQuaternion;
+    minQuaternion.setConstant(-1);
+    minQuaternion(0) = 0;
+
+    invertedQuaternion = DynamicalPlanner::Private::InverseQuaternion(quaternion);
+
+
+    identityCheck = (iDynTree::Rotation::RotationFromQuaternion(quaternion) *
+                     iDynTree::Rotation::RotationFromQuaternion(invertedQuaternion).inverse()).asQuaternion();
+
+    ASSERT_EQUAL_VECTOR(identityCheck, iDynTree::Rotation::Identity().asQuaternion());
+
+
+
+    // Test separetly the derivative of quaternion
+    for (unsigned int i = 0; i < 4; i++)
+    {
+        quaternionPerturbed = quaternion;
+        quaternionPerturbed(i) = quaternionPerturbed(i) + perturbationValue;
+
+        //ensure validity of obtained quaternion even if the quaternion is no more a step different than
+        //the original
+        toEigen(quaternionPerturbed) = toEigen(quaternionPerturbed).array().min(maxQuaternion.array());
+        toEigen(quaternionPerturbed) = toEigen(quaternionPerturbed).array().max(minQuaternion.array());
+        toEigen(quaternionPerturbed).normalize();
+
+        toEigen(perturbation) = toEigen(quaternionPerturbed) - toEigen(quaternion);
+
+        perturbedInvertedQuaternion = DynamicalPlanner::Private::InverseQuaternion(quaternionPerturbed);
+
+        toEigen(firstOrderTaylor) = toEigen(DynamicalPlanner::Private::InverseQuaternionDerivative()) * toEigen(perturbation);
+
+        toEigen(firstOrderTaylor) += toEigen(invertedQuaternion);
+
+        ASSERT_EQUAL_VECTOR_TOL(perturbedInvertedQuaternion,firstOrderTaylor,perturbationValue/10);
+
+    }
+
+}
+
 int main() {
     validateQuaternionLeftTrivializedDerivative(iDynTree::getRandomRotation());
     validateMapJacobian(iDynTree::getRandomRotation());

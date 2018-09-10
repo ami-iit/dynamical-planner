@@ -121,3 +121,21 @@ iDynTree::Vector4 DynamicalPlanner::Private::ErrorQuaternion(const iDynTree::Rot
     return rotationError.asQuaternion();
 }
 
+
+iDynTree::Vector4 DynamicalPlanner::Private::InverseQuaternion(const iDynTree::Vector4 &quaternion)
+{
+    iDynTree::Vector4 inverseQuaternion;
+    inverseQuaternion(0) = quaternion(0);
+    iDynTree::toEigen(inverseQuaternion).bottomRows<3>() = - iDynTree::toEigen(quaternion).bottomRows<3>();
+    return inverseQuaternion;
+}
+
+iDynTree::Matrix4x4 DynamicalPlanner::Private::InverseQuaternionDerivative()
+{
+    iDynTree::Matrix4x4 inverseMap;
+    iDynTree::toEigen(inverseMap) << 1.0,  0.0,  0.0,  0.0,
+                                     0.0, -1.0,  0.0,  0.0,
+                                     0.0,  0.0, -1.0,  0.0,
+                                     0.0,  0.0,  0.0, -1.0;
+    return inverseMap;
+}
