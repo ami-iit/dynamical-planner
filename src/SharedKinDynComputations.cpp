@@ -6,6 +6,8 @@
  */
 
 #include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <iDynTree/Model/ForwardKinematics.h>
+#include <iDynTree/Model/Dynamics.h>
 #include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
@@ -41,6 +43,7 @@ bool SharedKinDynComputation::updateRobotState(const RobotState &currentState)
 void SharedKinDynComputation::fillJointsInfo()
 {
     const iDynTree::Model& model = m_kinDyn.model();
+    m_childrenForceDerivatives.resize(model.getNrOfLinks());
     for (size_t j = 0; j < m_jointsInfos.size(); ++j) {
         iDynTree::JointIndex jointIndex = static_cast<iDynTree::JointIndex>(j);
         assert(model.isValidJointIndex(jointIndex));
@@ -48,10 +51,12 @@ void SharedKinDynComputation::fillJointsInfo()
         assert(m_jointsInfos[j].jointPtr->getNrOfDOFs() == 1);
         m_jointsInfos[j].childIndex =  m_traversal.getChildLinkIndexFromJointIndex(model, jointIndex);
         m_jointsInfos[j].parentIndex =  m_traversal.getParentLinkIndexFromJointIndex(model, jointIndex);
+        size_t childIndex = static_cast<size_t>(m_jointsInfos[j].childIndex);
+        m_childrenForceDerivatives[childIndex].resize(m_jointsInfos.size(), iDynTree::SpatialForceVector::Zero());
     }
 }
 
-void SharedKinDynComputation::updateChildInformations()
+void SharedKinDynComputation::updateChildBuffersForMomentumDerivative()
 {
     iDynTree::LinkIndex baseIndex = m_kinDyn.model().getLinkIndex(m_kinDyn.getFloatingBase());
     assert(baseIndex != iDynTree::LINK_INVALID_INDEX);
@@ -67,6 +72,66 @@ void SharedKinDynComputation::updateChildInformations()
 
         m_jointsInfos[j].baseTC = m_kinDyn.getRelativeTransform(baseIndex, m_jointsInfos[j].childIndex);
     }
+}
+
+void SharedKinDynComputation::computeChildStaticForceDerivative(const iDynTree::LinkWrenches &linkStaticForces)
+{
+
+    iDynTree::LinkIndex childLink, parentLink;
+    size_t childIndex;
+    for (size_t j = 0; j < m_jointsInfos.size(); ++j) {
+
+        childLink = m_jointsInfos[j].childIndex;
+        parentLink = m_jointsInfos[j].parentIndex;
+
+        JointInfos& jInfo = m_jointsInfos[j];
+
+        jInfo.childStaticForceDerivative = jInfo.jointPtr->getMotionSubspaceVector(0,
+                                                                                   childLink,
+                                                                                   parentLink).cross(
+                    linkStaticForces(childLink));
+
+        jInfo.motionVectorTimesChildAcceleration = jInfo.jointPtr->getMotionSubspaceVector(0,
+                                                                                           childLink,
+                                                                                           parentLink).cross(
+                    m_invDynLinkProperAccs(childLink));
+
+        childIndex = static_cast<size_t>(childLink);
+        m_childrenForceDerivatives[childIndex] = m_zeroDerivatives;
+    }
+}
+
+bool SharedKinDynComputation::computeStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces)
+{
+    iDynTree::toEigen(m_gravityAccInBaseLinkFrame) =
+            iDynTree::toEigen(currentState.world_T_base.getRotation().inverse())*iDynTree::toEigen(m_gravity);
+
+    // Clear input buffers that need to be cleared
+    m_invDynGeneralizedProperAccs.baseAcc().zero();
+    iDynTree::toEigen(m_invDynGeneralizedProperAccs.baseAcc().getLinearVec3()) = - iDynTree::toEigen(m_gravityAccInBaseLinkFrame);
+    m_invDynGeneralizedProperAccs.jointAcc().zero();
+
+    m_pos.worldBasePos() = currentState.world_T_base;
+    iDynTree::toEigen(m_pos.jointPos()) = iDynTree::toEigen(currentState.s);
+
+    // Run inverse dynamics
+    bool ok = iDynTree::ForwardAccKinematics(m_kinDyn.model(),
+                                             m_traversal,
+                                             m_pos,
+                                             m_invDynZeroVel,
+                                             m_invDynGeneralizedProperAccs,
+                                             m_invDynZeroLinkVel,
+                                             m_invDynLinkProperAccs);
+
+    ok = ok && iDynTree::RNEADynamicPhase(m_kinDyn.model(),
+                                          m_traversal,
+                                          m_pos.jointPos(),
+                                          m_invDynZeroLinkVel,
+                                          m_invDynLinkProperAccs,
+                                          linkExtForces,
+                                          m_linkStaticWrenches,
+                                          m_generalizedStaticTorques);
+    return ok;
 }
 
 SharedKinDynComputation::SharedKinDynComputation()
@@ -97,6 +162,23 @@ bool SharedKinDynComputation::loadRobotModel(const iDynTree::Model &model)
         fillJointsInfo();
     }
 
+    m_linkStaticWrenches.resize(model);
+    m_invDynGeneralizedProperAccs.resize(model);
+    m_pos.resize(model);
+    m_invDynZeroVel.resize(model);
+    m_invDynZeroVel.baseVel().zero();
+    m_invDynZeroVel.jointVel().zero();
+    m_invDynZeroLinkVel.resize(model);
+    m_invDynLinkProperAccs.resize(model);
+
+    for(iDynTree::LinkIndex lnkIdx = 0; lnkIdx < static_cast<iDynTree::LinkIndex>(model.getNrOfLinks()); lnkIdx++)
+    {
+        m_invDynZeroLinkVel(lnkIdx).zero();
+    }
+
+    m_generalizedStaticTorques.resize(model);
+    m_zeroDerivatives.resize(m_kinDyn.getNrOfDegreesOfFreedom(), iDynTree::SpatialForceVector::Zero());
+
     return ok;
 }
 
@@ -117,6 +199,11 @@ void SharedKinDynComputation::setGravity(const iDynTree::Vector3 &gravity)
         m_updateNecessary = true;
 
     m_gravity = gravity;
+}
+
+const iDynTree::Vector3 &SharedKinDynComputation::gravity() const
+{
+    return m_gravity;
 }
 
 bool SharedKinDynComputation::setToleranceForUpdate(double tol)
@@ -154,6 +241,11 @@ bool SharedKinDynComputation::setFloatingBase(const std::string &floatingBaseNam
     fillJointsInfo();
 
     return true;
+}
+
+const iDynTree::Traversal &SharedKinDynComputation::traversal() const
+{
+    return m_traversal;
 }
 
 const RobotState &SharedKinDynComputation::currentState() const
@@ -375,7 +467,7 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
     linAngMomentumDerivative.resize(6, static_cast<unsigned int>(m_jointsInfos.size()));
     linAngMomentumDerivative.zero();
 
-    updateChildInformations();
+    updateChildBuffersForMomentumDerivative();
 
     iDynTree::iDynTreeEigenMatrixMap derivativeMap = iDynTree::toEigen(linAngMomentumDerivative);
 
@@ -426,6 +518,153 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
             visitedLink = m_traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
         }
     }
+    return true;
+}
+
+bool SharedKinDynComputation::getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::FreeFloatingGeneralizedTorques& generalizedStaticTorques, iDynTree::LinkWrenches& linkStaticForces)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (!computeStaticForces(currentState, linkExtForces)) {
+        return false;
+    }
+
+    linkStaticForces = m_linkStaticWrenches;
+    generalizedStaticTorques = m_generalizedStaticTorques;
+
+    return true;
+}
+
+bool SharedKinDynComputation::getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::FreeFloatingGeneralizedTorques &generalizedStaticTorques)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (!computeStaticForces(currentState, linkExtForces)) {
+        return false;
+    }
+
+    generalizedStaticTorques = m_generalizedStaticTorques;
+
+    return true;
+}
+
+
+bool SharedKinDynComputation::getStaticForcesJointsDerivative(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::MatrixDynSize &staticTorquesDerivatives)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (!m_kinDyn.isValid())
+        return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+
+    if (!updateRobotState(currentState))
+        return false;
+
+    if (!computeStaticForces(currentState, linkExtForces)) {
+        return false;
+    }
+
+    computeChildStaticForceDerivative(m_linkStaticWrenches);
+
+    staticTorquesDerivatives.resize(static_cast<unsigned int>(m_jointsInfos.size()), static_cast<unsigned int>(m_jointsInfos.size()));
+    staticTorquesDerivatives.zero();
+
+    const iDynTree::Model& model = m_kinDyn.model();
+    iDynTree::LinkIndex baseIndex = model.getLinkIndex(m_kinDyn.getFloatingBase());
+    assert(baseIndex != iDynTree::LINK_INVALID_INDEX);
+
+    iDynTree::LinkIndex lIndex;
+    iDynTree::IJointConstPtr visitedJoint;
+    iDynTree::SpatialInertia iInertia;
+    iDynTree::Transform l_T_c;
+    size_t visitedJointIndex;
+
+    for (size_t l = 0; l < model.getNrOfLinks(); ++l) {
+        lIndex = static_cast<iDynTree::LinkIndex>(l);
+
+        iInertia = model.getLink(lIndex)->getInertia();
+        visitedJoint = m_traversal.getParentJointFromLinkIndex(lIndex);
+
+        if (visitedJoint) {
+            visitedJointIndex = static_cast<size_t>(visitedJoint->getIndex());
+            m_childrenForceDerivatives[l][visitedJointIndex] = m_childrenForceDerivatives[l][visitedJointIndex] + m_jointsInfos[visitedJointIndex].childStaticForceDerivative;
+        }
+
+        while (visitedJoint) {
+
+            visitedJointIndex = static_cast<size_t>(visitedJoint->getIndex());
+            l_T_c = m_kinDyn.getRelativeTransform(lIndex, m_jointsInfos[visitedJointIndex].childIndex);
+            m_childrenForceDerivatives[l][visitedJointIndex] = m_childrenForceDerivatives[l][visitedJointIndex] - iInertia * (l_T_c * m_jointsInfos[visitedJointIndex].motionVectorTimesChildAcceleration);
+
+//            std::cerr <<"First run. Filling (" <<l << ", " << visitedJointIndex << ")" <<std::endl;
+
+            visitedJoint = m_traversal.getParentJointFromLinkIndex(m_jointsInfos[visitedJointIndex].parentIndex);
+        }
+    }
+
+    iDynTree::LinkIndex parentLinkIndex, associatedLinkIndex;
+    iDynTree::LinkConstPtr ancestor_ptr;
+    iDynTree::TraversalIndex elIndex;
+    iDynTree::IJointConstPtr associatedJoint;
+    size_t associatedJointIndex, parentLink, associatedLink, ancestorLink;
+    iDynTree::Transform p_T_c, ancestor_T_associated;
+
+    for (unsigned int el = m_traversal.getNrOfVisitedLinks() -1; el > 0; el--) {
+
+        elIndex = static_cast<iDynTree::TraversalIndex>(el);
+        associatedJoint = m_traversal.getParentJoint(elIndex);
+        associatedJointIndex = static_cast<size_t>(associatedJoint->getIndex());
+        associatedLinkIndex = m_traversal.getLink(elIndex)->getIndex();
+        associatedLink = static_cast<size_t>(associatedLinkIndex);
+
+        parentLinkIndex = m_traversal.getParentLink(elIndex)->getIndex();
+        parentLink = static_cast<size_t>(parentLinkIndex);
+
+        p_T_c = m_kinDyn.getRelativeTransform(parentLinkIndex, associatedLinkIndex);
+
+
+        if (parentLinkIndex != baseIndex) {
+
+            // Propagate joints which are before the joint
+            visitedJoint = associatedJoint;
+            while (visitedJoint) {
+                visitedJointIndex = static_cast<size_t>(visitedJoint->getIndex());
+                m_childrenForceDerivatives[parentLink][visitedJointIndex] = m_childrenForceDerivatives[parentLink][visitedJointIndex] + (p_T_c * m_childrenForceDerivatives[associatedLink][visitedJointIndex]);
+//                std::cerr <<"Second run. Filling (" <<parentLink << ", " << visitedJointIndex << ") using (" << associatedLink << ", " << visitedJointIndex << ")" <<std::endl;
+                visitedJoint = m_traversal.getParentJointFromLinkIndex(m_jointsInfos[visitedJointIndex].parentIndex);
+            }
+
+
+            //Propagate associated joint to the top, otherwise the partial derivative of the last joint is not included in the first joint
+            ancestor_ptr = m_traversal.getParentLinkFromLinkIndex(parentLinkIndex);
+
+            while (ancestor_ptr && (ancestor_ptr->getIndex() != baseIndex)) {
+                ancestorLink = static_cast<size_t>(ancestor_ptr->getIndex());
+                ancestor_T_associated = m_kinDyn.getRelativeTransform(ancestor_ptr->getIndex(), associatedLinkIndex);
+                m_childrenForceDerivatives[ancestorLink][associatedJointIndex] = m_childrenForceDerivatives[ancestorLink][associatedJointIndex] + (ancestor_T_associated * m_childrenForceDerivatives[associatedLink][associatedJointIndex]);
+//                std::cerr <<"Third run. Filling (" <<ancestorLink << ", " << associatedJointIndex << ") using (" << associatedLink << ", " << associatedJointIndex << ")" <<std::endl;
+                ancestor_ptr = m_traversal.getParentLinkFromLinkIndex(ancestor_ptr->getIndex());
+            }
+
+
+        }
+    }
+
+    iDynTree::LinkIndex jLink, parentOfJ;
+    iDynTree::SpatialMotionVector sJ;
+    for (size_t j = 0; j < m_jointsInfos.size(); ++j) {
+
+        JointInfos& jInfo = m_jointsInfos[j];
+        jLink = jInfo.childIndex;
+        parentOfJ = jInfo.parentIndex;
+        sJ = jInfo.jointPtr->getMotionSubspaceVector(0, jLink, parentOfJ);
+
+        for (size_t z = 0; z < m_jointsInfos.size(); ++z) {
+            staticTorquesDerivatives(static_cast<unsigned int>(j), static_cast<unsigned int>(z)) = sJ.dot(m_childrenForceDerivatives[static_cast<size_t>(jLink)][z]);
+        }
+    }
+
     return true;
 }
 

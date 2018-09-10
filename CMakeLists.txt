@@ -70,6 +70,7 @@ set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/Constraints.h
                              include/DynamicalPlannerPrivate/FrameOrientationCost.h
                              include/DynamicalPlannerPrivate/ForceMeanCost.h
+                             include/DynamicalPlannerPrivate/StaticTorquesCost.h
                              include/DynamicalPlannerPrivate/Costs.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
@@ -86,7 +87,8 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/ContactForceControlConstraints.cpp
                      src/ContactVelocityControlConstraints.cpp
                      src/FrameOrientationCost.cpp
-                     src/ForceMeanCost.cpp)
+                     src/ForceMeanCost.cpp
+                     src/StaticTorquesCost.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

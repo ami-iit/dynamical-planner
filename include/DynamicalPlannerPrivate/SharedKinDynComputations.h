@@ -14,6 +14,8 @@
 #include <iDynTree/Core/Twist.h>
 #include <iDynTree/Core/Transform.h>
 #include <iDynTree/Model/Traversal.h>
+#include <iDynTree/Model/LinkState.h>
+#include <iDynTree/Model/FreeFloatingState.h>
 #include <mutex>
 #include <vector>
 
@@ -31,10 +33,11 @@ namespace DynamicalPlanner {
         typedef struct {
             iDynTree::IJointConstPtr jointPtr;
             iDynTree::SpatialMomentum successorsMomentum, velocityDerivative;
-            iDynTree::SpatialMotionVector motionVectorTimesChildVelocity;
+            iDynTree::SpatialMotionVector motionVectorTimesChildVelocity, motionVectorTimesChildAcceleration;
             iDynTree::LinkIndex childIndex, parentIndex;
             iDynTree::Twist childVelocity;
             iDynTree::Transform baseTC;
+            iDynTree::SpatialForceVector childStaticForceDerivative;
         } JointInfos;
     }
 }
@@ -46,7 +49,19 @@ class DynamicalPlanner::Private::SharedKinDynComputation {
     RobotState m_state;
     iDynTree::Vector3 m_gravity;
     std::vector<JointInfos> m_jointsInfos;
+    iDynTree::LinkWrenches m_linkStaticWrenches;
     iDynTree::Traversal m_traversal;
+    iDynTree::FreeFloatingAcc m_invDynGeneralizedProperAccs;
+    iDynTree::Vector3 m_gravityAccInBaseLinkFrame;
+    iDynTree::FreeFloatingPos m_pos;
+    iDynTree::FreeFloatingVel m_invDynZeroVel;
+    iDynTree::LinkVelArray m_invDynZeroLinkVel;
+    iDynTree::LinkProperAccArray m_invDynLinkProperAccs;
+    iDynTree::FreeFloatingGeneralizedTorques m_generalizedStaticTorques;
+    std::vector<std::vector<iDynTree::SpatialForceVector>> m_childrenForceDerivatives;
+    std::vector<iDynTree::SpatialForceVector> m_zeroDerivatives;
+
+
 
     bool m_updateNecessary;
     double m_tol;
@@ -57,9 +72,12 @@ class DynamicalPlanner::Private::SharedKinDynComputation {
 
     void fillJointsInfo();
 
-    void updateChildInformations();
+    void updateChildBuffersForMomentumDerivative();
 
-    void resetVisits();
+    void computeChildStaticForceDerivative(const iDynTree::LinkWrenches &linkStaticForces);
+
+    bool computeStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces);
+
 
 public:
 
@@ -75,6 +93,8 @@ public:
 
     void setGravity(const iDynTree::Vector3& gravity);
 
+    const iDynTree::Vector3 &gravity() const;
+
     bool setToleranceForUpdate(double tol);
 
     double getUpdateTolerance() const;
@@ -82,6 +102,8 @@ public:
     bool setFloatingBase(const std::string & floatingBaseName);
 
     //
+
+    const iDynTree::Traversal &traversal() const;
 
     const RobotState &currentState() const;
 
@@ -131,17 +153,27 @@ public:
                                 iDynTree::FrameVelocityRepresentation trivialization =
                                    iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
-    bool getFrameVelJointsDerivative(const RobotState &currentState, const iDynTree::FrameIndex frameIdx, iDynTree::MatrixDynSize& velocityDerivative); //Implemented only for BODY_REPRESENTATION
+    bool getFrameVelJointsDerivative(const RobotState &currentState, const iDynTree::FrameIndex frameIdx,
+                                     iDynTree::MatrixDynSize& velocityDerivative); //Implemented only for BODY_REPRESENTATION
 
     iDynTree::SpatialMomentum getLinearAngularMomentum(const RobotState &currentState,
                                                        iDynTree::FrameVelocityRepresentation trivialization =
                                                            iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
-    bool getLinearAngularMomentumJacobian(const RobotState &currentState, iDynTree::MatrixDynSize & linAngMomentumJacobian,
+    bool getLinearAngularMomentumJacobian(const RobotState &currentState, iDynTree::MatrixDynSize &linAngMomentumJacobian,
                                           iDynTree::FrameVelocityRepresentation trivialization =
                                               iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
-    bool getLinearAngularMomentumJointsDerivative(const RobotState &currentState, iDynTree::MatrixDynSize & linAngMomentumDerivative); //Implemented only for BODY_REPRESENTATION
+    bool getLinearAngularMomentumJointsDerivative(const RobotState &currentState, iDynTree::MatrixDynSize &linAngMomentumDerivative); //Implemented only for BODY_REPRESENTATION
+
+    bool getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces,
+                         iDynTree::FreeFloatingGeneralizedTorques &generalizedStaticTorques, iDynTree::LinkWrenches &linkStaticForces); //The external forces are expected in an BODY_REPRESENTATION. The base generalized torque and the linkStaticForces are expressed in BODY_REPRESENTATION
+
+    bool getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces,
+                         iDynTree::FreeFloatingGeneralizedTorques &generalizedStaticTorques); //The external forces are expected in an BODY_REPRESENTATION. The base generalized torque and the linkStaticForces are expressed in BODY_REPRESENTATION
+
+    bool getStaticForcesJointsDerivative(const RobotState& currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces,
+                                         iDynTree::MatrixDynSize &staticTorquesDerivatives); //The external forces are expected in an BODY_REPRESENTATION. The base generalized torque and the linkStaticForces are expressed in BODY_REPRESENTATION
 
 };
 

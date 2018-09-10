@@ -46,11 +46,11 @@ void validateMomentumDerivative(RobotState& robotState, std::shared_ptr<SharedKi
 
     ASSERT_IS_TRUE(ok);
 
-    perturbedState.world_T_base = iDynTree::getRandomTransform();
 
     for (unsigned int i = 0; i < robotState.s.size(); ++i) {
         perturbedState = robotState;
         perturbedState.s(i) = robotState.s(i) + perturbationValue;
+        perturbedState.world_T_base = iDynTree::getRandomTransform();
 
         perturbedMomentum = sharedKinDyn->getLinearAngularMomentum(perturbedState,
                                                                    iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
