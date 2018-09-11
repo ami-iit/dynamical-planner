@@ -51,7 +51,8 @@ find_package(Eigen3 REQUIRED)
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
 
-set(DPLANNER_HEADERS )
+set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
+                     include/DynamicalPlanner/Solver.h)
 
 set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/DynamicalConstraints.h
@@ -88,7 +89,9 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/ContactVelocityControlConstraints.cpp
                      src/FrameOrientationCost.cpp
                      src/ForceMeanCost.cpp
-                     src/StaticTorquesCost.cpp)
+                     src/StaticTorquesCost.cpp
+                     src/Settings.cpp
+                     src/Solver.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
