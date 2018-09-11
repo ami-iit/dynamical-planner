@@ -54,7 +54,7 @@ void validateStaticForcesDerivative(RobotState& robotState, std::shared_ptr<Shar
 //    std::cerr << "Jacobian:" << std::endl << jointsDerivative.toString() << std::endl;
 
     for (unsigned int i = 0; i < robotState.s.size(); ++i) {
-        std::cerr << "State: " << i << std::endl;
+//        std::cerr << "State: " << i << std::endl;
         perturbedState = robotState;
         perturbedState.s(i) = robotState.s(i) + perturbationValue;
         //perturbedState.world_T_base = iDynTree::getRandomTransform();
@@ -92,9 +92,9 @@ int main() {
 
     iDynTree::Wrench genericWrench;
     genericWrench.zero();
-    iDynTree::getRandomVector(genericWrench, -5, 5);
+    iDynTree::getRandomVector(genericWrench, -10, 10);
     linkExtForces(leftLink) = genericWrench;
-    iDynTree::getRandomVector(genericWrench, -5, 5);
+    iDynTree::getRandomVector(genericWrench, -10, 10);
     linkExtForces(rightLink) = genericWrench;
 
     validateStaticForcesDerivative(robotState, sharedKinDyn, linkExtForces);

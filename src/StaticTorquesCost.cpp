@@ -24,7 +24,7 @@ public:
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
 
     iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
-    iDynTree::MatrixDynSize fullJacobianBuffer, jointsJacobianBuffer;
+    iDynTree::MatrixDynSize fullJacobianBuffer, jointsJacobianBuffer, massMatrixBuffer;
 
     typedef struct {
         iDynTree::FrameIndex footFrame;
@@ -33,25 +33,17 @@ public:
         std::vector<iDynTree::IndexRange> forcePointsRanges;
         std::vector<iDynTree::Transform> tranformsInFoot;
         std::vector<iDynTree::Wrench> pointForces;
-        iDynTree::Wrench totalWrenchInFrameMixed, totalWrenchInLinkBody;
+        iDynTree::Wrench totalWrenchInFrame, totalWrenchInLinkBody;
+        iDynTree::MatrixDynSize frameJacobianBuffer;
+        iDynTree::MatrixFixSize<6,3> pointToLeftJacobianMap;
     } FootVariables;
     FootVariables leftVariables, rightVariables;
 
-    typedef struct {
-        iDynTree::Matrix3x3 gravityForceSkew;
-        iDynTree::Position comPosition;
-        iDynTree::MatrixFixSize<3, 6> transformationToCoM;
-        iDynTree::MatrixDynSize jacobianBuffer, forceDerivative;
-        iDynTree::SpatialMotionVector parentJointMotionSubspaceVector;
-    } LinkVariables;
-
-    std::vector<LinkVariables> linksVariables;
 
     iDynTree::IndexRange basePositionRange, baseQuaternionRange, jointsPositionRange;
 
     iDynTree::LinkNetExternalWrenches contactWrenches;
     iDynTree::FreeFloatingGeneralizedTorques generalizedStaticTorques;
-    iDynTree::LinkWrenches linkStaticForces;
 
     iDynTree::VectorDynSize weights, staticTorques;
 
@@ -75,49 +67,56 @@ public:
         setFootTransforms(footFrame, pointsLocalPositions, foot);
     }
 
-    void prepareLinksVariables() {
 
-        linksVariables.resize(sharedKinDyn->model().getNrOfLinks());
+    void computeFootRelatedJacobians(FootVariables& foot) {
 
-        Eigen::Map<const Eigen::Vector3d> gravityMap = iDynTree::toEigen(sharedKinDyn->gravity());
+        unsigned int n = static_cast<unsigned int>(jointsPositionRange.size);
 
-        for (size_t l = 0; l < sharedKinDyn->model().getNrOfLinks(); ++l) {
-            iDynTree::LinkIndex linkIndex = static_cast<iDynTree::LinkIndex>(l);
-            iDynTree::LinkConstPtr linkPtr = sharedKinDyn->model().getLink(linkIndex);
-            iDynTree::toEigen(linksVariables[l].gravityForceSkew) = -iDynTree::skew(linkPtr->getInertia().getMass() * gravityMap);
-            linksVariables[l].comPosition = linkPtr->getInertia().getCenterOfMass();
-            linksVariables[l].jacobianBuffer.resize(6, 6 + static_cast<unsigned int>(jointsPositionRange.size));
-            linksVariables[l].forceDerivative.resize(3, 6 + static_cast<unsigned int>(jointsPositionRange.size));
-            linksVariables[l].transformationToCoM.zero();
-            iDynTree::toEigen(linksVariables[l].transformationToCoM).leftCols<3>().setIdentity();
+        bool ok = sharedKinDyn->getFrameFreeFloatingJacobian(robotState, foot.footFrame, foot.frameJacobianBuffer, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+        assert(ok);
 
-            const iDynTree::Link* parentLinkPtr = sharedKinDyn->traversal().getParentLinkFromLinkIndex(linkIndex);
+        iDynTree::iDynTreeEigenMatrixMap fullJacobianMap = iDynTree::toEigen(fullJacobianBuffer);
+        Eigen::Map<Eigen::Matrix<double, 6, 3, Eigen::RowMajor>> pointToLeftJacMap = iDynTree::toEigen(foot.pointToLeftJacobianMap);
+        iDynTree::iDynTreeEigenMatrixMap frameJacobianMap = iDynTree::toEigen(foot.frameJacobianBuffer);
+        iDynTree::Transform f_T_a = sharedKinDyn->getWorldTransform(robotState, foot.footFrame).inverse();
 
-            if (parentLinkPtr != nullptr) {
-                iDynTree::LinkIndex parentLink = sharedKinDyn->traversal().getParentLinkFromLinkIndex(linkIndex)->getIndex();
-                linksVariables[l].parentJointMotionSubspaceVector = sharedKinDyn->traversal().getParentJointFromLinkIndex(linkIndex)->getMotionSubspaceVector(0, linkIndex, parentLink);
-            }
+        pointToLeftJacMap.topRows<3>() = iDynTree::toEigen(f_T_a.getRotation());
+
+        for (size_t p = 0; p < foot.pointForces.size(); ++p) {
+            pointToLeftJacMap.bottomRows<3>() = iDynTree::skew(iDynTree::toEigen(foot.tranformsInFoot[p].getPosition())) * iDynTree::toEigen(f_T_a.getRotation());
+
+            fullJacobianMap.block(0, foot.forcePointsRanges[p].offset, n, 3) = -(frameJacobianMap.rightCols(n)).transpose() * pointToLeftJacMap;
+        }
+
+        iDynTree::Transform f_T_b = f_T_a * robotState.world_T_base;
+
+        pointToLeftJacMap.topRows<3>() = iDynTree::toEigen(f_T_b.getRotation());
+
+        Eigen::Map<Eigen::Matrix<double, 3, 4, Eigen::RowMajor>> quatDerMap = iDynTree::toEigen(notNormalizedQuaternionMap);
+
+        for (size_t p = 0; p < foot.pointForces.size(); ++p) {
+            pointToLeftJacMap.bottomRows<3>() = iDynTree::skew(iDynTree::toEigen(foot.tranformsInFoot[p].getPosition())) * iDynTree::toEigen(f_T_b.getRotation());
+
+            quatDerMap = iDynTree::toEigen(RotatedVectorQuaternionJacobian(foot.pointForces[p].getLinearVec3(), InverseQuaternion(baseQuaternionNormalized))) *
+                    iDynTree::toEigen(InverseQuaternionDerivative()) * iDynTree::toEigen(NormalizedQuaternionDerivative(baseQuaternion));
+
+            fullJacobianMap.block(0, baseQuaternionRange.offset, n, 4) -= (frameJacobianMap.rightCols(n)).transpose() * pointToLeftJacMap * quatDerMap;
+        }
+
+        pointToLeftJacMap.topRows<3>().setIdentity();
+
+        for (size_t p = 0; p < foot.pointForces.size(); ++p) {
+            pointToLeftJacMap.bottomRows<3>() = iDynTree::skew(iDynTree::toEigen(foot.tranformsInFoot[p].getPosition()));
+
+            fullJacobianMap.block(0, jointsPositionRange.offset, n, n) -= (frameJacobianMap.rightCols(n)).transpose() * pointToLeftJacMap *
+                    iDynTree::toEigen(RotatedVectorQuaternionJacobian((robotState.world_T_base.inverse().getRotation() * foot.pointForces[p]).getLinearVec3(),
+                                                                      f_T_b.getRotation().asQuaternion())) *
+                    iDynTree::toEigen(InverseQuaternionDerivative()) *
+                    iDynTree::toEigen(QuaternionLeftTrivializedDerivative(f_T_b.inverse().getRotation().asQuaternion())) *
+                    frameJacobianMap.bottomRightCorner(3, n);
         }
     }
 
-    void updateLinksJacobians() {
-        bool ok = false;
-        iDynTree::Transform linkTransform;
-        for (size_t l = 0; l < sharedKinDyn->model().getNrOfLinks(); ++l) {
-            iDynTree::LinkIndex linkIndex = static_cast<iDynTree::LinkIndex>(l);
-
-            ok = sharedKinDyn->getFrameFreeFloatingJacobian(robotState, linkIndex, linksVariables[l].jacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
-            assert(ok);
-
-            linkTransform = sharedKinDyn->getWorldTransform(robotState, linkIndex);
-
-            iDynTree::toEigen(linksVariables[l].transformationToCoM).rightCols<3>() = iDynTree::skew(iDynTree::toEigen(linkTransform.getPosition() - (linkTransform * linksVariables[l].comPosition)));
-
-            iDynTree::toEigen(linksVariables[l].forceDerivative) = iDynTree::toEigen(linksVariables[l].gravityForceSkew) * iDynTree::toEigen(linksVariables[l].transformationToCoM) *
-                    iDynTree::toEigen(linksVariables[l].jacobianBuffer);
-
-        }
-    }
 
 private:
 
@@ -157,12 +156,12 @@ private:
             }
         }
 
-        foot.forcePointsRanges.clear();
+        foot.forcePointsRanges.resize(forcePoints);
         foot.pointForces.resize(forcePoints);
 
         for (size_t p = 0; p < forcePoints; ++p) {
-            foot.forcePointsRanges.push_back(stateVariables.getIndexRange(footName + "ForcePoint" + std::to_string(p)));
-            assert(foot.forcePointsRanges.back().isValid());
+            foot.forcePointsRanges[p] = stateVariables.getIndexRange(footName + "ForcePoint" + std::to_string(p));
+            assert(foot.forcePointsRanges[p].isValid());
             foot.pointForces[p].zero();
         }
 
@@ -183,18 +182,21 @@ private:
         foot.associatedLinkIndex = sharedKinDyn->model().getFrameLink(footFrame);
         foot.frameTransform = sharedKinDyn->model().getFrameTransform(footFrame);
         foot.mixedToBodyTransform = iDynTree::Transform::Identity();
+
+        foot.frameJacobianBuffer.resize(6, static_cast<unsigned int>(6 + jointsPositionRange.size));
+        foot.frameJacobianBuffer.zero();
     }
 
     void computeFootLinkWrench(FootVariables& foot) {
-        foot.totalWrenchInFrameMixed.zero();
-
-        for (size_t p = 0; p < foot.pointForces.size(); ++p) {
-            foot.totalWrenchInFrameMixed = foot.totalWrenchInFrameMixed + foot.tranformsInFoot[p] * foot.pointForces[p];
-        }
+        foot.totalWrenchInFrame.zero();
 
         foot.mixedToBodyTransform.setRotation(sharedKinDyn->getWorldTransform(robotState, foot.footFrame).getRotation().inverse());
 
-        contactWrenches(foot.associatedLinkIndex) = foot.frameTransform * foot.mixedToBodyTransform * foot.totalWrenchInFrameMixed;
+        for (size_t p = 0; p < foot.pointForces.size(); ++p) {
+            foot.totalWrenchInFrame = foot.totalWrenchInFrame + foot.tranformsInFoot[p] * (foot.mixedToBodyTransform * foot.pointForces[p]);
+        }
+
+        contactWrenches(foot.associatedLinkIndex) = foot.frameTransform * foot.totalWrenchInFrame;
     }
 
 };
@@ -214,10 +216,6 @@ StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, co
     assert(sharedKinDyn->isValid());
     m_pimpl->sharedKinDyn = sharedKinDyn;
 
-    m_pimpl->prepareFootVariables("Left", leftFootFrame, positionsInLeftFoot, m_pimpl->leftVariables);
-    m_pimpl->prepareFootVariables("Right", rightFootFrame, positionsInRightFoot, m_pimpl->rightVariables);
-    m_pimpl->prepareLinksVariables();
-
     m_pimpl->basePositionRange = m_pimpl->stateVariables.getIndexRange("BasePosition");
     assert(m_pimpl->basePositionRange.isValid());
 
@@ -227,10 +225,12 @@ StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, co
     m_pimpl->jointsPositionRange = m_pimpl->stateVariables.getIndexRange("JointsPosition");
     assert(m_pimpl->jointsPositionRange.isValid());
 
+    m_pimpl->prepareFootVariables("Left", leftFootFrame, positionsInLeftFoot, m_pimpl->leftVariables);
+    m_pimpl->prepareFootVariables("Right", rightFootFrame, positionsInRightFoot, m_pimpl->rightVariables);
+
     m_pimpl->robotState = sharedKinDyn->currentState();
     m_pimpl->contactWrenches.resize(sharedKinDyn->model());
     m_pimpl->generalizedStaticTorques.resize(sharedKinDyn->model());
-    m_pimpl->linkStaticForces.resize(sharedKinDyn->model());
 
     unsigned int n = static_cast<unsigned int>(m_pimpl->jointsPositionRange.size);
     m_pimpl->weights.resize(n);
@@ -245,6 +245,8 @@ StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, co
     m_pimpl->fullJacobianBuffer.zero();
     m_pimpl->jointsJacobianBuffer.resize(n,n);
     m_pimpl->jointsJacobianBuffer.zero();
+    m_pimpl->massMatrixBuffer(n+6, n+6);
+    m_pimpl->massMatrixBuffer.zero();
 
 }
 
@@ -268,7 +270,7 @@ void StaticTorquesCost::computeStaticTorques(const iDynTree::VectorDynSize &stat
 
     m_pimpl->updateVariables();
 
-    bool ok = m_pimpl->sharedKinDyn->getStaticForces(m_pimpl->robotState, m_pimpl->contactWrenches, m_pimpl->generalizedStaticTorques, m_pimpl->linkStaticForces);
+    bool ok = m_pimpl->sharedKinDyn->getStaticForces(m_pimpl->robotState, m_pimpl->contactWrenches, m_pimpl->generalizedStaticTorques);
     assert(ok);
 
     staticTorques = m_pimpl->generalizedStaticTorques.jointTorques();
@@ -293,18 +295,67 @@ void StaticTorquesCost::computeStaticTorquesJacobian(const iDynTree::VectorDynSi
 
     m_pimpl->updateVariables();
 
-    m_pimpl->updateLinksJacobians();
+    unsigned int n = static_cast<unsigned int>(m_pimpl->jointsPositionRange.size);
+
+    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->fullJacobianBuffer);
+
+    bool ok = m_pimpl->sharedKinDyn->getStaticForcesJointsDerivative(m_pimpl->robotState, m_pimpl->contactWrenches, m_pimpl->jointsJacobianBuffer);
+    assert(ok);
+
+    jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, n, n) = iDynTree::toEigen(m_pimpl->jointsJacobianBuffer);
 
 
+    ok = m_pimpl->sharedKinDyn->getFreeFloatingMassMatrix(m_pimpl->robotState, m_pimpl->massMatrixBuffer, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+    assert(ok);
 
+    jacobianMap.block(0, m_pimpl->baseQuaternionRange.offset, n, 4) = -iDynTree::toEigen(m_pimpl->massMatrixBuffer).bottomLeftCorner(n, 3) *
+            iDynTree::toEigen(RotatedVectorQuaternionJacobian(m_pimpl->sharedKinDyn->gravity(), InverseQuaternion(m_pimpl->baseQuaternionNormalized))) *
+            iDynTree::toEigen(InverseQuaternionDerivative()) * iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
+
+    m_pimpl->computeFootRelatedJacobians(m_pimpl->leftVariables);
+
+    m_pimpl->computeFootRelatedJacobians(m_pimpl->rightVariables);
+
+    staticTorquesJacobian = m_pimpl->fullJacobianBuffer;
 }
 
 bool StaticTorquesCost::costFirstPartialDerivativeWRTState(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &partialDerivative)
 {
+    unsigned int n = static_cast<unsigned int>(m_pimpl->jointsPositionRange.size);
 
+    computeStaticTorques(state, control, m_pimpl->staticTorques);
+    computeStaticTorquesJacobian(state, control, m_pimpl->fullJacobianBuffer);
+
+    iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
+    iDynTree::iDynTreeEigenMatrixMap fullJacobianMap = iDynTree::toEigen(m_pimpl->fullJacobianBuffer);
+
+    gradientMap.segment(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.size) = (iDynTree::toEigen(m_pimpl->staticTorques).transpose() *
+                                                                                                   iDynTree::toEigen(m_pimpl->weights).asDiagonal() *
+                                                                                                   fullJacobianMap.block(0, m_pimpl->jointsPositionRange.offset, n, n)).transpose();
+
+    gradientMap.segment<4>(m_pimpl->baseQuaternionRange.offset) = (iDynTree::toEigen(m_pimpl->staticTorques).transpose() *
+                                                                   iDynTree::toEigen(m_pimpl->weights).asDiagonal() *
+                                                                   fullJacobianMap.block(0, m_pimpl->baseQuaternionRange.offset, n, 4)).transpose();
+
+
+    for (auto leftRange: m_pimpl->leftVariables.forcePointsRanges) {
+        gradientMap.segment<3>(leftRange.offset) = (iDynTree::toEigen(m_pimpl->staticTorques).transpose() *
+                                                    iDynTree::toEigen(m_pimpl->weights).asDiagonal() *
+                                                    fullJacobianMap.block(0, leftRange.offset, n, 3)).transpose();
+    }
+
+    for (auto rightRange: m_pimpl->rightVariables.forcePointsRanges) {
+        gradientMap.segment<3>(rightRange.offset) = (iDynTree::toEigen(m_pimpl->staticTorques).transpose() *
+                                                     iDynTree::toEigen(m_pimpl->weights).asDiagonal() *
+                                                     fullJacobianMap.block(0, rightRange.offset, n, 3)).transpose();
+    }
+
+    partialDerivative = m_pimpl->stateGradientBuffer;
+    return true;
 }
 
 bool StaticTorquesCost::costFirstPartialDerivativeWRTControl(double, const iDynTree::VectorDynSize &, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &partialDerivative)
 {
-
+    partialDerivative = m_pimpl->controlGradientBuffer;
+    return true;
 }

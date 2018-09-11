@@ -643,5 +643,20 @@ bool SharedKinDynComputation::getStaticForcesJointsDerivative(const RobotState &
     return true;
 }
 
+bool SharedKinDynComputation::getFreeFloatingMassMatrix(const RobotState &currentState, iDynTree::MatrixDynSize &freeFloatingMassMatrix, iDynTree::FrameVelocityRepresentation trivialization)
+{
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if (!m_kinDyn.isValid())
+        return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
+
+    if (!updateRobotState(currentState))
+        return false;
+
+    return m_kinDyn.getFreeFloatingMassMatrix(freeFloatingMassMatrix);
+}
+
 
 

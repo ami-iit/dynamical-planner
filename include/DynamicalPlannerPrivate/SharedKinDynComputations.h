@@ -175,6 +175,12 @@ public:
     bool getStaticForcesJointsDerivative(const RobotState& currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces,
                                          iDynTree::MatrixDynSize &staticTorquesDerivatives); //The external forces are expected in an BODY_REPRESENTATION. The base generalized torque and the linkStaticForces are expressed in BODY_REPRESENTATION
 
+    bool getFreeFloatingMassMatrix(const RobotState& currentState, iDynTree::MatrixDynSize & freeFloatingMassMatrix,
+                                   iDynTree::FrameVelocityRepresentation trivialization =
+            iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
+
+
+
 };
 
 
