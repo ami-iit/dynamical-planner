@@ -20,6 +20,12 @@ namespace DynamicalPlanner {
     class Settings;
 
     typedef struct {
+        //Timings
+        double minimumDt; //in seconds
+        double maximumDt; //in seconds
+        double controlPeriod; //in seconds
+        double horizon; //in seconds
+
         // SharedKinDyn
         iDynTree::Model robotModel;
         iDynTree::Vector3 gravity;
@@ -58,6 +64,10 @@ namespace DynamicalPlanner {
         double quaternionModulusConstraintTolerance;
         double pointPositionConstraintTolerance;
 
+        //Bounds
+        double minimumCoMHeight;
+        std::vector<std::pair<double, double>> jointsLimits;
+
         //Costs
         //CoM cost
         bool comCostActive;
@@ -83,7 +93,7 @@ namespace DynamicalPlanner {
 
         //Joint regularization
         bool jointsVelocityCostActive;
-        double jjointsVelocityCostOverallWeight;
+        double jointsVelocityCostOverallWeight;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredJointsVelocityTrajectory;
         iDynTree::VectorDynSize jointsVelocityCostWeights;
 
@@ -94,31 +104,36 @@ namespace DynamicalPlanner {
 
         //Force derivative cost (each contact point has a different cost with same settings)
         bool forceDerivativeCostActive;
-        bool forceDerivativesCostOverallWeight;
+        double forceDerivativesCostOverallWeight;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredForceDerivativeTrajectory;
         iDynTree::VectorDynSize forceDerivativeWeights;
 
-        //Point velocity cost (each contact point has a different cost with same settings)
-        bool pointVelocityCostActive;
-        bool pointVelocityCostOverallWeight;
-        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredPointVelocityTrajectory;
-        iDynTree::VectorDynSize pointVelocityWeights;
+        //Point acceleration cost (each contact point has a different cost with same settings)
+        bool pointAccelerationCostActive;
+        double pointAccelerationCostOverallWeight;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredPointAccelerationTrajectory;
+        iDynTree::VectorDynSize pointAccelerationWeights;
 
     } SettingsStruct;
 }
 
 class DynamicalPlanner::Settings {
 
-    friend class DynamicalPlanner::Solver;
-
     DynamicalPlanner::SettingsStruct m_settings;
+    bool m_isValid;
 
 public:
     Settings();
 
+    Settings(DynamicalPlanner::SettingsStruct& inputSettings);
+
     bool setFromStruct(DynamicalPlanner::SettingsStruct& inputSettings);
 
-    static DynamicalPlanner::SettingsStruct Defaults();
+    bool isValid() const;
+
+    const SettingsStruct& getSettings() const;
+
+    static DynamicalPlanner::SettingsStruct Defaults(const iDynTree::Model& newModel);
 
 };
 
