@@ -62,6 +62,8 @@ public:
 
      const std::vector<std::string> & listOfLabels() const;
 
+     void clear();
+
 };
 
 #endif // DPLANNER_VARIABLESLABELLER_H

@@ -8,6 +8,7 @@
 #define DPLANNER_SOLVER_H
 
 #include <iDynTree/Optimizer.h>
+#include <iDynTree/Integrator.h>
 #include <DynamicalPlanner/Settings.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/VectorDynSize.h>
@@ -67,8 +68,9 @@ public:
 
     bool setOptimizer(std::shared_ptr<iDynTree::optimization::Optimizer> optimizer);
 
+    bool setIntegrator(std::shared_ptr<iDynTree::optimalcontrol::integrators::Integrator> integrationMethod);
 
-
+    bool solve(std::vector<State>& optimalStates, std::vector<Control>& optimalControls);
 
 };
 

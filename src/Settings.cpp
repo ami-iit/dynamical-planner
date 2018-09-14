@@ -54,9 +54,9 @@ bool Settings::setFromStruct(SettingsStruct &inputSettings)
     errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.rightFrameName)), "The rightFrameName does not appear in the model.");
     errors += checkError(inputSettings.frictionCoefficient < 0, "The frictionCoefficient is expected to be non-negative.");
     errors += checkError(inputSettings.indexOfLateralDirection > 2, "The indexOfLateralDirection is expected to be in the range [0, 2].");
-    errors += checkError(inputSettings.minimumDistance < 0, "The minimumDistance is expected to be non-negative.");
-    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.referenceFrameName)), "The referenceFrameName does not appear in the model.");
-    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.otherFrameName)), "The otherFrameName does not appear in the model.");
+    errors += checkError(inputSettings.minimumFeetDistance < 0, "The minimumDistance is expected to be non-negative.");
+    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.referenceFrameNameForFeetDistance)), "The referenceFrameName does not appear in the model.");
+    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.otherFrameNameForFeetDistance)), "The otherFrameName does not appear in the model.");
     errors += checkError(inputSettings.comPositionConstraintTolerance < 0, "The comPositionConstraintTolerance is expected to be non-negative.");
     errors += checkError(inputSettings.centroidalMomentumConstraintTolerance < 0, "The centroidalMomentumConstraintTolerance is expected to be non-negative.");
     errors += checkError(inputSettings.quaternionModulusConstraintTolerance < 0, "The quaternionModulusConstraintTolerance is expected to be non-negative.");
@@ -97,7 +97,7 @@ bool Settings::setFromStruct(SettingsStruct &inputSettings)
         errors += checkError(inputSettings.pointAccelerationWeights.size() != 3, "The pointVelocityWeights is expected to be three dimensional.");
     }
 
-    checkError(errors > 0, "The were errors when importing the settings struct.");
+    checkError(errors > 0, "The were errors when importing the settings struct. The settings will not be updated.");
 
     if (errors == 0) {
         m_settings = inputSettings;
@@ -151,7 +151,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //ContactForceControlConstraints
     iDynTree::toEigen(defaults.forceMaximumDerivative).setConstant(10.0);
     iDynTree::toEigen(defaults.forceDissipationRatio).setConstant(10.0);
-    defaults.forceHyperbolicSecantScaling = 1.0;
+    defaults.forceHyperbolicSecantScaling = 10.0;
 
     //ContactFrictionConstraint
     defaults.frictionCoefficient = 0.3;
@@ -159,14 +159,14 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //ContactVelocityControlConstraints
     iDynTree::toEigen(defaults.velocityMaximumDerivative).setConstant(10.0);
     iDynTree::toEigen(defaults.velocityDissipationRatio).setConstant(10.0);
-    defaults.velocityHyperbolicSecantScalingXY = 1.0; //scales the position along z
+    defaults.velocityHyperbolicSecantScalingXY = 10.0; //scales the position along z
     defaults.velocityHyperbolicSecantScalingZ = 1.0; //scales the force along z
 
     //Feet lateral distance constraint
     defaults.indexOfLateralDirection = 1;
-    defaults.minimumDistance = 0.1;
-    defaults.referenceFrameName = "r_sole";
-    defaults.otherFrameName = "l_sole";
+    defaults.minimumFeetDistance = 0.1;
+    defaults.referenceFrameNameForFeetDistance = "r_sole";
+    defaults.otherFrameNameForFeetDistance = "l_sole";
 
     //Equality constraints tolerances
     defaults.comPositionConstraintTolerance = 1e-3;

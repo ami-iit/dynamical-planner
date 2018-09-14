@@ -54,9 +54,9 @@ namespace DynamicalPlanner {
 
         //Feet lateral distance constraint
         unsigned int indexOfLateralDirection;
-        double minimumDistance;
-        std::string referenceFrameName;
-        std::string otherFrameName;
+        double minimumFeetDistance;
+        std::string referenceFrameNameForFeetDistance;
+        std::string otherFrameNameForFeetDistance;
 
         //Equality constraints tolerances
         double comPositionConstraintTolerance;

@@ -138,3 +138,10 @@ const std::vector<std::string> &VariablesLabeller::listOfLabels() const
 {
     return m_labelsList;
 }
+
+void VariablesLabeller::clear()
+{
+    m_fullVector.resize(0);
+    m_labelMap.clear();
+    m_labelsList.clear();
+}
