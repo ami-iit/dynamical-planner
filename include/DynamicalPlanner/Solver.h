@@ -7,48 +7,18 @@
 #ifndef DPLANNER_SOLVER_H
 #define DPLANNER_SOLVER_H
 
+
+#include <DynamicalPlanner/Settings.h>
+#include <DynamicalPlanner/State.h>
+#include <DynamicalPlanner/Control.h>
+
 #include <iDynTree/Optimizer.h>
 #include <iDynTree/Integrator.h>
-#include <DynamicalPlanner/Settings.h>
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/Transform.h>
+
 #include <memory>
 
 namespace DynamicalPlanner {
     class Solver;
-
-    typedef struct {
-        iDynTree::Vector3 pointForce;
-        iDynTree::Vector3 pointVelocity;
-        iDynTree::Vector3 pointPosition;
-    } ContactPointState;
-
-    typedef struct {
-
-        std::vector<ContactPointState> leftContactPointsState;
-        std::vector<ContactPointState> rightContactPointsState;
-        iDynTree::Vector6 momentumInCoM;
-        iDynTree::Vector3 comPosition;
-        iDynTree::Transform worldToBaseTransform;
-        iDynTree::VectorDynSize jointsConfiguration;
-        double time;
-    } State;
-
-    typedef struct {
-        iDynTree::Vector3 pointForceControl;
-        iDynTree::Vector3 pointVelocityControl;
-    }  ContactPointControl;
-
-    typedef struct {
-        std::vector<ContactPointControl> leftContactPointsControl;
-        std::vector<ContactPointControl> rightContactPointsControl;
-        iDynTree::Vector6 baseVelocityInBaseFrame;
-        iDynTree::VectorDynSize jointsVelocity;
-        double time;
-    } Control;
-
-
 }
 
 class DynamicalPlanner::Solver{
@@ -64,13 +34,19 @@ public:
 
     bool specifySettings(const Settings& settings);
 
-    bool setInitialCondition(const State& initialState);
+    bool setInitialState(const State& initialState);
+
+    bool setGuesses(std::shared_ptr<TimeVaryingState> stateGuesses, std::shared_ptr<TimeVaryingControl> controlGuesses);
 
     bool setOptimizer(std::shared_ptr<iDynTree::optimization::Optimizer> optimizer);
 
     bool setIntegrator(std::shared_ptr<iDynTree::optimalcontrol::integrators::Integrator> integrationMethod);
 
     bool solve(std::vector<State>& optimalStates, std::vector<Control>& optimalControls);
+
+    const std::vector<State>& optimalStates() const; //Call these methods also to allocate memory at configuration time
+
+    const std::vector<Control>& optimalControls() const;
 
 };
 

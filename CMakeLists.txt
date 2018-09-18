@@ -52,7 +52,9 @@ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
 
 set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
-                     include/DynamicalPlanner/Solver.h)
+                     include/DynamicalPlanner/Solver.h
+                     include/DynamicalPlanner/State.h
+                     include/DynamicalPlanner/Control.h)
 
 set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/DynamicalConstraints.h
@@ -91,7 +93,9 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/ForceMeanCost.cpp
                      src/StaticTorquesCost.cpp
                      src/Settings.cpp
-                     src/Solver.cpp)
+                     src/Solver.cpp
+                     src/State.cpp
+                     src/Control.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
