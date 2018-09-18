@@ -87,7 +87,14 @@ iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::RotatedVectorQuaternion
     iDynTree::MatrixFixSize<3, 4> jacobian;
     Eigen::Map<Eigen::Matrix<double, 3, 4, Eigen::RowMajor> > jacobianMap = iDynTree::toEigen(jacobian);
     double vectorNorm = iDynTree::toEigen(originalVector).norm();
-    Eigen::Vector3d vectorNormalized = iDynTree::toEigen(originalVector).normalized();
+    Eigen::Vector3d vectorNormalized;
+    if (vectorNorm > 1){
+     vectorNormalized = iDynTree::toEigen(originalVector).normalized();
+    } else {
+        vectorNorm = 1;
+        vectorNormalized = iDynTree::toEigen(originalVector);
+    }
+
     Eigen::Map<const Eigen::Vector4d> quaternionMap = iDynTree::toEigen(quaternion);
 
     Eigen::Vector3d rCrossX = quaternionMap.bottomRows<3>().cross(vectorNormalized);
@@ -106,11 +113,11 @@ iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::RotatedVectorQuaternion
 bool DynamicalPlanner::Private::QuaternionBoundsRespected(const iDynTree::Vector4 &quaternion)
 {
     bool ok = true;
-    ok = ok && quaternion(0) >= 0;
-    ok = ok && quaternion(0) <= 1.0;
+    ok = ok && quaternion(0) >= -0.1;
+    ok = ok && quaternion(0) <= 1.0 + 1E-6;
     for (unsigned int i = 1; i < 4; ++i) {
-        ok = ok && quaternion(i) >= -1.0;
-        ok = ok && quaternion(i) <= 1.0;
+        ok = ok && quaternion(i) >= -1.0 - 1E-6;
+        ok = ok && quaternion(i) <= 1.0 + 1E-6;
     }
 
     if (!ok) {
