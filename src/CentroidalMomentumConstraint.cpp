@@ -127,6 +127,8 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
 
     m_isLowerBounded = true;
     m_isUpperBounded = true;
+    m_upperBound.zero();
+    m_lowerBound.zero();
 
     m_pimpl->getRanges();
 
@@ -144,6 +146,15 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
 
     m_pimpl->robotState = sharedKinDyn->currentState();
     m_pimpl->tolerance = sharedKinDyn->getUpdateTolerance();
+
+}
+
+void CentroidalMomentumConstraint::setEqualityTolerance(double tolerance)
+{
+    assert(tolerance > 0);
+
+    iDynTree::toEigen(m_lowerBound).setConstant(-tolerance/2.0);
+    iDynTree::toEigen(m_upperBound).setConstant(tolerance/2.0);
 
 }
 

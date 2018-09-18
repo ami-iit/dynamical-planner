@@ -34,7 +34,7 @@ Settings::Settings(SettingsStruct &inputSettings)
     m_isValid = setFromStruct(inputSettings);
 }
 
-bool Settings::setFromStruct(SettingsStruct &inputSettings)
+bool Settings::setFromStruct(const SettingsStruct &inputSettings)
 {
     std::ostringstream errorlabel;
     errorlabel << "[ERROR][Settings::setFromStruct] ";
@@ -43,29 +43,45 @@ bool Settings::setFromStruct(SettingsStruct &inputSettings)
 
     errors += checkError(inputSettings.minimumDt < 0, "The minimumDt is supposed to be non-negative.");
     errors += checkError(inputSettings.maximumDt < 0, "The maximumDt is supposed to be non-negative.");
-    errors += checkError(inputSettings.maximumDt < inputSettings.minimumDt, "The minimumDt is supposed to be greater than the maximumDt.");
+    errors += checkError(inputSettings.maximumDt <= 2*inputSettings.minimumDt,
+                         "The minimumDt is supposed to be lower than half of the maximumDt.");
     errors += checkError(inputSettings.controlPeriod < 0, "The controlPeriod is supposed to be non-negative.");
     errors += checkError(inputSettings.horizon < 0, "The horizon is supposed to be non-negative.");
 
-    errors += checkError(inputSettings.updateTolerance < 0, "The updateTolerance is supposed to be non-negative.");
-    errors += checkError(!(inputSettings.robotModel.isLinkNameUsed(inputSettings.floatingBaseName)), "The floating base name has to refer to a link in the model.");
-    errors += checkError(inputSettings.leftPointsPosition.size() != inputSettings.rightPointsPosition.size(), "It is expected to have the same number of points on the left and right foot.");
-    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.leftFrameName)), "The leftFrameName does not appear in the model.");
-    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.rightFrameName)), "The rightFrameName does not appear in the model.");
+    //errors += checkError(inputSettings.updateTolerance < 0, "The updateTolerance is supposed to be non-negative.");
+    errors += checkError(!(inputSettings.robotModel.isLinkNameUsed(inputSettings.floatingBaseName)),
+                         "The floating base name has to refer to a link in the model.");
+    errors += checkError(inputSettings.leftPointsPosition.size() != inputSettings.rightPointsPosition.size(),
+                         "It is expected to have the same number of points on the left and right foot.");
+    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.leftFrameName)),
+                         "The leftFrameName does not appear in the model.");
+    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.rightFrameName)),
+                         "The rightFrameName does not appear in the model.");
     errors += checkError(inputSettings.frictionCoefficient < 0, "The frictionCoefficient is expected to be non-negative.");
     errors += checkError(inputSettings.indexOfLateralDirection > 2, "The indexOfLateralDirection is expected to be in the range [0, 2].");
     errors += checkError(inputSettings.minimumFeetDistance < 0, "The minimumDistance is expected to be non-negative.");
-    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.referenceFrameNameForFeetDistance)), "The referenceFrameName does not appear in the model.");
-    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.otherFrameNameForFeetDistance)), "The otherFrameName does not appear in the model.");
+    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.referenceFrameNameForFeetDistance)),
+                         "The referenceFrameName does not appear in the model.");
+    errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.otherFrameNameForFeetDistance)),
+                         "The otherFrameName does not appear in the model.");
     errors += checkError(inputSettings.comPositionConstraintTolerance < 0, "The comPositionConstraintTolerance is expected to be non-negative.");
-    errors += checkError(inputSettings.centroidalMomentumConstraintTolerance < 0, "The centroidalMomentumConstraintTolerance is expected to be non-negative.");
-    errors += checkError(inputSettings.quaternionModulusConstraintTolerance < 0, "The quaternionModulusConstraintTolerance is expected to be non-negative.");
-    errors += checkError(inputSettings.pointPositionConstraintTolerance < 0, "The pointPositionConstraintTolerance is expected to be non-negative.");
+    errors += checkError(inputSettings.centroidalMomentumConstraintTolerance < 0,
+                         "The centroidalMomentumConstraintTolerance is expected to be non-negative.");
+    errors += checkError(inputSettings.quaternionModulusConstraintTolerance < 0,
+                         "The quaternionModulusConstraintTolerance is expected to be non-negative.");
+    errors += checkError(inputSettings.pointPositionConstraintTolerance < 0,
+                         "The pointPositionConstraintTolerance is expected to be non-negative.");
     errors += checkError(inputSettings.minimumCoMHeight < 0, "The minimumCoMHeight is expected to be non-negative.");
-    errors += checkError(inputSettings.jointsLimits.size() != inputSettings.robotModel.getNrOfDOFs(), "The jointsLimits size differs from the number of joints.");
+    errors += checkError(inputSettings.jointsLimits.size() != inputSettings.robotModel.getNrOfDOFs(),
+                         "The jointsLimits size differs from the number of joints.");
+    errors += checkError(inputSettings.jointsVelocityLimits.size() != inputSettings.robotModel.getNrOfDOFs(),
+                         "The jointsVelocityLimits size differs from the number of joints.");
     for (size_t j = 0; j < inputSettings.jointsLimits.size(); ++j) {
-        std::string errMsg;
-        errors += checkError(inputSettings.jointsLimits[j].first <= inputSettings.jointsLimits[j].second, "The lower limit of joint " + std::to_string(j) + " is bigger than its upper limit.");
+        errors += checkError(inputSettings.jointsLimits[j].first > inputSettings.jointsLimits[j].second,
+                             "The lower limit of joint " + std::to_string(j) + " is bigger than its upper limit.");
+
+        errors += checkError(inputSettings.jointsVelocityLimits[j].first > inputSettings.jointsVelocityLimits[j].second,
+                             "The lower velocity limit of joint " + std::to_string(j) + " is bigger than its upper limit.");
     }
 
     if (inputSettings.comCostActive) {
@@ -74,17 +90,20 @@ bool Settings::setFromStruct(SettingsStruct &inputSettings)
     }
 
     if (inputSettings.frameCostActive) {
-        errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.frameForOrientationCost)), "The frameForOrientationCost does not appear in the model.");
+        errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.frameForOrientationCost)),
+                             "The frameForOrientationCost does not appear in the model.");
         errors += checkError(!inputSettings.desiredRotationTrajectory, "The desiredRotationTrajectory is empty.");
     }
 
     if (inputSettings.jointsRegularizationCostActive) {
         errors += checkError(!(inputSettings.desiredJointsTrajectory), "The desiredJointsTrajectory is empty.");
-        errors += checkError(inputSettings.jointsRegularizationWeights.size() != inputSettings.robotModel.getNrOfDOFs(), "The jointRegularizationWeights size does not match the robot DoFs.");
+        errors += checkError(inputSettings.jointsRegularizationWeights.size() != inputSettings.robotModel.getNrOfDOFs(),
+                             "The jointRegularizationWeights size does not match the robot DoFs.");
     }
 
     if (inputSettings.staticTorquesCostActive) {
-        errors += checkError(inputSettings.staticTorquesCostWeights.size() != inputSettings.robotModel.getNrOfDOFs(), "The staticTorquesCostWeights size does not match the robot DoFs.");
+        errors += checkError(inputSettings.staticTorquesCostWeights.size() != inputSettings.robotModel.getNrOfDOFs(),
+                             "The staticTorquesCostWeights size does not match the robot DoFs.");
     }
 
     if (inputSettings.forceDerivativeCostActive) {
@@ -122,7 +141,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     SettingsStruct defaults;
 
     defaults.minimumDt = 0.01;
-    defaults.maximumDt = 0.01;
+    defaults.maximumDt = 0.1;
     defaults.controlPeriod = 0.01;
     defaults.horizon = 1.0;
 
@@ -195,6 +214,9 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
             defaults.jointsLimits.push_back(singleJointLimit);
         }
     }
+
+    std::pair<double, double> defaultJointsVelocityLimits(-1E19, 1E19);
+    defaults.jointsVelocityLimits.resize(newModel.getNrOfDOFs(), defaultJointsVelocityLimits);
 
     //Costs
     //CoM cost

@@ -29,6 +29,8 @@ public:
 
     CentroidalMomentumConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn);
 
+    void setEqualityTolerance(double tolerance);
+
     ~CentroidalMomentumConstraint() override;
 
     virtual bool evaluateConstraint(double,

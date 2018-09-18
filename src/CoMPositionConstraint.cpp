@@ -85,6 +85,8 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
 
     m_isLowerBounded = true;
     m_isUpperBounded = true;
+    m_upperBound.zero();
+    m_lowerBound.zero();
 
     m_pimpl->comPositionRange = m_pimpl->stateVariables.getIndexRange("CoMPosition");
     assert(m_pimpl->comPositionRange.isValid());
@@ -112,6 +114,14 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
 
 CoMPositionConstraint::~CoMPositionConstraint()
 { }
+
+void CoMPositionConstraint::setEqualityTolerance(double tolerance)
+{
+    assert(tolerance > 0);
+
+    iDynTree::toEigen(m_lowerBound).setConstant(-tolerance/2.0);
+    iDynTree::toEigen(m_upperBound).setConstant(tolerance/2.0);
+}
 
 bool CoMPositionConstraint::evaluateConstraint(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::VectorDynSize &constraint)
 {

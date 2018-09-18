@@ -67,6 +67,8 @@ namespace DynamicalPlanner {
         //Bounds
         double minimumCoMHeight;
         std::vector<std::pair<double, double>> jointsLimits;
+        std::vector<std::pair<double, double>> jointsVelocityLimits;
+
 
         //Costs
         //CoM cost
@@ -127,7 +129,7 @@ public:
 
     Settings(DynamicalPlanner::SettingsStruct& inputSettings);
 
-    bool setFromStruct(DynamicalPlanner::SettingsStruct& inputSettings);
+    bool setFromStruct(const SettingsStruct &inputSettings);
 
     bool isValid() const;
 

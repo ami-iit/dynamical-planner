@@ -131,11 +131,21 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
 
     m_isLowerBounded = true;
     m_isUpperBounded = true;
+    m_upperBound.zero();
+    m_lowerBound.zero();
 
 }
 
 ContactPositionConsistencyConstraint::~ContactPositionConsistencyConstraint()
 { }
+
+void ContactPositionConsistencyConstraint::setEqualityTolerance(double tolerance)
+{
+    assert(tolerance > 0);
+
+    iDynTree::toEigen(m_lowerBound).setConstant(-tolerance/2.0);
+    iDynTree::toEigen(m_upperBound).setConstant(tolerance/2.0);
+}
 
 bool ContactPositionConsistencyConstraint::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
 {

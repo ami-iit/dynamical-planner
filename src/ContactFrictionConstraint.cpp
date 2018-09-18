@@ -50,6 +50,7 @@ ContactFrictionConstraint::ContactFrictionConstraint(const VariablesLabeller &st
 
     m_isLowerBounded = false;
     m_isUpperBounded = true;
+    m_upperBound.zero();
 
 }
 

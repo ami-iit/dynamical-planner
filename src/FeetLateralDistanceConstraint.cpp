@@ -85,6 +85,7 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
 
     m_isLowerBounded = true;
     m_isUpperBounded = false;
+    m_lowerBound.zero();
 
 }
 

@@ -28,6 +28,8 @@ public:
 
     ~QuaternionNormConstraint() override;
 
+    void setEqualityTolerance(double tolerance);
+
     virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
 
     virtual bool constraintJacobianWRTState(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
