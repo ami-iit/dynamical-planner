@@ -19,7 +19,7 @@ int main()
     iDynTree::getRandomVector(fullVector);
 
     ASSERT_IS_TRUE(variables.addLabel("part1", 3));
-    ASSERT_IS_TRUE(variables.addLabel("part2", 3));
+    ASSERT_IS_TRUE(variables.addLabelAndGetIndexRange("part2", 3).isValid());
     ASSERT_IS_TRUE(variables.addLabel("part3", 3));
 
     variables = fullVector;

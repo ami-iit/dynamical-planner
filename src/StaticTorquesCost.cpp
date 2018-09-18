@@ -245,7 +245,7 @@ StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, co
     m_pimpl->fullJacobianBuffer.zero();
     m_pimpl->jointsJacobianBuffer.resize(n,n);
     m_pimpl->jointsJacobianBuffer.zero();
-    m_pimpl->massMatrixBuffer(n+6, n+6);
+    m_pimpl->massMatrixBuffer.resize(n+6, n+6);
     m_pimpl->massMatrixBuffer.zero();
 
 }

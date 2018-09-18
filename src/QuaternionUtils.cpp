@@ -112,6 +112,11 @@ bool DynamicalPlanner::Private::QuaternionBoundsRespected(const iDynTree::Vector
         ok = ok && quaternion(i) >= -1.0;
         ok = ok && quaternion(i) <= 1.0;
     }
+
+    if (!ok) {
+        std::cerr << "[DynamicalPlanner::Private::QuaternionBoundsRespected] Quaternion: " << std::endl << quaternion.toString() << std::endl;
+    }
+
     return ok;
 }
 

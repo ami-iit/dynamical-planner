@@ -125,6 +125,7 @@ bool FrameOrientationCost::setDesiredRotationTrajectory(std::shared_ptr<iDynTree
     if (!desiredRotationTrajectory)
         return false;
     m_pimpl->desiredTrajectory = desiredRotationTrajectory;
+    return true;
 }
 
 bool FrameOrientationCost::costEvaluation(double time, const iDynTree::VectorDynSize &state,

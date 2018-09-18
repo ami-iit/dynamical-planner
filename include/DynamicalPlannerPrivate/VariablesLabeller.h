@@ -34,6 +34,8 @@ public:
 
      bool addLabel(const std::string& name, size_t dimension);
 
+     iDynTree::IndexRange addLabelAndGetIndexRange(const std::string& name, size_t dimension);
+
      size_t size() const;
 
      iDynTree::Span<double> values();
