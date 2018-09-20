@@ -49,7 +49,7 @@ void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& cont
     }
 }
 
-void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, size_t numberOfPoints) {
+void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, size_t numberOfPoints, size_t numberOfDofs) {
 
     setFootVariables(stateVariables, controlVariables, "Left", numberOfPoints);
     setFootVariables(stateVariables, controlVariables, "Right", numberOfPoints);
@@ -67,13 +67,13 @@ void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlV
     ok = stateVariables.addLabel("BaseQuaternion", 4);
     ASSERT_IS_TRUE(ok);
 
-    ok = stateVariables.addLabel("JointsPosition", 23);
+    ok = stateVariables.addLabel("JointsPosition", numberOfDofs);
     ASSERT_IS_TRUE(ok);
 
     ok = controlVariables.addLabel("BaseVelocity", 6);
     ASSERT_IS_TRUE(ok);
 
-    ok = controlVariables.addLabel("JointsVelocity", 23);
+    ok = controlVariables.addLabel("JointsVelocity", numberOfDofs);
     ASSERT_IS_TRUE(ok);
 }
 
@@ -82,6 +82,9 @@ void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn
                                          "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
                                          "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
                                          "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
+
+//    std::vector<std::string> vectorList({"r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
+
     iDynTree::ModelLoader modelLoader;
     bool ok = modelLoader.loadModelFromFile(getAbsModelPath("iCubGenova04.urdf"));
     ASSERT_IS_TRUE(ok);
@@ -90,7 +93,7 @@ void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn
     assert(sharedKinDyn);
     ok = sharedKinDyn->loadRobotModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
-    ASSERT_IS_TRUE(sharedKinDyn->model().getNrOfDOFs() == 23);
+//    ASSERT_IS_TRUE(sharedKinDyn->model().getNrOfDOFs() == 23);
 }
 
 void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTree::Position>& leftPositions,
@@ -267,9 +270,10 @@ void checkConstraintsDerivative(const iDynTree::VectorDynSize& originalStateVect
     ASSERT_IS_TRUE(ok);
 
     for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
+
+//        std::cerr << "State: " << i << std::endl;
         perturbedState = originalStateVector;
         perturbedState(i) = perturbedState(i) + perturbation;
-
         ok = ocProblem.constraintsEvaluation(0.0, perturbedState, originalControlVector, perturbedConstraints);
         ASSERT_IS_TRUE(ok);
 
@@ -299,8 +303,8 @@ int main() {
     ConstraintSet constraints;
     iDynTree::optimalcontrol::OptimalControlProblem ocProblem;
 
-    setVariables(stateVariables, controlVariables, 4);
     configureSharedKinDyn(sharedKinDyn);
+    setVariables(stateVariables, controlVariables, 4, sharedKinDyn->model().getNrOfDOFs());
     std::vector<iDynTree::Position> leftPositions, rightPositions;
     leftPositions.resize(4);
     rightPositions.resize(4);

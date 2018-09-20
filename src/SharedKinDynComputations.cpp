@@ -267,10 +267,10 @@ bool SharedKinDynComputation::getCenterOfMassJacobian(const RobotState &currentS
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getCenterOfMassJacobian(comJacobian);
 
@@ -300,10 +300,10 @@ bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &cur
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getFrameFreeFloatingJacobian(frameName, outJacobian);
 }
@@ -312,10 +312,10 @@ bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &cur
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getFrameFreeFloatingJacobian(frameIndex, outJacobian);
 }
@@ -348,10 +348,10 @@ bool SharedKinDynComputation::getRelativeJacobian(const RobotState &currentState
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getRelativeJacobian(refFrameIndex, frameIndex, outJacobian);
 }
@@ -360,10 +360,10 @@ iDynTree::Twist SharedKinDynComputation::getFrameVel(const RobotState &currentSt
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     bool ok = updateRobotState(currentState);
     assert(ok);
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getFrameVel(frameName);
 }
@@ -372,10 +372,10 @@ iDynTree::Twist SharedKinDynComputation::getFrameVel(const RobotState &currentSt
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     bool ok = updateRobotState(currentState);
     assert(ok);
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getFrameVel(frameIdx);
 }
@@ -387,10 +387,10 @@ bool SharedKinDynComputation::getFrameVelJointsDerivative(const RobotState &curr
     if (!m_kinDyn.isValid())
         return false;
 
-    m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
 
     velocityDerivative.resize(6, static_cast<unsigned int>(m_jointsInfos.size()));
     velocityDerivative.zero();
@@ -431,10 +431,10 @@ iDynTree::SpatialMomentum SharedKinDynComputation::getLinearAngularMomentum(cons
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     bool ok = updateRobotState(currentState);
     assert(ok);
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getLinearAngularMomentum();
 }
@@ -443,10 +443,10 @@ bool SharedKinDynComputation::getLinearAngularMomentumJacobian(const RobotState 
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getLinearAngularMomentumJacobian(linAngMomentumJacobian);
 }
@@ -459,10 +459,10 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
     if (!m_kinDyn.isValid())
         return false;
 
-    m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
 
     linAngMomentumDerivative.resize(6, static_cast<unsigned int>(m_jointsInfos.size()));
     linAngMomentumDerivative.zero();
@@ -556,10 +556,10 @@ bool SharedKinDynComputation::getStaticForcesJointsDerivative(const RobotState &
     if (!m_kinDyn.isValid())
         return false;
 
-    m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
 
     if (!computeStaticForces(currentState, linkExtForces)) {
         return false;
@@ -650,10 +650,10 @@ bool SharedKinDynComputation::getFreeFloatingMassMatrix(const RobotState &curren
     if (!m_kinDyn.isValid())
         return false;
 
-    m_kinDyn.setFrameVelocityRepresentation(trivialization);
-
     if (!updateRobotState(currentState))
         return false;
+
+    m_kinDyn.setFrameVelocityRepresentation(trivialization);
 
     return m_kinDyn.getFreeFloatingMassMatrix(freeFloatingMassMatrix);
 }
