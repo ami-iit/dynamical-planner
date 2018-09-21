@@ -109,10 +109,10 @@ public:
             pointToLeftJacMap.bottomRows<3>() = iDynTree::skew(iDynTree::toEigen(foot.tranformsInFoot[p].getPosition()));
 
             fullJacobianMap.block(0, jointsPositionRange.offset, n, n) -= (frameJacobianMap.rightCols(n)).transpose() * pointToLeftJacMap *
-                    iDynTree::toEigen(RotatedVectorQuaternionJacobian((robotState.world_T_base.inverse().getRotation() * foot.pointForces[p]).getLinearVec3(),
-                                                                      f_T_b.getRotation().asQuaternion())) *
+                    iDynTree::toEigen(RotatedVectorQuaternionJacobian((foot.pointForces[p]).getLinearVec3(),
+                                                                      f_T_a.getRotation().asQuaternion())) *
                     iDynTree::toEigen(InverseQuaternionDerivative()) *
-                    iDynTree::toEigen(QuaternionLeftTrivializedDerivative(f_T_b.inverse().getRotation().asQuaternion())) *
+                    iDynTree::toEigen(QuaternionLeftTrivializedDerivative(f_T_a.inverse().getRotation().asQuaternion())) *
                     frameJacobianMap.bottomRightCorner(3, n);
         }
     }
