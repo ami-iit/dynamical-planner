@@ -22,7 +22,13 @@ public:
     VariablesLabeller dynamics;
     double totalMass;
     iDynTree::Vector6 gravityVector;
+
+
     iDynTree::Rotation baseRotation;
+    iDynTree::Position basePosition;
+    iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
+    RobotState robotState;
+    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
 
     typedef struct {
         std::vector<iDynTree::IndexRange> positionPoints, velocityPoints, forcePoints, velocityControlPoints, forceControlPoints;
@@ -129,6 +135,32 @@ public:
             jacobianMap.block<3,3>(foot.velocityPoints[i].offset, foot.velocityControlPoints[i].offset).setIdentity();
         }
     }
+
+    void updateRobotState() {
+
+        robotState = sharedKinDyn->currentState();
+
+        iDynTree::toEigen(basePosition) = iDynTree::toEigen(stateVariables(basePositionRange));
+        baseQuaternion = stateVariables(baseQuaternionRange);
+        baseQuaternionNormalized = NormalizedQuaternion(baseQuaternion);
+        assert(QuaternionBoundsRespected(baseQuaternionNormalized));
+        baseRotation.fromQuaternion(baseQuaternionNormalized);
+
+        robotState.world_T_base.setRotation(baseRotation);
+        robotState.world_T_base.setPosition(basePosition);
+
+        robotState.s = stateVariables(jointsPositionRange);
+
+        robotState.s_dot = controlVariables(jointsVelocityRange);
+
+        iDynTree::LinVelocity baseLinVelocity, baseAngVelocity;
+
+        iDynTree::toEigen(baseLinVelocity) = iDynTree::toEigen(controlVariables(baseVelocityRange)).topRows<3>();
+        iDynTree::toEigen(baseAngVelocity) = iDynTree::toEigen(controlVariables(baseVelocityRange)).bottomRows<3>();
+
+
+        robotState.base_velocity = iDynTree::Twist(baseLinVelocity, baseAngVelocity);
+    }
 };
 
 
@@ -138,6 +170,7 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
 {
     assert(sharedKinDyn);
     assert(sharedKinDyn->isValid());
+    m_pimpl->sharedKinDyn = sharedKinDyn;
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
     m_pimpl->dynamics = m_pimpl->stateVariables;
@@ -209,6 +242,7 @@ bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double
     m_pimpl->stateVariables = state; //this line must remain before those computing the feet related quantities
     m_pimpl->controlVariables = controlInput(); //this line must remain before those computing the feet related quantities
 
+    m_pimpl->updateRobotState();
 
     iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->momentumRange)) = m_pimpl->totalMass * iDynTree::toEigen(m_pimpl->gravityVector); //this line must remain before those computing the feet related quantities
 
@@ -218,18 +252,11 @@ bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double
 
     iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->comPositionRange)) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->momentumRange)).topRows<3>()/m_pimpl->totalMass;
 
-    iDynTree::Vector4 normalizedQuaternion;
-    iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->baseQuaternionRange)).normalized();
+    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->basePositionRange)) = iDynTree::toEigen(m_pimpl->baseRotation) * iDynTree::toEigen(m_pimpl->robotState.base_velocity.getLinearVec3());
 
-    assert(QuaternionBoundsRespected(normalizedQuaternion));
+    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->baseQuaternionRange)) = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(m_pimpl->robotState.base_velocity.getAngularVec3());
 
-    m_pimpl->baseRotation.fromQuaternion(normalizedQuaternion);
-
-    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->basePositionRange)) = iDynTree::toEigen(m_pimpl->baseRotation) * iDynTree::toEigen(m_pimpl->controlVariables(m_pimpl->baseVelocityRange)).topRows<3>();
-
-    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->baseQuaternionRange)) = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(normalizedQuaternion)) * iDynTree::toEigen(m_pimpl->controlVariables(m_pimpl->baseVelocityRange)).bottomRows<3>();
-
-    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->jointsPositionRange)) = iDynTree::toEigen(m_pimpl->controlVariables(m_pimpl->jointsVelocityRange));
+    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->jointsPositionRange)) = iDynTree::toEigen(m_pimpl->robotState.s_dot);
 
     stateDynamics = m_pimpl->dynamics.values();
 
@@ -240,6 +267,9 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = controlInput();
+
+    m_pimpl->updateRobotState();
+
     iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
 
     jacobianMap.block<3,3>(m_pimpl->momentumRange.offset+3, m_pimpl->comPositionRange.offset).setZero();
@@ -250,19 +280,12 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
     jacobianMap.block<3,3>(m_pimpl->comPositionRange.offset, m_pimpl->momentumRange.offset).setIdentity();
     jacobianMap.block<3,3>(m_pimpl->comPositionRange.offset, m_pimpl->momentumRange.offset) *= 1.0/m_pimpl->totalMass;
 
-    iDynTree::Vector4 normalizedQuaternion, quaternion;
-    iDynTree::toEigen(quaternion) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->baseQuaternionRange));
-    normalizedQuaternion = NormalizedQuaternion(quaternion);
-    assert(QuaternionBoundsRespected(normalizedQuaternion));
 
-    iDynTree::Vector3 baseLinearVelocity;
-    iDynTree::toEigen(baseLinearVelocity) = iDynTree::toEigen(m_pimpl->controlVariables(m_pimpl->baseVelocityRange)).topRows<3>();
-    iDynTree::Matrix4x4 normalizedQuaternionDerivative = NormalizedQuaternionDerivative(quaternion);
-    jacobianMap.block<3,4>(m_pimpl->basePositionRange.offset, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(RotatedVectorQuaternionJacobian(baseLinearVelocity, normalizedQuaternion)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+    iDynTree::Matrix4x4 normalizedQuaternionDerivative = NormalizedQuaternionDerivative(m_pimpl->baseQuaternion);
+    jacobianMap.block<3,4>(m_pimpl->basePositionRange.offset, m_pimpl->baseQuaternionRange.offset) =
+            iDynTree::toEigen(RotatedVectorQuaternionJacobian(m_pimpl->robotState.base_velocity.getLinearVec3(), m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
-    iDynTree::Vector3 baseAngularVelocity;
-    iDynTree::toEigen(baseAngularVelocity) = iDynTree::toEigen(m_pimpl->controlVariables(m_pimpl->baseVelocityRange)).bottomRows<3>();
-    jacobianMap.block<4,4>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(baseAngularVelocity)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+    jacobianMap.block<4,4>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(m_pimpl->robotState.base_velocity.getAngularVec3())) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
     dynamicsDerivative = m_pimpl->stateJacobianBuffer;
     return true;
@@ -272,20 +295,18 @@ bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::Vector
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = controlInput();
+
+    m_pimpl->updateRobotState();
+
     iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->controlJacobianBuffer);
 
     m_pimpl->computeFootRelatedControlJacobian(m_pimpl->leftRanges);
     m_pimpl->computeFootRelatedControlJacobian(m_pimpl->rightRanges);
 
-    iDynTree::Vector4 normalizedQuaternion;
-    iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->baseQuaternionRange)).normalized();
-    assert(QuaternionBoundsRespected(normalizedQuaternion));
-
-    m_pimpl->baseRotation.fromQuaternion(normalizedQuaternion);
 
     jacobianMap.block<3,3>(m_pimpl->basePositionRange.offset, m_pimpl->baseVelocityRange.offset) = iDynTree::toEigen(m_pimpl->baseRotation);
 
-    jacobianMap.block<4,3>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseVelocityRange.offset + 3) = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(normalizedQuaternion));
+    jacobianMap.block<4,3>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseVelocityRange.offset + 3) = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(m_pimpl->baseQuaternionNormalized));
 
     jacobianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsVelocityRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->jointsVelocityRange.size).setIdentity();
 
