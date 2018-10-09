@@ -505,6 +505,40 @@ public:
 
         bool ok = false;
 
+        constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateStructure, controlStructure, sharedKinDyn);
+        constraints.centroidalMomentum->setEqualityTolerance(st.centroidalMomentumConstraintTolerance);
+        ok = ocp->addConstraint(constraints.centroidalMomentum);
+        if (!ok) {
+            return false;
+        }
+
+        constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateStructure, controlStructure, sharedKinDyn);
+        constraints.comPosition->setEqualityTolerance(st.comPositionConstraintTolerance);
+        ok = ocp->addConstraint(constraints.comPosition);
+        if (!ok) {
+            return false;
+        }
+
+        constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateStructure, controlStructure, sharedKinDyn,
+                                                                                          st.indexOfLateralDirection,
+                                                                                          st.robotModel.getFrameIndex(
+                                                                                              st.referenceFrameNameForFeetDistance),
+                                                                                          st.robotModel.getFrameIndex(
+                                                                                              st.otherFrameNameForFeetDistance));
+        ok = constraints.feetLateralDistance->setMinimumDistance(st.minimumFeetDistance);
+
+        ok = ocp->addConstraint(constraints.feetLateralDistance);
+        if (!ok) {
+            return false;
+        }
+
+        constraints.quaternionNorm = std::make_shared<QuaternionNormConstraint>(stateStructure, controlStructure);
+        constraints.quaternionNorm->setEqualityTolerance(st.quaternionModulusConstraintTolerance);
+        ok = ocp->addConstraint(constraints.quaternionNorm);
+        if (!ok) {
+            return false;
+        }
+
         for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
             constraints.leftContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateStructure, controlStructure,
                                                                                                              "Left", i, velocityActivationXY,
@@ -594,40 +628,6 @@ public:
             }
         }
 
-        constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateStructure, controlStructure, sharedKinDyn);
-        constraints.centroidalMomentum->setEqualityTolerance(st.centroidalMomentumConstraintTolerance);
-        ok = ocp->addConstraint(constraints.centroidalMomentum);
-        if (!ok) {
-            return false;
-        }
-
-        constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateStructure, controlStructure, sharedKinDyn);
-        constraints.comPosition->setEqualityTolerance(st.comPositionConstraintTolerance);
-        ok = ocp->addConstraint(constraints.comPosition);
-        if (!ok) {
-            return false;
-        }
-
-        constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateStructure, controlStructure, sharedKinDyn,
-                                                                                          st.indexOfLateralDirection,
-                                                                                          st.robotModel.getFrameIndex(
-                                                                                              st.referenceFrameNameForFeetDistance),
-                                                                                          st.robotModel.getFrameIndex(
-                                                                                              st.otherFrameNameForFeetDistance));
-        ok = constraints.feetLateralDistance->setMinimumDistance(st.minimumFeetDistance);
-
-        ok = ocp->addConstraint(constraints.feetLateralDistance);
-        if (!ok) {
-            return false;
-        }
-
-        constraints.quaternionNorm = std::make_shared<QuaternionNormConstraint>(stateStructure, controlStructure);
-        constraints.quaternionNorm->setEqualityTolerance(st.quaternionModulusConstraintTolerance);
-        ok = ocp->addConstraint(constraints.quaternionNorm);
-        if (!ok) {
-            return false;
-        }
-
         return true;
     }
 
@@ -654,9 +654,12 @@ public:
 
         segment(stateLowerBound, ranges.comPosition)(2) = st.minimumCoMHeight;
 
-        iDynTree::toEigen(segment(stateLowerBound, ranges.baseQuaternion)).setConstant(-1.0);
-        segment(stateLowerBound, ranges.baseQuaternion)(0) = 0.0;
-        iDynTree::toEigen(segment(stateUpperBound, ranges.baseQuaternion)).setConstant(1.0);
+//        iDynTree::toEigen(segment(stateLowerBound, ranges.momentum)).bottomRows<3>().setConstant(-1);
+//        iDynTree::toEigen(segment(stateUpperBound, ranges.momentum)).bottomRows<3>().setConstant(1);
+
+//        iDynTree::toEigen(segment(stateLowerBound, ranges.baseQuaternion)).setConstant(-1.0);
+//        segment(stateLowerBound, ranges.baseQuaternion)(0) = 0.0;
+//        iDynTree::toEigen(segment(stateUpperBound, ranges.baseQuaternion)).setConstant(1.0);
 
         for (size_t j = 0; j < st.jointsLimits.size(); ++j) {
             segment(stateLowerBound, ranges.jointsPosition)(static_cast<long>(j)) = st.jointsLimits[j].first;
