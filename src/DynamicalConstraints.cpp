@@ -23,6 +23,9 @@ public:
     double totalMass;
     iDynTree::Vector6 gravityVector;
 
+    iDynTree::Position comPosition;
+    iDynTree::MatrixDynSize comjacobianBuffer;
+
 
     iDynTree::Rotation baseRotation;
     iDynTree::Position basePosition;
@@ -98,7 +101,7 @@ public:
 
             iDynTree::toEigen(dynamics(momentumRange)).topRows<3>() +=  iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
 
-            distance = iDynTree::toEigen(stateVariables(foot.positionPoints[i])) - iDynTree::toEigen(stateVariables(comPositionRange));
+            distance = iDynTree::toEigen(stateVariables(foot.positionPoints[i])) - iDynTree::toEigen(comPosition);
             appliedForce = iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
             iDynTree::toEigen(dynamics(momentumRange)).bottomRows<3>() += distance.cross(appliedForce);
         }
@@ -114,14 +117,19 @@ public:
 
             jacobianMap.block<3,3>(foot.positionPoints[i].offset, foot.velocityPoints[i].offset).setIdentity();
 
-
-            distance = iDynTree::toEigen(stateVariables(foot.positionPoints[i])) - iDynTree::toEigen(stateVariables(comPositionRange));
+            distance = iDynTree::toEigen(stateVariables(foot.positionPoints[i])) - iDynTree::toEigen(comPosition);
             appliedForce = iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
 
             jacobianMap.block<3,3>(momentumRange.offset, foot.forcePoints[i].offset).setIdentity();
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.forcePoints[i].offset) = iDynTree::skew(distance);
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.positionPoints[i].offset) = -iDynTree::skew(appliedForce);
             jacobianMap.block<3,3>(momentumRange.offset+3, comPositionRange.offset) += iDynTree::skew(appliedForce);
+
+//            jacobianMap.block<3,3>(momentumRange.offset+3, basePositionRange.offset) += iDynTree::skew(appliedForce) * iDynTree::toEigen(comjacobianBuffer).leftCols<3>();
+//            jacobianMap.block<3,4>(momentumRange.offset+3, baseQuaternionRange.offset) += iDynTree::skew(appliedForce) * iDynTree::toEigen(comjacobianBuffer).block<3,3>(0,3) *
+//                    iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(baseQuaternionNormalized)) *
+//                    iDynTree::toEigen(NormalizedQuaternionDerivative(baseQuaternion));
+//            jacobianMap.block(momentumRange.offset + 3, jointsPositionRange.offset, 3, jointsPositionRange.size) += iDynTree::skew(appliedForce) * iDynTree::toEigen(comjacobianBuffer).rightCols(jointsPositionRange.size);
         }
     }
 
@@ -195,6 +203,7 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
     m_pimpl->controlJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
 
+
     size_t leftPoints = 0, rightPoints = 0;
     for (auto label : stateVariables.listOfLabels()) {
         if (label.find("LeftForcePoint") != std::string::npos) {
@@ -230,6 +239,9 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
     m_pimpl->jointsVelocityRange = m_pimpl->controlVariables.getIndexRange("JointsVelocity");
     assert(m_pimpl->jointsVelocityRange.isValid());
 
+    m_pimpl->comjacobianBuffer.resize(3, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
+    m_pimpl->comjacobianBuffer.zero();
+
 }
 
 DynamicalConstraints::~DynamicalConstraints()
@@ -244,6 +256,9 @@ bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double
 
     m_pimpl->updateRobotState();
 
+//    m_pimpl->comPosition = m_pimpl->sharedKinDyn->getCenterOfMassPosition(m_pimpl->robotState);
+
+    iDynTree::toEigen(m_pimpl->comPosition) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->comPositionRange));
     iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->momentumRange)) = m_pimpl->totalMass * iDynTree::toEigen(m_pimpl->gravityVector); //this line must remain before those computing the feet related quantities
 
     m_pimpl->computeFootRelatedDynamics(m_pimpl->leftRanges);
@@ -269,9 +284,14 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
     m_pimpl->controlVariables = controlInput();
 
     m_pimpl->updateRobotState();
+//    m_pimpl->comPosition = m_pimpl->sharedKinDyn->getCenterOfMassPosition(m_pimpl->robotState);
+//    bool ok = m_pimpl->sharedKinDyn->getCenterOfMassJacobian(m_pimpl->robotState, m_pimpl->comjacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
     iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
 
+//    jacobianMap.block<3,3>(m_pimpl->momentumRange.offset+3, m_pimpl->basePositionRange.offset).setZero();
+//    jacobianMap.block<3,4>(m_pimpl->momentumRange.offset+3, m_pimpl->baseQuaternionRange.offset).setZero();
+//    jacobianMap.block(m_pimpl->momentumRange.offset + 3, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size).setZero();
     jacobianMap.block<3,3>(m_pimpl->momentumRange.offset+3, m_pimpl->comPositionRange.offset).setZero();
 
     m_pimpl->computeFootRelatedStateJacobian(m_pimpl->leftRanges);
