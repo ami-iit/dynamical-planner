@@ -40,17 +40,16 @@ namespace DynamicalPlanner {
 
         //ContactForceControlConstraints
         iDynTree::Vector3 forceMaximumDerivative;
-        iDynTree::Vector3 forceDissipationRatio;
-        double forceHyperbolicSecantScaling;
+        double normalForceDissipationRatio;
+        double normalForceHyperbolicSecantScaling;
 
         //ContactFrictionConstraint
         double frictionCoefficient;
 
         //ContactVelocityControlConstraints
         iDynTree::Vector3 velocityMaximumDerivative;
-        iDynTree::Vector3 velocityDissipationRatio;
-        double velocityHyperbolicSecantScalingXY; //scales the position along z
-        double velocityHyperbolicSecantScalingZ; //scales the force along z
+        double planarVelocityHyperbolicTangentScaling;
+        double normalVelocityHyperbolicSecantScaling;
 
         //Feet lateral distance constraint
         unsigned int indexOfLateralDirection;

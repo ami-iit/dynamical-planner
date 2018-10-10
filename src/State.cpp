@@ -69,13 +69,11 @@ void State::zero()
 {
     for (auto leftPoint : leftContactPointsState) {
         leftPoint.pointForce.zero();
-        leftPoint.pointVelocity.zero();
         leftPoint.pointPosition.zero();
     }
 
     for (auto rightPoint : rightContactPointsState) {
         rightPoint.pointForce.zero();
-        rightPoint.pointVelocity.zero();
         rightPoint.pointPosition.zero();
     }
 

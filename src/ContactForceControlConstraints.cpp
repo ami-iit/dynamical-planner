@@ -19,8 +19,8 @@ public:
     std::string footName;
     size_t contactIndex;
     HyperbolicSecant activation;
-    iDynTree::Vector3 maximumDerivatives;
-    iDynTree::Matrix3x3 dissipationRatios;
+    double maximumNormalDerivative;
+    double dissipationRatio;
 
     iDynTree::IndexRange positionPointRange, forcePointRange, forceControlRange;
     iDynTree::Vector3 pointPosition, pointForce, pointForceControl;
@@ -34,8 +34,8 @@ public:
 
 ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
                                                                const std::string &footName, size_t contactIndex, const HyperbolicSecant &forceActivation,
-                                                               const iDynTree::Vector3 &maximumDerivatives, const iDynTree::Vector3 &dissipationRatios)
-    : iDynTree::optimalcontrol::Constraint (6, "ForceControlBounds" + footName + std::to_string(contactIndex))
+                                                               double maximumNormalDerivative, double dissipationRatio)
+    : iDynTree::optimalcontrol::Constraint (2, "ForceControlBounds" + footName + std::to_string(contactIndex))
     , m_pimpl(new Implementation)
 {
     m_pimpl->stateVariables = stateVariables;
@@ -44,8 +44,8 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
     m_pimpl->footName = footName;
     m_pimpl->contactIndex = contactIndex;
     m_pimpl->activation = forceActivation;
-    m_pimpl->maximumDerivatives = maximumDerivatives;
-    iDynTree::toEigen(m_pimpl->dissipationRatios) = iDynTree::toEigen(dissipationRatios).asDiagonal();
+    m_pimpl->maximumNormalDerivative = maximumNormalDerivative;
+    m_pimpl->dissipationRatio = dissipationRatio;
 
     m_pimpl->positionPointRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(contactIndex));
     assert(m_pimpl->positionPointRange.isValid());
@@ -56,13 +56,13 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
     m_pimpl->forceControlRange = controlVariables.getIndexRange(footName + "ForceControlPoint" + std::to_string(contactIndex));
     assert(m_pimpl->forcePointRange.isValid());
 
-    m_pimpl->stateJacobianBuffer.resize(6, static_cast<unsigned int>(stateVariables.size()));
+    m_pimpl->stateJacobianBuffer.resize(2, static_cast<unsigned int>(stateVariables.size()));
     m_pimpl->stateJacobianBuffer.zero();
 
-    m_pimpl->controlJacobianBuffer.resize(6, static_cast<unsigned int>(controlVariables.size()));
+    m_pimpl->controlJacobianBuffer.resize(2, static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
 
-    m_pimpl->constraintValues.resize(6);
+    m_pimpl->constraintValues.resize(2);
 
     m_isLowerBounded = true;
     m_isUpperBounded = false;
@@ -81,12 +81,12 @@ bool ContactForceControlConstraints::evaluateConstraint(double, const iDynTree::
     m_pimpl->pointForce = m_pimpl->stateVariables(m_pimpl->forcePointRange);
     m_pimpl->pointForceControl = m_pimpl->controlVariables(m_pimpl->forceControlRange);
     double delta = m_pimpl->activation.eval(m_pimpl->pointPosition(2));
+    double fz = m_pimpl->pointForce(2);
+    double uz = m_pimpl->pointForceControl(2);
 
-    iDynTree::toEigen(m_pimpl->constraintValues).topRows<3>() = delta * iDynTree::toEigen(m_pimpl->maximumDerivatives) -
-            (1- delta) * iDynTree::toEigen(m_pimpl->dissipationRatios) * iDynTree::toEigen(m_pimpl->pointForce) - iDynTree::toEigen(m_pimpl->pointForceControl);
+    m_pimpl->constraintValues(0) = delta * m_pimpl->maximumNormalDerivative - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
 
-    iDynTree::toEigen(m_pimpl->constraintValues).bottomRows<3>() = iDynTree::toEigen(m_pimpl->pointForceControl) + delta * iDynTree::toEigen(m_pimpl->maximumDerivatives) +
-            (1- delta) * iDynTree::toEigen(m_pimpl->dissipationRatios) * iDynTree::toEigen(m_pimpl->pointForce);
+    m_pimpl->constraintValues(1) = uz + delta * m_pimpl->maximumNormalDerivative + (1- delta) * m_pimpl->dissipationRatio * fz;
 
     constraint = m_pimpl->constraintValues;
 
@@ -104,16 +104,19 @@ bool ContactForceControlConstraints::constraintJacobianWRTState(double, const iD
 
     double delta = m_pimpl->activation.eval(m_pimpl->pointPosition(2));
     double deltaDerivative = m_pimpl->activation.evalDerivative(m_pimpl->pointPosition(2));
+    double fz = m_pimpl->pointForce(2);
+    unsigned int pzCol = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
+    unsigned int fzCol = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
 
-    iDynTree::toEigen(m_pimpl->stateJacobianBuffer).block<3,1>(0, m_pimpl->positionPointRange.offset + 2) = deltaDerivative * iDynTree::toEigen(m_pimpl->maximumDerivatives) +
-            deltaDerivative * iDynTree::toEigen(m_pimpl->dissipationRatios) * iDynTree::toEigen(m_pimpl->pointForce);
+    m_pimpl->stateJacobianBuffer(0, pzCol) = deltaDerivative * m_pimpl->maximumNormalDerivative +
+            deltaDerivative * m_pimpl->dissipationRatio * fz;
 
-    iDynTree::toEigen(m_pimpl->stateJacobianBuffer).block<3,3>(0, m_pimpl->forcePointRange.offset) = -(1- delta) * iDynTree::toEigen(m_pimpl->dissipationRatios);
+    m_pimpl->stateJacobianBuffer(0, fzCol) = -(1- delta) * m_pimpl->dissipationRatio;
 
-    iDynTree::toEigen(m_pimpl->stateJacobianBuffer).block<3,1>(3, m_pimpl->positionPointRange.offset + 2) = deltaDerivative * iDynTree::toEigen(m_pimpl->maximumDerivatives) -
-            deltaDerivative * iDynTree::toEigen(m_pimpl->dissipationRatios) * iDynTree::toEigen(m_pimpl->pointForce);
+    m_pimpl->stateJacobianBuffer(1, pzCol) = deltaDerivative * m_pimpl->maximumNormalDerivative -
+            deltaDerivative * m_pimpl->dissipationRatio * fz;
 
-    iDynTree::toEigen(m_pimpl->stateJacobianBuffer).block<3,3>(3, m_pimpl->forcePointRange.offset) = (1- delta) * iDynTree::toEigen(m_pimpl->dissipationRatios);
+    m_pimpl->stateJacobianBuffer(1, fzCol) = (1- delta) * m_pimpl->dissipationRatio;
 
     jacobian = m_pimpl->stateJacobianBuffer;
     return true;
@@ -124,10 +127,9 @@ bool ContactForceControlConstraints::constraintJacobianWRTControl(double, const 
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
 
-    iDynTree::toEigen(m_pimpl->controlJacobianBuffer).block<3,3>(0, m_pimpl->forceControlRange.offset).setIdentity();
-    iDynTree::toEigen(m_pimpl->controlJacobianBuffer).block<3,3>(0, m_pimpl->forceControlRange.offset) *= -1;
+    m_pimpl->controlJacobianBuffer(0, static_cast<unsigned int>(m_pimpl->forceControlRange.offset + 2)) = -1;
 
-    iDynTree::toEigen(m_pimpl->controlJacobianBuffer).block<3,3>(3, m_pimpl->forceControlRange.offset).setIdentity();
+    m_pimpl->controlJacobianBuffer(1, static_cast<unsigned int>(m_pimpl->forceControlRange.offset + 2)) = 1;
 
     jacobian = m_pimpl->controlJacobianBuffer;
     return true;

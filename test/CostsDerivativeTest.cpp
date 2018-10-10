@@ -25,8 +25,6 @@ void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& cont
     for (size_t i = 0; i < numberOfPoints; ++i) {
         ok = stateVariables.addLabel(footName + "ForcePoint" + std::to_string(i), 3);
         ASSERT_IS_TRUE(ok);
-        ok = stateVariables.addLabel(footName + "VelocityPoint" + std::to_string(i), 3);
-        ASSERT_IS_TRUE(ok);
         ok = stateVariables.addLabel(footName + "PositionPoint" + std::to_string(i), 3);
         ASSERT_IS_TRUE(ok);
         ok = controlVariables.addLabel(footName + "VelocityControlPoint" + std::to_string(i), 3);

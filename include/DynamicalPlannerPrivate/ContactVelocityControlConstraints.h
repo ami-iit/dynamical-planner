@@ -12,6 +12,7 @@
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/HyperbolicTangent.h>
 #include <DynamicalPlannerPrivate/HyperbolicSecant.h>
 #include <memory>
 #include <string>
@@ -30,9 +31,8 @@ class DynamicalPlanner::Private::ContactVelocityControlConstraints : public iDyn
 public:
 
     ContactVelocityControlConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                                      const std::string &footName, size_t contactIndex, const HyperbolicSecant& activationXY,
-                                      const HyperbolicSecant& activationZ,
-                                      const iDynTree::Vector3& maximumDerivatives, const iDynTree::Vector3& dissipationRatios);
+                                      const std::string &footName, size_t contactIndex, const HyperbolicSecant& normalVelocityActivation,
+                                      const HyperbolicTangent& planarVelocityActivation, const iDynTree::Vector3& maximumDerivatives);
 
     ~ContactVelocityControlConstraints() override;
 

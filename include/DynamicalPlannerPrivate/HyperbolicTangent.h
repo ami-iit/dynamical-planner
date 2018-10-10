@@ -4,26 +4,26 @@
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
-#ifndef DPLANNER_HYPERBOLICSECANT_H
-#define DPLANNER_HYPERBOLICSECANT_H
+#ifndef DPLANNER_HYPERBOLICTANGENT_H
+#define DPLANNER_HYPERBOLICTANGENT_H
 
 #include <DynamicalPlannerPrivate/SmoothingFunction.h>
 
 namespace DynamicalPlanner {
     namespace Private {
-        class HyperbolicSecant;
+        class HyperbolicTangent;
     }
 }
 
-class DynamicalPlanner::Private::HyperbolicSecant : public DynamicalPlanner::Private::SmoothingFunction {
+class DynamicalPlanner::Private::HyperbolicTangent : public DynamicalPlanner::Private::SmoothingFunction {
 public:
-    HyperbolicSecant();
+    HyperbolicTangent();
 
-    virtual ~HyperbolicSecant() final;
+    virtual ~HyperbolicTangent() final;
 
     virtual double eval(double x) const final;
 
     virtual double evalDerivative(double x) const final;
 };
 
-#endif // DPLANNER_HYPERBOLICSECANT_H
+#endif // DPLANNER_HYPERBOLICTANGENT_H

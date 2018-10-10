@@ -51,7 +51,7 @@ typedef struct {
 } CostsSet;
 
 typedef struct {
-    std::vector<iDynTree::IndexRange> positionPoints, velocityPoints, forcePoints, velocityControlPoints, forceControlPoints;
+    std::vector<iDynTree::IndexRange> positionPoints, forcePoints, velocityControlPoints, forceControlPoints;
 } FootRanges;
 
 typedef struct {
@@ -74,7 +74,7 @@ public:
 
     StateGuesses(std::shared_ptr<TimeVaryingState> originalGuess, const VariablesRanges &ranges)
         : m_originalGuesses(originalGuess)
-        , m_buffer(static_cast<unsigned int>(ranges.left.positionPoints.size() * 18 + 16 + static_cast<size_t>(ranges.jointsPosition.size)))
+        , m_buffer(static_cast<unsigned int>(ranges.left.positionPoints.size() * 2 * 6 + 16 + static_cast<size_t>(ranges.jointsPosition.size)))
         , m_ranges(ranges)
     { }
 
@@ -101,13 +101,11 @@ public:
 
         for (size_t i = 0; i < m_ranges.left.positionPoints.size(); ++i) {
             setSegment(m_ranges.left.positionPoints[i], desiredState.leftContactPointsState[i].pointPosition);
-            setSegment(m_ranges.left.velocityPoints[i], desiredState.leftContactPointsState[i].pointVelocity);
             setSegment(m_ranges.left.forcePoints[i], desiredState.leftContactPointsState[i].pointForce);
         }
 
         for (size_t i = 0; i < m_ranges.right.positionPoints.size(); ++i) {
             setSegment(m_ranges.right.positionPoints[i], desiredState.rightContactPointsState[i].pointPosition);
-            setSegment(m_ranges.right.velocityPoints[i], desiredState.rightContactPointsState[i].pointVelocity);
             setSegment(m_ranges.right.forcePoints[i], desiredState.rightContactPointsState[i].pointForce);
         }
 
@@ -485,10 +483,11 @@ public:
 
     bool setConstraints(const SettingsStruct& st, const std::shared_ptr<iDynTree::optimalcontrol::OptimalControlProblem> ocp) {
 
-        HyperbolicSecant forceActivation, velocityActivationXY, velocityActivationZ;
-        forceActivation.setScaling(st.forceHyperbolicSecantScaling);
-        velocityActivationXY.setScaling(st.velocityHyperbolicSecantScalingXY);
-        velocityActivationZ.setScaling(st.velocityHyperbolicSecantScalingZ);
+        HyperbolicSecant forceActivation, velocityActivationZ;
+        HyperbolicTangent velocityActivationXY;
+        forceActivation.setScaling(st.normalForceHyperbolicSecantScaling);
+        velocityActivationXY.setScaling(st.planarVelocityHyperbolicTangentScaling);
+        velocityActivationZ.setScaling(st.normalVelocityHyperbolicSecantScaling);
 
         constraints.leftContactsVelocityControl.resize(st.leftPointsPosition.size());
         constraints.leftContactsForceControl.resize(st.leftPointsPosition.size());
@@ -541,10 +540,9 @@ public:
 
         for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
             constraints.leftContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                             "Left", i, velocityActivationXY,
-                                                                                                             velocityActivationZ,
-                                                                                                             st.velocityMaximumDerivative,
-                                                                                                             st.velocityDissipationRatio);
+                                                                                                             "Left", i, velocityActivationZ,
+                                                                                                             velocityActivationXY,
+                                                                                                             st.velocityMaximumDerivative);
             ok = ocp->addConstraint(constraints.leftContactsVelocityControl[i]);
             if (!ok) {
                 return false;
@@ -552,8 +550,8 @@ public:
 
             constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
                                                                                                        i, forceActivation,
-                                                                                                       st.forceMaximumDerivative,
-                                                                                                       st.forceDissipationRatio);
+                                                                                                       st.forceMaximumDerivative(2),
+                                                                                                       st.normalForceDissipationRatio);
             ok = ocp->addConstraint(constraints.leftContactsForceControl[i]);
             if (!ok) {
                 return false;
@@ -586,10 +584,9 @@ public:
         for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
 
             constraints.rightContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                              "Right", i, velocityActivationXY,
-                                                                                                              velocityActivationZ,
-                                                                                                              st.velocityMaximumDerivative,
-                                                                                                              st.velocityDissipationRatio);
+                                                                                                              "Right", i, velocityActivationZ,
+                                                                                                              velocityActivationXY,
+                                                                                                              st.velocityMaximumDerivative);
             ok = ocp->addConstraint(constraints.rightContactsVelocityControl[i]);
             if (!ok) {
                 return false;
@@ -597,8 +594,8 @@ public:
 
             constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
                                                                                                         i, forceActivation,
-                                                                                                        st.forceMaximumDerivative,
-                                                                                                        st.forceDissipationRatio);
+                                                                                                        st.forceMaximumDerivative(2),
+                                                                                                        st.normalForceDissipationRatio);
             ok = ocp->addConstraint(constraints.rightContactsForceControl[i]);
             if (!ok) {
                 return false;
@@ -645,11 +642,15 @@ public:
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.left.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.left.forcePoints[i])(2) = 0.0;
+            iDynTree::toEigen(segment(controlLowerBound, ranges.left.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
+            iDynTree::toEigen(segment(controlUpperBound, ranges.left.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
         }
 
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.right.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.right.forcePoints[i])(2) = 0.0;
+            iDynTree::toEigen(segment(controlLowerBound, ranges.right.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
+            iDynTree::toEigen(segment(controlUpperBound, ranges.right.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
         }
 
         segment(stateLowerBound, ranges.comPosition)(2) = st.minimumCoMHeight;
@@ -711,17 +712,15 @@ public:
     }
 
     void fillInitialState() {
-        initialStateVector.resize(static_cast<unsigned int>(ranges.left.positionPoints.size() * 18 + 16 +
+        initialStateVector.resize(static_cast<unsigned int>(ranges.left.positionPoints.size() * 2 * 6 + 16 +
                                                             static_cast<size_t>(ranges.jointsPosition.size)));
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             setSegment(ranges.left.positionPoints[i], initialState.leftContactPointsState[i].pointPosition, initialStateVector);
-            setSegment(ranges.left.velocityPoints[i], initialState.leftContactPointsState[i].pointVelocity, initialStateVector);
             setSegment(ranges.left.forcePoints[i], initialState.leftContactPointsState[i].pointForce, initialStateVector);
         }
 
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
             setSegment(ranges.right.positionPoints[i], initialState.rightContactPointsState[i].pointPosition, initialStateVector);
-            setSegment(ranges.right.velocityPoints[i], initialState.rightContactPointsState[i].pointVelocity, initialStateVector);
             setSegment(ranges.right.forcePoints[i], initialState.rightContactPointsState[i].pointForce, initialStateVector);
         }
 
@@ -736,7 +735,6 @@ private:
 
     bool setFootVariables(const std::string& footName, size_t numberOfPoints, FootRanges& footRanges) {
         footRanges.forcePoints.resize(numberOfPoints);
-        footRanges.velocityPoints.resize(numberOfPoints);
         footRanges.positionPoints.resize(numberOfPoints);
         footRanges.velocityControlPoints.resize(numberOfPoints);
         footRanges.forceControlPoints.resize(numberOfPoints);
@@ -744,10 +742,6 @@ private:
         for (size_t i = 0; i < numberOfPoints; ++i) {
             footRanges.forcePoints[i] = stateStructure.addLabelAndGetIndexRange(footName + "ForcePoint" + std::to_string(i), 3);
             if (!footRanges.forcePoints[i].isValid()) {
-                return false;
-            }
-            footRanges.velocityPoints[i] = stateStructure.addLabelAndGetIndexRange(footName + "VelocityPoint" + std::to_string(i), 3);
-            if (!footRanges.velocityPoints[i].isValid()) {
                 return false;
             }
             footRanges.positionPoints[i] = stateStructure.addLabelAndGetIndexRange(footName + "PositionPoint" + std::to_string(i), 3);
@@ -783,13 +777,11 @@ private:
     void setStateFromVariables(const iDynTree::VectorDynSize &unstructured, double time, State &stateToFill) {
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             stateToFill.leftContactPointsState[i].pointPosition = segment(unstructured, ranges.left.positionPoints[i]);
-            stateToFill.leftContactPointsState[i].pointVelocity = segment(unstructured, ranges.left.velocityPoints[i]);
             stateToFill.leftContactPointsState[i].pointForce = segment(unstructured, ranges.left.forcePoints[i]);
         }
 
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
             stateToFill.rightContactPointsState[i].pointPosition = segment(unstructured, ranges.right.positionPoints[i]);
-            stateToFill.rightContactPointsState[i].pointVelocity = segment(unstructured, ranges.right.velocityPoints[i]);
             stateToFill.rightContactPointsState[i].pointForce = segment(unstructured, ranges.right.forcePoints[i]);
         }
 

@@ -20,7 +20,6 @@ namespace DynamicalPlanner {
 
     typedef struct {
         iDynTree::Vector3 pointForce;
-        iDynTree::Vector3 pointVelocity;
         iDynTree::Vector3 pointPosition;
     } ContactPointState;
 }

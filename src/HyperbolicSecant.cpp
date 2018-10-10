@@ -11,13 +11,10 @@
 using namespace DynamicalPlanner::Private;
 
 HyperbolicSecant::HyperbolicSecant()
-    : m_K(1.0)
 { }
 
-void HyperbolicSecant::setScaling(double k)
-{
-    m_K = k;
-}
+HyperbolicSecant::~HyperbolicSecant()
+{ }
 
 double HyperbolicSecant::eval(double x) const
 {

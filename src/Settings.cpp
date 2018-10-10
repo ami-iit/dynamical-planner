@@ -155,31 +155,30 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
 
     //Contact points infos
     defaults.leftPointsPosition.resize(4);
-    defaults.leftPointsPosition[0] = iDynTree::Position(0.125, -0.04, 0.0);
-    defaults.leftPointsPosition[1] = iDynTree::Position(0.125,  0.04, 0.0);
-    defaults.leftPointsPosition[2] = iDynTree::Position(-0.063,  0.04, 0.0);
-    defaults.leftPointsPosition[3] = iDynTree::Position( 0.063, -0.04, 0.0);
+    iDynTree::toEigen(defaults.leftPointsPosition[0]) << 0.125, -0.04, 0.0;
+    iDynTree::toEigen(defaults.leftPointsPosition[1]) << 0.125,  0.04, 0.0;
+    iDynTree::toEigen(defaults.leftPointsPosition[2]) << -0.063,  0.04, 0.0;
+    iDynTree::toEigen(defaults.leftPointsPosition[3]) << 0.063, -0.04, 0.0;
     defaults.rightPointsPosition.resize(4);
-    defaults.rightPointsPosition[0] = iDynTree::Position(0.125,  0.04, 0.0);
-    defaults.rightPointsPosition[1] = iDynTree::Position(0.125, -0.04, 0.0);
-    defaults.rightPointsPosition[2] = iDynTree::Position(-0.063, -0.04, 0.0);
-    defaults.rightPointsPosition[3] = iDynTree::Position( 0.063,  0.04, 0.0);
+    iDynTree::toEigen(defaults.rightPointsPosition[0]) << 0.125,  0.04, 0.0;
+    iDynTree::toEigen(defaults.rightPointsPosition[1]) << 0.125, -0.04, 0.0;
+    iDynTree::toEigen(defaults.rightPointsPosition[2]) << -0.063, -0.04, 0.0;
+    iDynTree::toEigen(defaults.rightPointsPosition[3]) << 0.063,  0.04, 0.0;
     defaults.leftFrameName = "l_sole";
     defaults.rightFrameName = "r_sole";
 
     //ContactForceControlConstraints
     iDynTree::toEigen(defaults.forceMaximumDerivative).setConstant(10.0);
-    iDynTree::toEigen(defaults.forceDissipationRatio).setConstant(10.0);
-    defaults.forceHyperbolicSecantScaling = 10.0;
+    defaults.normalForceDissipationRatio = 10.0;
+    defaults.normalForceHyperbolicSecantScaling = 300.0;
 
     //ContactFrictionConstraint
     defaults.frictionCoefficient = 0.3;
 
     //ContactVelocityControlConstraints
     iDynTree::toEigen(defaults.velocityMaximumDerivative).setConstant(10.0);
-    iDynTree::toEigen(defaults.velocityDissipationRatio).setConstant(10.0);
-    defaults.velocityHyperbolicSecantScalingXY = 10.0; //scales the position along z
-    defaults.velocityHyperbolicSecantScalingZ = 1.0; //scales the force along z
+    defaults.planarVelocityHyperbolicTangentScaling = 50.0;
+    defaults.normalVelocityHyperbolicSecantScaling = 1.0;
 
     //Feet lateral distance constraint
     defaults.indexOfLateralDirection = 1;

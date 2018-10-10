@@ -74,7 +74,9 @@ set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/FrameOrientationCost.h
                              include/DynamicalPlannerPrivate/ForceMeanCost.h
                              include/DynamicalPlannerPrivate/StaticTorquesCost.h
-                             include/DynamicalPlannerPrivate/Costs.h)
+                             include/DynamicalPlannerPrivate/Costs.h
+                             include/DynamicalPlannerPrivate/SmoothingFunction.h
+                             include/DynamicalPlannerPrivate/HyperbolicTangent.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp
@@ -95,7 +97,9 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/Settings.cpp
                      src/Solver.cpp
                      src/State.cpp
-                     src/Control.cpp)
+                     src/Control.cpp
+                     src/SmoothingFunction.cpp
+                     src/HyperbolicTangent.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

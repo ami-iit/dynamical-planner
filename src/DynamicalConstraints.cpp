@@ -34,7 +34,7 @@ public:
     std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
 
     typedef struct {
-        std::vector<iDynTree::IndexRange> positionPoints, velocityPoints, forcePoints, velocityControlPoints, forceControlPoints;
+        std::vector<iDynTree::IndexRange> positionPoints, forcePoints, velocityControlPoints, forceControlPoints;
     } FootRanges;
     FootRanges leftRanges, rightRanges;
     iDynTree::IndexRange momentumRange, comPositionRange, basePositionRange, baseQuaternionRange, jointsPositionRange, baseVelocityRange, jointsVelocityRange;
@@ -43,7 +43,6 @@ public:
 
     void checkFootVariables(const std::string& footName, size_t numberOfPoints, FootRanges& foot) {
         foot.positionPoints.resize(numberOfPoints);
-        foot.velocityPoints.resize(numberOfPoints);
         foot.forcePoints.resize(numberOfPoints);
         foot.velocityControlPoints.resize(numberOfPoints);
         foot.forceControlPoints.resize(numberOfPoints);
@@ -57,13 +56,6 @@ public:
                 assert(false);
             }
             foot.forcePoints[i] = obtainedRange;
-
-            obtainedRange = stateVariables.getIndexRange(footName + "VelocityPoint" + std::to_string(i));
-            if (!obtainedRange.isValid()){
-                std::cerr << "[ERROR][DynamicalConstraints::DynamicalConstraints] Variable " << footName + "VelocityPoint" + std::to_string(i) << " not available among state variables." << std::endl;
-                assert(false);
-            }
-            foot.velocityPoints[i] = obtainedRange;
 
             obtainedRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(i));
             if (!obtainedRange.isValid()){
@@ -96,8 +88,7 @@ public:
 //Span operator = does not copy content!
 
             iDynTree::toEigen(dynamics(foot.forcePoints[i])) = iDynTree::toEigen(controlVariables(foot.forceControlPoints[i]));
-            iDynTree::toEigen(dynamics(foot.velocityPoints[i])) = iDynTree::toEigen(controlVariables(foot.velocityControlPoints[i]));
-            iDynTree::toEigen(dynamics(foot.positionPoints[i])) = iDynTree::toEigen(stateVariables(foot.velocityPoints[i]));
+            iDynTree::toEigen(dynamics(foot.positionPoints[i])) = iDynTree::toEigen(controlVariables(foot.velocityControlPoints[i]));
 
             iDynTree::toEigen(dynamics(momentumRange)).topRows<3>() +=  iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
 
@@ -113,9 +104,6 @@ public:
 
 
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
-
-
-            jacobianMap.block<3,3>(foot.positionPoints[i].offset, foot.velocityPoints[i].offset).setIdentity();
 
             distance = iDynTree::toEigen(stateVariables(foot.positionPoints[i])) - iDynTree::toEigen(comPosition);
             appliedForce = iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
@@ -140,7 +128,7 @@ public:
 
             jacobianMap.block<3,3>(foot.forcePoints[i].offset, foot.forceControlPoints[i].offset).setIdentity();
 
-            jacobianMap.block<3,3>(foot.velocityPoints[i].offset, foot.velocityControlPoints[i].offset).setIdentity();
+            jacobianMap.block<3,3>(foot.positionPoints[i].offset, foot.velocityControlPoints[i].offset).setIdentity();
         }
     }
 

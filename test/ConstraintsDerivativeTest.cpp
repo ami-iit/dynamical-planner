@@ -38,8 +38,6 @@ void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& cont
     for (size_t i = 0; i < numberOfPoints; ++i) {
         ok = stateVariables.addLabel(footName + "ForcePoint" + std::to_string(i), 3);
         ASSERT_IS_TRUE(ok);
-        ok = stateVariables.addLabel(footName + "VelocityPoint" + std::to_string(i), 3);
-        ASSERT_IS_TRUE(ok);
         ok = stateVariables.addLabel(footName + "PositionPoint" + std::to_string(i), 3);
         ASSERT_IS_TRUE(ok);
         ok = controlVariables.addLabel(footName + "VelocityControlPoint" + std::to_string(i), 3);
@@ -100,14 +98,14 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
                            const std::vector<iDynTree::Position>& rightPositions, const VariablesLabeller& stateVariables,
                            const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
                            iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
-    iDynTree::Vector3 forceMaximumDerivative, forceDissipationRatios, velocityMaximumDerivative, velocityDissipatioRatio;
+    iDynTree::Vector3 velocityMaximumDerivative;
 
-    iDynTree::toEigen(forceMaximumDerivative).setConstant(10.0);
-    iDynTree::toEigen(forceDissipationRatios).setConstant(10.0);
+    double forceMaximumDerivative = 10.0;
+    double forceDissipationRatios = 10.0;
     iDynTree::toEigen(velocityMaximumDerivative).setConstant(10.0);
-    iDynTree::toEigen(velocityDissipatioRatio).setConstant(10.0);
 
-    HyperbolicSecant forceActivation, velocityActivationXY, velocityActivationZ;
+    HyperbolicSecant forceActivation, velocityActivationZ;
+    HyperbolicTangent velocityActivationXY;
     forceActivation.setScaling(1.0);
     velocityActivationXY.setScaling(1.0);
     velocityActivationZ.setScaling(1.0);
@@ -136,10 +134,9 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
     for (size_t i = 0; i < numberOfPoints; ++i) {
         constraints.leftContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
-                                                                                                         "Left", i, velocityActivationXY,
-                                                                                                         velocityActivationZ,
-                                                                                                         velocityMaximumDerivative,
-                                                                                                         velocityDissipatioRatio);
+                                                                                                         "Left", i, velocityActivationZ,
+                                                                                                         velocityActivationXY,
+                                                                                                         velocityMaximumDerivative);
         ok = ocProblem.addConstraint(constraints.leftContactsVelocityControl[i]);
         ASSERT_IS_TRUE(ok);
 
@@ -160,10 +157,9 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ASSERT_IS_TRUE(ok);
 
         constraints.rightContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
-                                                                                                         "Right", i, velocityActivationXY,
-                                                                                                         velocityActivationZ,
-                                                                                                         velocityMaximumDerivative,
-                                                                                                         velocityDissipatioRatio);
+                                                                                                         "Right", i, velocityActivationZ,
+                                                                                                          velocityActivationXY,
+                                                                                                          velocityMaximumDerivative);
         ok = ocProblem.addConstraint(constraints.rightContactsVelocityControl[i]);
         ASSERT_IS_TRUE(ok);
 
@@ -307,15 +303,15 @@ int main() {
     setVariables(stateVariables, controlVariables, 4, sharedKinDyn->model().getNrOfDOFs());
     std::vector<iDynTree::Position> leftPositions, rightPositions;
     leftPositions.resize(4);
+    iDynTree::toEigen(leftPositions[0]) << 0.125, -0.04, 0.0;
+    iDynTree::toEigen(leftPositions[1]) << 0.125,  0.04, 0.0;
+    iDynTree::toEigen(leftPositions[2]) << -0.063,  0.04, 0.0;
+    iDynTree::toEigen(leftPositions[3]) << 0.063, -0.04, 0.0;
     rightPositions.resize(4);
-    leftPositions[0] = iDynTree::Position(0.125, -0.04, 0.0);
-    leftPositions[1] = iDynTree::Position(0.125,  0.04, 0.0);
-    leftPositions[2] = iDynTree::Position(-0.063,  0.04, 0.0);
-    leftPositions[3] = iDynTree::Position( 0.063, -0.04, 0.0);
-    rightPositions[0] = iDynTree::Position(0.125,  0.04, 0.0);
-    rightPositions[1] = iDynTree::Position(0.125, -0.04, 0.0);
-    rightPositions[2] = iDynTree::Position(-0.063, -0.04, 0.0);
-    rightPositions[3] = iDynTree::Position( 0.063,  0.04, 0.0);
+    iDynTree::toEigen(rightPositions[0]) << 0.125,  0.04, 0.0;
+    iDynTree::toEigen(rightPositions[1]) << 0.125, -0.04, 0.0;
+    iDynTree::toEigen(rightPositions[2]) << -0.063, -0.04, 0.0;
+    iDynTree::toEigen(rightPositions[3]) << 0.063,  0.04, 0.0;
 
     initializeConstraints(constraints, leftPositions, rightPositions, stateVariables, controlVariables, sharedKinDyn, ocProblem);
 
