@@ -19,22 +19,22 @@
 
 namespace DynamicalPlanner {
     namespace Private {
-        class ContactVelocityControlConstraints;
+        class NormalVelocityControlConstraints;
     }
 }
 
-class DynamicalPlanner::Private::ContactVelocityControlConstraints : public iDynTree::optimalcontrol::Constraint {
+class DynamicalPlanner::Private::NormalVelocityControlConstraints : public iDynTree::optimalcontrol::Constraint {
 
     class Implementation;
     std::unique_ptr<Implementation> m_pimpl;
 
 public:
 
-    ContactVelocityControlConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                                      const std::string &footName, size_t contactIndex, const HyperbolicSecant& normalVelocityActivation,
-                                      const HyperbolicTangent& planarVelocityActivation, const iDynTree::Vector3& maximumDerivatives);
+    NormalVelocityControlConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
+                                     const std::string &footName, size_t contactIndex, const HyperbolicSecant& normalVelocityActivation,
+                                     double maximumDerivative);
 
-    ~ContactVelocityControlConstraints() override;
+    ~NormalVelocityControlConstraints() override;
 
     virtual bool evaluateConstraint(double,
                                     const iDynTree::VectorDynSize& state,

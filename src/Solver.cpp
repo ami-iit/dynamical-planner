@@ -31,8 +31,10 @@ typedef struct {
     std::shared_ptr<DynamicalConstraints> dynamical;
     std::shared_ptr<CentroidalMomentumConstraint> centroidalMomentum;
     std::shared_ptr<CoMPositionConstraint> comPosition;
-    std::vector<std::shared_ptr<ContactVelocityControlConstraints>> leftContactsVelocityControl, rightContactsVelocityControl;
+    std::vector<std::shared_ptr<NormalVelocityControlConstraints>> leftNormalVelocityControl, rightNormalVelocityControl;
+    std::vector<std::shared_ptr<PlanarVelocityControlConstraints>> leftPlanarVelocityControl, rightPlanarVelocityControl;
     std::vector<std::shared_ptr<ContactForceControlConstraints>> leftContactsForceControl, rightContactsForceControl;
+    std::vector<std::shared_ptr<DynamicalComplementarityConstraint>> leftComplementarity, rightComplementarity;
     std::vector<std::shared_ptr<ContactFrictionConstraint>> leftContactsFriction, rightContactsFriction;
     std::vector<std::shared_ptr<ContactPositionConsistencyConstraint>> leftContactsPosition, rightContactsPosition;
     std::shared_ptr<FeetLateralDistanceConstraint> feetLateralDistance;
@@ -489,13 +491,17 @@ public:
         velocityActivationXY.setScaling(st.planarVelocityHyperbolicTangentScaling);
         velocityActivationZ.setScaling(st.normalVelocityHyperbolicSecantScaling);
 
-        constraints.leftContactsVelocityControl.resize(st.leftPointsPosition.size());
+        constraints.leftNormalVelocityControl.resize(st.leftPointsPosition.size());
+        constraints.leftPlanarVelocityControl.resize(st.leftPointsPosition.size());
         constraints.leftContactsForceControl.resize(st.leftPointsPosition.size());
+        constraints.leftComplementarity.resize(st.leftPointsPosition.size());
         constraints.leftContactsFriction.resize(st.leftPointsPosition.size());
         constraints.leftContactsPosition.resize(st.leftPointsPosition.size());
 
-        constraints.rightContactsVelocityControl.resize(st.rightPointsPosition.size());
+        constraints.rightNormalVelocityControl.resize(st.rightPointsPosition.size());
+        constraints.rightPlanarVelocityControl.resize(st.rightPointsPosition.size());
         constraints.rightContactsForceControl.resize(st.rightPointsPosition.size());
+        constraints.rightComplementarity.resize(st.rightPointsPosition.size());
         constraints.rightContactsFriction.resize(st.rightPointsPosition.size());
         constraints.rightContactsPosition.resize(st.rightPointsPosition.size());
 
@@ -539,11 +545,20 @@ public:
         }
 
         for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
-            constraints.leftContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                             "Left", i, velocityActivationZ,
-                                                                                                             velocityActivationXY,
-                                                                                                             st.velocityMaximumDerivative);
-            ok = ocp->addConstraint(constraints.leftContactsVelocityControl[i]);
+
+            constraints.leftPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
+                                                                                                          "Left", i,velocityActivationXY,
+                                                                                                          st.velocityMaximumDerivative(0),
+                                                                                                          st.velocityMaximumDerivative(1));
+            ok = ocp->addConstraint(constraints.leftPlanarVelocityControl[i]);
+            if (!ok) {
+                return false;
+            }
+
+            constraints.leftNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
+                                                                                                          "Left", i, velocityActivationZ,
+                                                                                                          st.velocityMaximumDerivative(2));
+            ok = ocp->addConstraint(constraints.leftNormalVelocityControl[i]);
             if (!ok) {
                 return false;
             }
@@ -556,6 +571,13 @@ public:
             if (!ok) {
                 return false;
             }
+
+//            constraints.leftComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
+//                                                                                                      "Left", i, st.complementarityDissipation);
+//            ok = ocp->addConstraint(constraints.leftComplementarity[i]);
+//            if (!ok) {
+//                return false;
+//            }
 
             constraints.leftContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateStructure, controlStructure, "Left", i);
 
@@ -583,11 +605,19 @@ public:
 
         for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
 
-            constraints.rightContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                              "Right", i, velocityActivationZ,
-                                                                                                              velocityActivationXY,
-                                                                                                              st.velocityMaximumDerivative);
-            ok = ocp->addConstraint(constraints.rightContactsVelocityControl[i]);
+            constraints.rightPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
+                                                                                                          "Right", i,velocityActivationXY,
+                                                                                                          st.velocityMaximumDerivative(0),
+                                                                                                          st.velocityMaximumDerivative(1));
+            ok = ocp->addConstraint(constraints.rightPlanarVelocityControl[i]);
+            if (!ok) {
+                return false;
+            }
+
+            constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
+                                                                                                          "Right", i, velocityActivationZ,
+                                                                                                          st.velocityMaximumDerivative(2));
+            ok = ocp->addConstraint(constraints.rightNormalVelocityControl[i]);
             if (!ok) {
                 return false;
             }
@@ -600,6 +630,13 @@ public:
             if (!ok) {
                 return false;
             }
+
+//            constraints.rightComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
+//                                                                                                      "Right", i, st.complementarityDissipation);
+//            ok = ocp->addConstraint(constraints.rightComplementarity[i]);
+//            if (!ok) {
+//                return false;
+//            }
 
             constraints.rightContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateStructure, controlStructure, "Right", i);
 

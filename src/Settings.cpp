@@ -57,6 +57,7 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
                          "The leftFrameName does not appear in the model.");
     errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.rightFrameName)),
                          "The rightFrameName does not appear in the model.");
+    errors += checkError(inputSettings.complementarityDissipation < 0, "The complementarityDissipation is expected to be non-negative.");
     errors += checkError(inputSettings.frictionCoefficient < 0, "The frictionCoefficient is expected to be non-negative.");
     errors += checkError(inputSettings.indexOfLateralDirection > 2, "The indexOfLateralDirection is expected to be in the range [0, 2].");
     errors += checkError(inputSettings.minimumFeetDistance < 0, "The minimumDistance is expected to be non-negative.");
@@ -171,6 +172,9 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::toEigen(defaults.forceMaximumDerivative).setConstant(10.0);
     defaults.normalForceDissipationRatio = 10.0;
     defaults.normalForceHyperbolicSecantScaling = 300.0;
+
+    //Dynamical Complementarity Constraint
+    defaults.complementarityDissipation = 10.0;
 
     //ContactFrictionConstraint
     defaults.frictionCoefficient = 0.3;

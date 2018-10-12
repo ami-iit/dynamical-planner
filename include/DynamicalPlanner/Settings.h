@@ -51,6 +51,9 @@ namespace DynamicalPlanner {
         double planarVelocityHyperbolicTangentScaling;
         double normalVelocityHyperbolicSecantScaling;
 
+        //Dynamical Complementarity Constraint
+        double complementarityDissipation;
+
         //Feet lateral distance constraint
         unsigned int indexOfLateralDirection;
         double minimumFeetDistance;

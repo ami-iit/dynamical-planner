@@ -69,14 +69,16 @@ set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/CentroidalMomentumConstraint.h
                              include/DynamicalPlannerPrivate/HyperbolicSecant.h
                              include/DynamicalPlannerPrivate/ContactForceControlConstraints.h
-                             include/DynamicalPlannerPrivate/ContactVelocityControlConstraints.h
+                             include/DynamicalPlannerPrivate/NormalVelocityControlConstraints.h
+                             include/DynamicalPlannerPrivate/PlanarVelocityControlConstraints.h
                              include/DynamicalPlannerPrivate/Constraints.h
                              include/DynamicalPlannerPrivate/FrameOrientationCost.h
                              include/DynamicalPlannerPrivate/ForceMeanCost.h
                              include/DynamicalPlannerPrivate/StaticTorquesCost.h
                              include/DynamicalPlannerPrivate/Costs.h
                              include/DynamicalPlannerPrivate/SmoothingFunction.h
-                             include/DynamicalPlannerPrivate/HyperbolicTangent.h)
+                             include/DynamicalPlannerPrivate/HyperbolicTangent.h
+                             include/DynamicalPlannerPrivate/DynamicalComplementarityConstraint.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp
@@ -90,7 +92,8 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/CentroidalMomentumConstraint.cpp
                      src/HyperbolicSecant.cpp
                      src/ContactForceControlConstraints.cpp
-                     src/ContactVelocityControlConstraints.cpp
+                     src/NormalVelocityControlConstraints.cpp
+                     src/PlanarVelocityControlConstraints.cpp
                      src/FrameOrientationCost.cpp
                      src/ForceMeanCost.cpp
                      src/StaticTorquesCost.cpp
@@ -99,7 +102,8 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/State.cpp
                      src/Control.cpp
                      src/SmoothingFunction.cpp
-                     src/HyperbolicTangent.cpp)
+                     src/HyperbolicTangent.cpp
+                     src/DynamicalComplementarityConstraint.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

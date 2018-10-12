@@ -25,12 +25,14 @@ typedef struct {
     std::shared_ptr<DynamicalConstraints> dynamical;
     std::shared_ptr<CentroidalMomentumConstraint> centroidalMomentum;
     std::shared_ptr<CoMPositionConstraint> comPosition;
-    std::vector<std::shared_ptr<ContactVelocityControlConstraints>> leftContactsVelocityControl, rightContactsVelocityControl;
+    std::vector<std::shared_ptr<NormalVelocityControlConstraints>> leftNormalVelocityControl, rightNormalVelocityControl;
+    std::vector<std::shared_ptr<PlanarVelocityControlConstraints>> leftPlanarVelocityControl, rightPlanarVelocityControl;
     std::vector<std::shared_ptr<ContactForceControlConstraints>> leftContactsForceControl, rightContactsForceControl;
     std::vector<std::shared_ptr<ContactFrictionConstraint>> leftContactsFriction, rightContactsFriction;
     std::vector<std::shared_ptr<ContactPositionConsistencyConstraint>> leftContactsPosition, rightContactsPosition;
     std::shared_ptr<FeetLateralDistanceConstraint> feetLateralDistance;
     std::shared_ptr<QuaternionNormConstraint> quaternionNorm;
+    std::vector<std::shared_ptr<DynamicalComplementarityConstraint>> leftComplementarity, rightComplementarity;
 } ConstraintSet;
 
 void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, const std::string& footName, size_t numberOfPoints) {
@@ -102,6 +104,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
     double forceMaximumDerivative = 10.0;
     double forceDissipationRatios = 10.0;
+    double complementarityDissipation = 10.0;
     iDynTree::toEigen(velocityMaximumDerivative).setConstant(10.0);
 
     HyperbolicSecant forceActivation, velocityActivationZ;
@@ -116,15 +119,19 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     ASSERT_IS_TRUE(leftPositions.size() == rightPositions.size());
     size_t numberOfPoints = leftPositions.size();
 
-    constraints.leftContactsVelocityControl.resize(numberOfPoints);
+    constraints.leftNormalVelocityControl.resize(numberOfPoints);
+    constraints.leftPlanarVelocityControl.resize(numberOfPoints);
     constraints.leftContactsForceControl.resize(numberOfPoints);
     constraints.leftContactsFriction.resize(numberOfPoints);
     constraints.leftContactsPosition.resize(numberOfPoints);
+    constraints.leftComplementarity.resize(numberOfPoints);
 
-    constraints.rightContactsVelocityControl.resize(numberOfPoints);
+    constraints.rightNormalVelocityControl.resize(numberOfPoints);
+    constraints.rightPlanarVelocityControl.resize(numberOfPoints);
     constraints.rightContactsForceControl.resize(numberOfPoints);
     constraints.rightContactsFriction.resize(numberOfPoints);
     constraints.rightContactsPosition.resize(numberOfPoints);
+    constraints.rightComplementarity.resize(numberOfPoints);
 
 
     bool ok = false;
@@ -133,11 +140,18 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     ASSERT_IS_TRUE(ok);
 
     for (size_t i = 0; i < numberOfPoints; ++i) {
-        constraints.leftContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
-                                                                                                         "Left", i, velocityActivationZ,
-                                                                                                         velocityActivationXY,
-                                                                                                         velocityMaximumDerivative);
-        ok = ocProblem.addConstraint(constraints.leftContactsVelocityControl[i]);
+        constraints.leftNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateVariables, controlVariables,
+                                                                                                      "Left", i, velocityActivationZ,
+                                                                                                      velocityMaximumDerivative(2));
+        ok = ocProblem.addConstraint(constraints.leftNormalVelocityControl[i]);
+        ASSERT_IS_TRUE(ok);
+
+
+        constraints.leftPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateVariables, controlVariables,
+                                                                                                      "Left", i,velocityActivationXY,
+                                                                                                      velocityMaximumDerivative(0),
+                                                                                                      velocityMaximumDerivative(1));
+        ok = ocProblem.addConstraint(constraints.leftPlanarVelocityControl[i]);
         ASSERT_IS_TRUE(ok);
 
         constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Left",
@@ -156,11 +170,23 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ok = ocProblem.addConstraint(constraints.leftContactsPosition[i]);
         ASSERT_IS_TRUE(ok);
 
-        constraints.rightContactsVelocityControl[i] = std::make_shared<ContactVelocityControlConstraints>(stateVariables, controlVariables,
-                                                                                                         "Right", i, velocityActivationZ,
-                                                                                                          velocityActivationXY,
-                                                                                                          velocityMaximumDerivative);
-        ok = ocProblem.addConstraint(constraints.rightContactsVelocityControl[i]);
+        constraints.leftComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateVariables, controlVariables,
+                                                                                                  "Left", i, complementarityDissipation);
+        ok = ocProblem.addConstraint(constraints.leftComplementarity[i]);
+        ASSERT_IS_TRUE(ok);
+
+        constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateVariables, controlVariables,
+                                                                                                      "Right", i, velocityActivationZ,
+                                                                                                      velocityMaximumDerivative(2));
+        ok = ocProblem.addConstraint(constraints.rightNormalVelocityControl[i]);
+        ASSERT_IS_TRUE(ok);
+
+
+        constraints.rightPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateVariables, controlVariables,
+                                                                                                      "Right", i,velocityActivationXY,
+                                                                                                      velocityMaximumDerivative(0),
+                                                                                                      velocityMaximumDerivative(1));
+        ok = ocProblem.addConstraint(constraints.rightPlanarVelocityControl[i]);
         ASSERT_IS_TRUE(ok);
 
         constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Right",
@@ -177,6 +203,11 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
                                                                                                      sharedKinDyn, rightFrame, "Right",
                                                                                                      rightPositions[i], i);
         ok = ocProblem.addConstraint(constraints.rightContactsPosition[i]);
+        ASSERT_IS_TRUE(ok);
+
+        constraints.rightComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateVariables, controlVariables,
+                                                                                                  "Right", i, complementarityDissipation);
+        ok = ocProblem.addConstraint(constraints.rightComplementarity[i]);
         ASSERT_IS_TRUE(ok);
     }
     constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables, sharedKinDyn);

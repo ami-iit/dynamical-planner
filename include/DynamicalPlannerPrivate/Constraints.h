@@ -12,8 +12,10 @@
 #include <DynamicalPlannerPrivate/ContactForceControlConstraints.h>
 #include <DynamicalPlannerPrivate/ContactFrictionConstraint.h>
 #include <DynamicalPlannerPrivate/ContactPositionConsistencyConstraint.h>
-#include <DynamicalPlannerPrivate/ContactVelocityControlConstraints.h>
+#include <DynamicalPlannerPrivate/NormalVelocityControlConstraints.h>
+#include <DynamicalPlannerPrivate/PlanarVelocityControlConstraints.h>
 #include <DynamicalPlannerPrivate/FeetLateralDistanceConstraint.h>
 #include <DynamicalPlannerPrivate/QuaternionNormConstraint.h>
+#include <DynamicalPlannerPrivate/DynamicalComplementarityConstraint.h>
 
 #endif // DPLANNER_CONSTRAINTS_H
