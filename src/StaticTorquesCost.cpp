@@ -50,7 +50,8 @@ public:
     double costValue;
 
     RobotState robotState;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
 
     void updateVariables (){
@@ -176,11 +177,11 @@ private:
         }
 
         assert(footFrame != iDynTree::FRAME_INVALID_INDEX);
-        assert(sharedKinDyn->model().isValidFrameIndex(footFrame));
+        assert(timedSharedKinDyn->model().isValidFrameIndex(footFrame));
 
         foot.footFrame = footFrame;
-        foot.associatedLinkIndex = sharedKinDyn->model().getFrameLink(footFrame);
-        foot.frameTransform = sharedKinDyn->model().getFrameTransform(footFrame);
+        foot.associatedLinkIndex = timedSharedKinDyn->model().getFrameLink(footFrame);
+        foot.frameTransform = timedSharedKinDyn->model().getFrameTransform(footFrame);
         foot.mixedToBodyTransform = iDynTree::Transform::Identity();
 
         foot.frameJacobianBuffer.resize(6, static_cast<unsigned int>(6 + jointsPositionRange.size));
@@ -203,7 +204,7 @@ private:
 
 
 
-StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
+StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                                      const iDynTree::FrameIndex &leftFootFrame, const iDynTree::FrameIndex &rightFootFrame, const std::vector<iDynTree::Position> &positionsInLeftFoot,
                                      const std::vector<iDynTree::Position> &positionsInRightFoot)
     : iDynTree::optimalcontrol::Cost ("StaticTorques")
@@ -212,9 +213,9 @@ StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, co
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
 
-    assert(sharedKinDyn);
-    assert(sharedKinDyn->isValid());
-    m_pimpl->sharedKinDyn = sharedKinDyn;
+    assert(timelySharedKinDyn);
+    assert(timelySharedKinDyn->isValid());
+    m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
 
     m_pimpl->basePositionRange = m_pimpl->stateVariables.getIndexRange("BasePosition");
     assert(m_pimpl->basePositionRange.isValid());
@@ -228,9 +229,8 @@ StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, co
     m_pimpl->prepareFootVariables("Left", leftFootFrame, positionsInLeftFoot, m_pimpl->leftVariables);
     m_pimpl->prepareFootVariables("Right", rightFootFrame, positionsInRightFoot, m_pimpl->rightVariables);
 
-    m_pimpl->robotState = sharedKinDyn->currentState();
-    m_pimpl->contactWrenches.resize(sharedKinDyn->model());
-    m_pimpl->generalizedStaticTorques.resize(sharedKinDyn->model());
+    m_pimpl->contactWrenches.resize(timelySharedKinDyn->model());
+    m_pimpl->generalizedStaticTorques.resize(timelySharedKinDyn->model());
 
     unsigned int n = static_cast<unsigned int>(m_pimpl->jointsPositionRange.size);
     m_pimpl->weights.resize(n);
@@ -263,10 +263,11 @@ bool StaticTorquesCost::setWeights(const iDynTree::VectorDynSize &torquesWeights
     return true;
 }
 
-void StaticTorquesCost::computeStaticTorques(const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &staticTorques)
+void StaticTorquesCost::computeStaticTorques(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &staticTorques)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateVariables();
 
@@ -276,10 +277,10 @@ void StaticTorquesCost::computeStaticTorques(const iDynTree::VectorDynSize &stat
     staticTorques = m_pimpl->generalizedStaticTorques.jointTorques();
 }
 
-bool StaticTorquesCost::costEvaluation(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, double &costValue)
+bool StaticTorquesCost::costEvaluation(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, double &costValue)
 {
 
-    computeStaticTorques(state, control, m_pimpl->staticTorques);
+    computeStaticTorques(time, state, control, m_pimpl->staticTorques);
 
     m_pimpl->costValue = 0.5 * iDynTree::toEigen(m_pimpl->staticTorques).transpose() * iDynTree::toEigen(m_pimpl->weights).asDiagonal() * iDynTree::toEigen(m_pimpl->staticTorques);
 
@@ -288,10 +289,11 @@ bool StaticTorquesCost::costEvaluation(double, const iDynTree::VectorDynSize &st
     return true;
 }
 
-void StaticTorquesCost::computeStaticTorquesJacobian(const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &staticTorquesJacobian)
+void StaticTorquesCost::computeStaticTorquesJacobian(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &staticTorquesJacobian)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateVariables();
 
@@ -319,12 +321,12 @@ void StaticTorquesCost::computeStaticTorquesJacobian(const iDynTree::VectorDynSi
     staticTorquesJacobian = m_pimpl->fullJacobianBuffer;
 }
 
-bool StaticTorquesCost::costFirstPartialDerivativeWRTState(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &partialDerivative)
+bool StaticTorquesCost::costFirstPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &partialDerivative)
 {
     unsigned int n = static_cast<unsigned int>(m_pimpl->jointsPositionRange.size);
 
-    computeStaticTorques(state, control, m_pimpl->staticTorques);
-    computeStaticTorquesJacobian(state, control, m_pimpl->fullJacobianBuffer);
+    computeStaticTorques(time, state, control, m_pimpl->staticTorques);
+    computeStaticTorquesJacobian(time, state, control, m_pimpl->fullJacobianBuffer);
 
     iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
     iDynTree::iDynTreeEigenMatrixMap fullJacobianMap = iDynTree::toEigen(m_pimpl->fullJacobianBuffer);

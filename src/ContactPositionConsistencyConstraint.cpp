@@ -36,7 +36,8 @@ public:
     iDynTree::Position basePosition;
 
     RobotState robotState;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
     bool updateDoneOnceConstraint = false;
     bool updateDoneOnceStateJacobian = false;
@@ -93,7 +94,7 @@ public:
 
 ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const VariablesLabeller& stateVariables,
                                                                            const VariablesLabeller& controlVariables,
-                                                                           std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
+                                                                           std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                                                                            iDynTree::FrameIndex footFrame, const std::string &footName,
                                                                            const iDynTree::Position &positionInFoot, size_t contactIndex)
     : iDynTree::optimalcontrol::Constraint(3, "ContactPositionConsistency" + footName + std::to_string(contactIndex))
@@ -102,10 +103,10 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
 
-    assert(sharedKinDyn);
-    assert(sharedKinDyn->isValid());
+    assert(timelySharedKinDyn);
+    assert(timelySharedKinDyn->isValid());
 
-    m_pimpl->sharedKinDyn = sharedKinDyn;
+    m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
     m_pimpl->footFrame = footFrame;
     assert(footFrame != iDynTree::FRAME_INVALID_INDEX);
     m_pimpl->footName = footName;
@@ -123,8 +124,7 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     m_pimpl->controlJacobianBuffer.resize(3, static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
 
-    m_pimpl->robotState = sharedKinDyn->currentState();
-    m_pimpl->tolerance = sharedKinDyn->getUpdateTolerance();
+    m_pimpl->tolerance = timelySharedKinDyn->getUpdateTolerance();
 
     iDynTree::toEigen(m_pimpl->footTransformationBuffer).leftCols<3>().setIdentity();
 
@@ -147,9 +147,10 @@ void ContactPositionConsistencyConstraint::setEqualityTolerance(double tolerance
     iDynTree::toEigen(m_upperBound).setConstant(tolerance/2.0);
 }
 
-bool ContactPositionConsistencyConstraint::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
+bool ContactPositionConsistencyConstraint::evaluateConstraint(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
@@ -165,9 +166,10 @@ bool ContactPositionConsistencyConstraint::evaluateConstraint(double, const iDyn
     return true;
 }
 
-bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &jacobian)
+bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &jacobian)
 {
     m_pimpl->stateVariables = state;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 

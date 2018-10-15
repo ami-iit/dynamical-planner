@@ -141,10 +141,15 @@ int main() {
     DynamicalPlanner::Solver solver;
     DynamicalPlanner::Settings settings;
 
+//    std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
+//                                         "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
+//                                         "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
+//                                         "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
+
     std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
-                                         "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
-                                         "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
-                                         "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
+                                         "r_shoulder_pitch", "r_shoulder_roll", "l_hip_pitch", "l_hip_roll", "l_hip_yaw",
+                                         "l_knee", "l_ankle_pitch", "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw",
+                                         "r_knee", "r_ankle_pitch", "r_ankle_roll"});
 
 //    std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
 //                                         "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
@@ -168,30 +173,37 @@ int main() {
 
     iDynTree::VectorDynSize desiredInitialJoints(static_cast<unsigned int>(modelLoader.model().getNrOfDOFs()));
 
-    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, -7, 22, 11, 30, -7, 22, 11, 30, 5.082, 0.406, -0.131,
-                                              -45.249, -26.454, -0.351, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351;
+//    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, -7, 22, 11, 30, -7, 22, 11, 30, 5.082, 0.406, -0.131,
+//                                              -45.249, -26.454, -0.351, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351;
 
-    iDynTree::toEigen(desiredInitialJoints) *= iDynTree::deg2rad(1.0);
+    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, -7, 22, -7, 22, 5.082, 0.406, -0.131, -45.249,
+                                             -26.454, -0.351, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351;
 
 //    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351, 5.082,
 //                                               0.406, -0.131, -45.249, -26.454, -0.351;
 
+    iDynTree::toEigen(desiredInitialJoints) *= iDynTree::deg2rad(1.0);
+
+
     fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, initialState);
 
-    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.5, 0.0);
+    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 1.0, 0.0);
 
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
-    settingsStruct.frameCostActive = false;
-    settingsStruct.staticTorquesCostActive = false;
-    settingsStruct.forceMeanCostActive = false;
+    settingsStruct.frameCostActive = true;
+    settingsStruct.staticTorquesCostActive = true;
+    settingsStruct.forceMeanCostActive = true;
     settingsStruct.comCostActive = true;
-    settingsStruct.forceDerivativeCostActive = false;
-    settingsStruct.pointAccelerationCostActive = false;
-    settingsStruct.jointsRegularizationCostActive = false;
-    settingsStruct.jointsVelocityCostActive = false;
+    settingsStruct.forceDerivativeCostActive = true;
+    settingsStruct.pointAccelerationCostActive = true;
+    settingsStruct.jointsRegularizationCostActive = true;
+    settingsStruct.jointsVelocityCostActive = true;
+
+    settingsStruct.jointsVelocityCostOverallWeight = 1e-4;
+    settingsStruct.staticTorquesCostOverallWeight = 1e-5;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -202,7 +214,7 @@ int main() {
     settingsStruct.maximumDt = 1.0;
 
     settingsStruct.comPositionConstraintTolerance = 1e-2;
-    settingsStruct.centroidalMomentumConstraintTolerance = 1e-1;
+    settingsStruct.centroidalMomentumConstraintTolerance = 1e-2;
     settingsStruct.quaternionModulusConstraintTolerance = 1e-2;
     settingsStruct.pointPositionConstraintTolerance = 5e-3;
 
@@ -265,8 +277,13 @@ int main() {
     worhpSolver->setWorhpParam("TolComp", 1e-5);
     worhpSolver->setWorhpParam("AcceptTolOpti", 1e-3);
     worhpSolver->setWorhpParam("AcceptTolFeas", 1e-3);
-    worhpSolver->setWorhpParam("Crossover", 2);
-    worhpSolver->setWorhpParam("FeasibleDual", true);
+    worhpSolver->setWorhpParam("Algorithm", 1);
+    worhpSolver->setWorhpParam("LineSearchMethod", 3);
+    worhpSolver->setWorhpParam("ArmijoMinAlpha", 5.0e-10);
+    worhpSolver->setWorhpParam("ArmijoMinAlphaRec", 1e-9);
+
+//    worhpSolver->setWorhpParam("Crossover", 2);
+//    worhpSolver->setWorhpParam("FeasibleDual", true);
 
 
 

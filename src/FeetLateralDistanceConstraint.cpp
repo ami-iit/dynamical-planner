@@ -25,7 +25,8 @@ public:
     double feetDistance = 0.0;
 
     RobotState robotState;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
     bool updateDoneOnceConstraint = false;
     bool updateDoneOnceStateJacobian = false;
@@ -49,7 +50,7 @@ public:
 
 FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabeller& stateVariables,
                                                              const VariablesLabeller& controlVariables,
-                                                             std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
+                                                             std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                                                              unsigned int lateralIndex, iDynTree::FrameIndex referenceFootFrame,
                                                              iDynTree::FrameIndex otherFootFrame)
     : iDynTree::optimalcontrol::Constraint (1, "FeetLateralConstraint")
@@ -58,9 +59,9 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
 
-    assert(sharedKinDyn);
-    assert(sharedKinDyn->isValid());
-    m_pimpl->sharedKinDyn = sharedKinDyn;
+    assert(timelySharedKinDyn);
+    assert(timelySharedKinDyn->isValid());
+    m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
     assert(lateralIndex < 3);
     m_pimpl->lateralIndex = lateralIndex;
     assert(referenceFootFrame != iDynTree::FRAME_INVALID_INDEX);
@@ -78,8 +79,7 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
     m_pimpl->controlJacobianBuffer.resize(1, static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
 
-    m_pimpl->robotState = sharedKinDyn->currentState();
-    m_pimpl->tolerance = sharedKinDyn->getUpdateTolerance();
+    m_pimpl->tolerance = timelySharedKinDyn->getUpdateTolerance();
 
     m_lowerBound(0) = 0.1;
 
@@ -102,9 +102,10 @@ bool FeetLateralDistanceConstraint::setMinimumDistance(double minDistance)
     return true;
 }
 
-bool FeetLateralDistanceConstraint::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
+bool FeetLateralDistanceConstraint::evaluateConstraint(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
         m_pimpl->updateDoneOnceConstraint = true;
@@ -118,9 +119,10 @@ bool FeetLateralDistanceConstraint::evaluateConstraint(double, const iDynTree::V
     return true;
 }
 
-bool FeetLateralDistanceConstraint::constraintJacobianWRTState(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &jacobian)
+bool FeetLateralDistanceConstraint::constraintJacobianWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &jacobian)
 {
     m_pimpl->stateVariables = state;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 

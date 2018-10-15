@@ -18,10 +18,12 @@
 #include <iDynTree/Model/FreeFloatingState.h>
 #include <mutex>
 #include <vector>
+#include <memory>
 
 namespace DynamicalPlanner {
     namespace Private {
-        class SharedKinDynComputation;
+        class SharedKinDynComputations;
+        typedef std::shared_ptr<SharedKinDynComputations> SharedKinDynComputationsPointer;
 
         typedef struct {
             iDynTree::Transform world_T_base;
@@ -42,7 +44,7 @@ namespace DynamicalPlanner {
     }
 }
 
-class DynamicalPlanner::Private::SharedKinDynComputation {
+class DynamicalPlanner::Private::SharedKinDynComputations {
 
     iDynTree::KinDynComputations m_kinDyn;
     std::mutex m_mutex;
@@ -60,8 +62,6 @@ class DynamicalPlanner::Private::SharedKinDynComputation {
     iDynTree::FreeFloatingGeneralizedTorques m_generalizedStaticTorques;
     std::vector<std::vector<iDynTree::SpatialForceVector>> m_childrenForceDerivatives;
     std::vector<iDynTree::SpatialForceVector> m_zeroDerivatives;
-
-
 
     bool m_updateNecessary;
     double m_tol;
@@ -81,7 +81,9 @@ class DynamicalPlanner::Private::SharedKinDynComputation {
 
 public:
 
-    SharedKinDynComputation();
+    SharedKinDynComputations();
+
+    SharedKinDynComputations(const SharedKinDynComputations& other);
 
     //Setup
 
@@ -100,6 +102,8 @@ public:
     double getUpdateTolerance() const;
 
     bool setFloatingBase(const std::string & floatingBaseName);
+
+    std::string getFloatingBase() const;
 
     //
 

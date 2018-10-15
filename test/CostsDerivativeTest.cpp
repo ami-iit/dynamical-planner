@@ -6,7 +6,7 @@
  */
 
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Costs.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <iDynTree/Core/TestUtils.h>
@@ -34,7 +34,7 @@ void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& cont
     }
 }
 
-void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, size_t numberOfPoints, std::shared_ptr<SharedKinDynComputation> sharedKinDyn) {
+void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, size_t numberOfPoints, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn) {
 
     setFootVariables(stateVariables, controlVariables, "Left", numberOfPoints);
     setFootVariables(stateVariables, controlVariables, "Right", numberOfPoints);
@@ -52,17 +52,17 @@ void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlV
     ok = stateVariables.addLabel("BaseQuaternion", 4);
     ASSERT_IS_TRUE(ok);
 
-    ok = stateVariables.addLabel("JointsPosition", sharedKinDyn->model().getNrOfDOFs());
+    ok = stateVariables.addLabel("JointsPosition", timelySharedKinDyn->model().getNrOfDOFs());
     ASSERT_IS_TRUE(ok);
 
     ok = controlVariables.addLabel("BaseVelocity", 6);
     ASSERT_IS_TRUE(ok);
 
-    ok = controlVariables.addLabel("JointsVelocity", sharedKinDyn->model().getNrOfDOFs());
+    ok = controlVariables.addLabel("JointsVelocity", timelySharedKinDyn->model().getNrOfDOFs());
     ASSERT_IS_TRUE(ok);
 }
 
-void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn) {
+void configureSharedKinDyn(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn) {
     std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
                                          "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
                                          "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
@@ -77,14 +77,21 @@ void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn
     ASSERT_IS_TRUE(ok);
     ok = modelLoader.loadReducedModelFromFullModel(modelLoader.model(), vectorList);
     ASSERT_IS_TRUE(ok);
-    assert(sharedKinDyn);
-    ok = sharedKinDyn->loadRobotModel(modelLoader.model());
+    assert(timelySharedKinDyn);
+    ok = timelySharedKinDyn->loadRobotModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
 //    ASSERT_IS_TRUE(sharedKinDyn->model().getNrOfDOFs() == 23);
+    std::vector<double> timings(2);
+    timings[0] = 0.0;
+    timings[1] = 1.0;
+
+    ok = timelySharedKinDyn->setTimings(timings);
+    ASSERT_IS_TRUE(ok);
+
 }
 
 void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                    std::shared_ptr<SharedKinDynComputation> sharedKinDyn, const std::vector<iDynTree::Position>& leftPositions,
+                    std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const std::vector<iDynTree::Position>& leftPositions,
                     const std::vector<iDynTree::Position>& rightPositions, std::shared_ptr<StaticTorquesCost>& staticTorquesCost,
                     iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
     bool ok = false;
@@ -101,21 +108,21 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> comCost = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("CoMCost", stateVariables.getIndexRange("CoMPosition"),
                                                                                                                            stateVariables.size(),iDynTree::IndexRange::InvalidRange(),
                                                                                                                            controlVariables.size());
-    ok = ocProblem.addLagrangeTerm(1.0, comCost);
+    ok = ocProblem.addLagrangeTerm(0.5, comCost);
     ASSERT_IS_TRUE(ok);
-    std::shared_ptr<FrameOrientationCost> orientationCost = std::make_shared<FrameOrientationCost>(stateVariables, controlVariables, sharedKinDyn, 22);
-    ok = ocProblem.addLagrangeTerm(1.0, orientationCost);
+    std::shared_ptr<FrameOrientationCost> orientationCost = std::make_shared<FrameOrientationCost>(stateVariables, controlVariables, timelySharedKinDyn, 22);
+    ok = ocProblem.addLagrangeTerm(0.5, orientationCost);
     ASSERT_IS_TRUE(ok);
 
-    iDynTree::FrameIndex leftFrame = sharedKinDyn->model().getFrameIndex("l_sole"),
-            rightFrame = sharedKinDyn->model().getFrameIndex("r_sole");
-    staticTorquesCost = std::make_shared<StaticTorquesCost>(stateVariables, controlVariables, sharedKinDyn, leftFrame, rightFrame, leftPositions, rightPositions);
-    ok = ocProblem.addLagrangeTerm(1.0, staticTorquesCost);
+    iDynTree::FrameIndex leftFrame = timelySharedKinDyn->model().getFrameIndex("l_sole"),
+            rightFrame = timelySharedKinDyn->model().getFrameIndex("r_sole");
+    staticTorquesCost = std::make_shared<StaticTorquesCost>(stateVariables, controlVariables, timelySharedKinDyn, leftFrame, rightFrame, leftPositions, rightPositions);
+    ok = ocProblem.addLagrangeTerm(0.5, staticTorquesCost);
     ASSERT_IS_TRUE(ok);
 
 }
 
-void checkCostsDerivative(const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
+void checkCostsDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
                                 double perturbation, iDynTree::optimalcontrol::OptimalControlProblem &ocProblem) {
     double originalCost, perturbedCost, firstOrderTaylor;
 
@@ -124,13 +131,13 @@ void checkCostsDerivative(const iDynTree::VectorDynSize& originalStateVector, co
 
     bool ok = false;
 
-    ok = ocProblem.costsEvaluation(0.0, originalStateVector, originalControlVector, originalCost);
+    ok = ocProblem.costsEvaluation(time, originalStateVector, originalControlVector, originalCost);
     ASSERT_IS_TRUE(ok);
 
-    ok = ocProblem.costsFirstPartialDerivativeWRTState(0.0, originalStateVector, originalControlVector, stateJacobian);
+    ok = ocProblem.costsFirstPartialDerivativeWRTState(time, originalStateVector, originalControlVector, stateJacobian);
     ASSERT_IS_TRUE(ok);
 
-    ok = ocProblem.costsFirstPartialDerivativeWRTControl(0.0, originalStateVector, originalControlVector, controlJacobian);
+    ok = ocProblem.costsFirstPartialDerivativeWRTControl(time, originalStateVector, originalControlVector, controlJacobian);
     ASSERT_IS_TRUE(ok);
 
     for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
@@ -156,7 +163,7 @@ void checkCostsDerivative(const iDynTree::VectorDynSize& originalStateVector, co
     }
 }
 
-void checkFrameOrientationDerivative(const iDynTree::Rotation& desiredRotation, const iDynTree::FrameIndex& testFrame, double perturbation, std::shared_ptr<SharedKinDynComputation> sharedKinDyn, const VariablesLabeller& stateVariables) {
+void checkFrameOrientationDerivative(const iDynTree::Rotation& desiredRotation, const iDynTree::FrameIndex& testFrame, double perturbation, std::shared_ptr<SharedKinDynComputations> sharedKinDyn, const VariablesLabeller& stateVariables) {
     iDynTree::VectorDynSize perturbedControl, firstOrderTaylor(4);
     VariablesLabeller perturbedState = stateVariables;
     iDynTree::MatrixDynSize stateJacobian;
@@ -270,18 +277,18 @@ void checkFrameOrientationDerivative(const iDynTree::Rotation& desiredRotation, 
     }
 }
 
-void checkStaticForcesJacobian(const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
+void checkStaticForcesJacobian(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
         double perturbation, std::shared_ptr<StaticTorquesCost> staticTorques, unsigned int initialIndex) {
     iDynTree::VectorDynSize originalTorques, perturbedTorques, perturbedState, perturbedControl, firstOrderTaylor;
     iDynTree::MatrixDynSize stateJacobian;
 
 
-    staticTorques->computeStaticTorques(originalStateVector, originalControlVector, originalTorques);
+    staticTorques->computeStaticTorques(time, originalStateVector, originalControlVector, originalTorques);
 
     perturbedTorques = originalTorques;
     firstOrderTaylor = originalTorques;
 
-    staticTorques->computeStaticTorquesJacobian(originalStateVector, originalControlVector, stateJacobian);
+    staticTorques->computeStaticTorquesJacobian(time, originalStateVector, originalControlVector, stateJacobian);
 
 //    std::cerr << "Jacobian: " << std::endl << stateJacobian.toString() << std::endl;
 
@@ -291,7 +298,7 @@ void checkStaticForcesJacobian(const iDynTree::VectorDynSize& originalStateVecto
         perturbedState = originalStateVector;
         perturbedState(i) = perturbedState(i) + perturbation;
 
-        staticTorques->computeStaticTorques(perturbedState, originalControlVector, perturbedTorques);
+        staticTorques->computeStaticTorques(time, perturbedState, originalControlVector, perturbedTorques);
 
         iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalTorques) +
                 iDynTree::toEigen(stateJacobian) * (iDynTree::toEigen(perturbedState) - iDynTree::toEigen(originalStateVector));
@@ -302,7 +309,7 @@ void checkStaticForcesJacobian(const iDynTree::VectorDynSize& originalStateVecto
 
 int main() {
     VariablesLabeller stateVariables, controlVariables;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn = std::make_shared<SharedKinDynComputation>();
+    std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn = std::make_shared<TimelySharedKinDynComputations>();
     iDynTree::optimalcontrol::OptimalControlProblem ocProblem;
 
     std::vector<iDynTree::Position> leftPositions, rightPositions;
@@ -317,13 +324,13 @@ int main() {
     rightPositions.push_back(iDynTree::Position(-0.063, -0.04, 0.0));
     rightPositions.push_back(iDynTree::Position( 0.063,  0.04, 0.0));
 
-    configureSharedKinDyn(sharedKinDyn);
-    setVariables(stateVariables, controlVariables, leftPositions.size(), sharedKinDyn);
+    configureSharedKinDyn(timelySharedKinDyn);
+    setVariables(stateVariables, controlVariables, leftPositions.size(), timelySharedKinDyn);
 
 
     std::shared_ptr<StaticTorquesCost> staticTorquesPtr;
 
-    configureCosts(stateVariables, controlVariables, sharedKinDyn, leftPositions, rightPositions, staticTorquesPtr, ocProblem);
+    configureCosts(stateVariables, controlVariables, timelySharedKinDyn, leftPositions, rightPositions, staticTorquesPtr, ocProblem);
 
     iDynTree::VectorDynSize stateVector, controlVector;
     stateVector.resize(static_cast<unsigned int>(stateVariables.size()));
@@ -331,13 +338,15 @@ int main() {
     controlVector.resize(static_cast<unsigned int>(controlVariables.size()));
     iDynTree::getRandomVector(controlVector);
 
-    checkStaticForcesJacobian(stateVector, controlVector, 0.001, staticTorquesPtr, 0);
+    checkStaticForcesJacobian(0.0, stateVector, controlVector, 0.001, staticTorquesPtr, 0);
 
-    checkCostsDerivative(stateVector, controlVector, 0.0001, ocProblem);
+    checkCostsDerivative(0.0, stateVector, controlVector, 0.0001, ocProblem);
+    checkCostsDerivative(1.0, stateVector, controlVector, 0.0001, ocProblem);
+
 
     stateVariables = stateVector;
 
     iDynTree::Rotation desiredRotation = iDynTree::getRandomRotation();//iDynTree::Rotation::Identity();
 
-    checkFrameOrientationDerivative(desiredRotation, 0, 0.01, sharedKinDyn, stateVariables);
+    checkFrameOrientationDerivative(desiredRotation, 0, 0.01, timelySharedKinDyn->get(0.0), stateVariables);
 }

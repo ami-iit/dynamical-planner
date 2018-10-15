@@ -11,7 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -28,16 +28,16 @@ class DynamicalPlanner::Private::FeetLateralDistanceConstraint : public  iDynTre
 public:
 
     FeetLateralDistanceConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
-                                  std::shared_ptr<SharedKinDynComputation> sharedKinDyn, unsigned int lateralIndex,
+                                  std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, unsigned int lateralIndex,
                                   iDynTree::FrameIndex referenceFootFrame, iDynTree::FrameIndex otherFootFrame);
 
     ~FeetLateralDistanceConstraint() override;
 
     bool setMinimumDistance(double minDistance);
 
-    virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
+    virtual bool evaluateConstraint(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
 
-    virtual bool constraintJacobianWRTState(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
+    virtual bool constraintJacobianWRTState(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
 
     virtual bool constraintJacobianWRTControl(double, const iDynTree::VectorDynSize&, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
 

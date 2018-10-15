@@ -14,7 +14,7 @@
 
 using namespace DynamicalPlanner::Private;
 
-void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn, iDynTree::LinkNetExternalWrenches &linkExtForces) {
+void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputations> sharedKinDyn, iDynTree::LinkNetExternalWrenches &linkExtForces) {
     std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
                                          "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
                                          "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
@@ -38,7 +38,7 @@ void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn
     linkExtForces.resize(model);
 }
 
-void validateStaticForcesDerivative(RobotState& robotState, std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
+void validateStaticForcesDerivative(RobotState& robotState, std::shared_ptr<SharedKinDynComputations> sharedKinDyn,
                                     const iDynTree::LinkNetExternalWrenches &linkExtForces) {
     double perturbationValue = 1e-2;
     RobotState perturbedState = robotState;
@@ -72,7 +72,7 @@ void validateStaticForcesDerivative(RobotState& robotState, std::shared_ptr<Shar
 
 int main() {
 
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn = std::make_shared<SharedKinDynComputation>();
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn = std::make_shared<SharedKinDynComputations>();
     iDynTree::LinkNetExternalWrenches linkExtForces;
     configureSharedKinDyn(sharedKinDyn, linkExtForces);
 

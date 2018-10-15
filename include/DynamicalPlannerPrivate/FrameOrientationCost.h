@@ -13,7 +13,7 @@
 #include <iDynTree/Core/Rotation.h>
 #include <iDynTree/TimeVaryingObject.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -29,7 +29,7 @@ class DynamicalPlanner::Private::FrameOrientationCost : public iDynTree::optimal
 
 public:
 
-    FrameOrientationCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn, const iDynTree::FrameIndex& desiredFrame);
+    FrameOrientationCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const iDynTree::FrameIndex& desiredFrame);
 
     ~FrameOrientationCost() override;
 

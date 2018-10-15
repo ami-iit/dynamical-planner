@@ -255,8 +255,8 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
 
     //Joints velocity regularization
     defaults.jointsVelocityCostActive = true;
-    defaults.jointsVelocityCostOverallWeight = 0.0001;
-    defaults.desiredJointsVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredJointsConfiguration);;
+    defaults.jointsVelocityCostOverallWeight = 0.001;
+    defaults.desiredJointsVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredJointsConfiguration);
     defaults.jointsVelocityCostWeights = defaults.jointsRegularizationWeights;
 
     //Static torques

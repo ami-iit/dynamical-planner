@@ -113,7 +113,7 @@ iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::RotatedVectorQuaternion
 bool DynamicalPlanner::Private::QuaternionBoundsRespected(const iDynTree::Vector4 &quaternion)
 {
     bool ok = true;
-    ok = ok && quaternion(0) >= -0.1;
+    ok = ok && quaternion(0) >= -1.0;
     ok = ok && quaternion(0) <= 1.0 + 1E-6;
     for (unsigned int i = 1; i < 4; ++i) {
         ok = ok && quaternion(i) >= -1.0 - 1E-6;

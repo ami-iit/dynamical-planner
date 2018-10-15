@@ -11,7 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -27,23 +27,23 @@ class DynamicalPlanner::Private::CentroidalMomentumConstraint : public iDynTree:
 
 public:
 
-    CentroidalMomentumConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn);
+    CentroidalMomentumConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn);
 
     void setEqualityTolerance(double tolerance);
 
     ~CentroidalMomentumConstraint() override;
 
-    virtual bool evaluateConstraint(double,
+    virtual bool evaluateConstraint(double time,
                                     const iDynTree::VectorDynSize& state,
                                     const iDynTree::VectorDynSize& control,
                                     iDynTree::VectorDynSize& constraint) override;
 
-    virtual bool constraintJacobianWRTState(double,
+    virtual bool constraintJacobianWRTState(double time,
                                             const iDynTree::VectorDynSize& state,
                                             const iDynTree::VectorDynSize& control,
                                             iDynTree::MatrixDynSize& jacobian) override;
 
-    virtual bool constraintJacobianWRTControl(double,
+    virtual bool constraintJacobianWRTControl(double time,
                                               const iDynTree::VectorDynSize& state,
                                               const iDynTree::VectorDynSize& control,
                                               iDynTree::MatrixDynSize& jacobian) override;

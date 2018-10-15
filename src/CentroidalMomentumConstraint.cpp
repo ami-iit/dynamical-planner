@@ -32,7 +32,8 @@ public:
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
 
     RobotState robotState;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
     bool updateDoneOnceConstraint = false;
     bool updateDoneOnceStateJacobian = false;
@@ -116,13 +117,13 @@ public:
 
 
 
-CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn)
+CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
     : iDynTree::optimalcontrol::Constraint (3, "CentroidalMomentum")
     , m_pimpl(new Implementation)
 {
-    assert(sharedKinDyn);
-    assert(sharedKinDyn->isValid());
-    m_pimpl->sharedKinDyn = sharedKinDyn;
+    assert(timelySharedKinDyn);
+    assert(timelySharedKinDyn->isValid());
+    m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
 
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
@@ -148,8 +149,7 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
     m_pimpl->comJacobianBuffer.resize(6, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->comJacobianBuffer.zero();
 
-    m_pimpl->robotState = sharedKinDyn->currentState();
-    m_pimpl->tolerance = sharedKinDyn->getUpdateTolerance();
+    m_pimpl->tolerance = timelySharedKinDyn->getUpdateTolerance();
 
 }
 
@@ -165,10 +165,12 @@ void CentroidalMomentumConstraint::setEqualityTolerance(double tolerance)
 CentroidalMomentumConstraint::~CentroidalMomentumConstraint()
 { }
 
-bool CentroidalMomentumConstraint::evaluateConstraint(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
+bool CentroidalMomentumConstraint::evaluateConstraint(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
@@ -188,10 +190,12 @@ bool CentroidalMomentumConstraint::evaluateConstraint(double /*time*/, const iDy
     return true;
 }
 
-bool CentroidalMomentumConstraint::constraintJacobianWRTState(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &jacobian)
+bool CentroidalMomentumConstraint::constraintJacobianWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &jacobian)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 
@@ -257,10 +261,12 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTState(double /*time*/, c
     return true;
 }
 
-bool CentroidalMomentumConstraint::constraintJacobianWRTControl(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &jacobian)
+bool CentroidalMomentumConstraint::constraintJacobianWRTControl(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &jacobian)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceControlJacobian))) {
 

@@ -11,7 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <iDynTree/Core/Position.h>
 #include <memory>
 #include <string>
@@ -30,7 +30,7 @@ class DynamicalPlanner::Private::ContactPositionConsistencyConstraint : public i
 public:
 
     ContactPositionConsistencyConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                                         std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
+                                         std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                                          iDynTree::FrameIndex footFrame, const std::string &footName,
                                          const iDynTree::Position &positionInFoot, size_t contactIndex);
 
@@ -38,9 +38,9 @@ public:
 
     void setEqualityTolerance(double tolerance);
 
-    virtual bool evaluateConstraint(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
+    virtual bool evaluateConstraint(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
 
-    virtual bool constraintJacobianWRTState(double, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
+    virtual bool constraintJacobianWRTState(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
 
     virtual bool constraintJacobianWRTControl(double, const iDynTree::VectorDynSize&, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
 

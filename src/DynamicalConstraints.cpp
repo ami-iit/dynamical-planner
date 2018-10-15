@@ -31,7 +31,8 @@ public:
     iDynTree::Position basePosition;
     iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized;
     RobotState robotState;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
     typedef struct {
         std::vector<iDynTree::IndexRange> positionPoints, forcePoints, velocityControlPoints, forceControlPoints;
@@ -160,13 +161,13 @@ public:
 };
 
 
-DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn)
+DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
    : iDynTree::optimalcontrol::DynamicalSystem (stateVariables.size(), controlVariables.size())
    , m_pimpl(new Implementation)
 {
-    assert(sharedKinDyn);
-    assert(sharedKinDyn->isValid());
-    m_pimpl->sharedKinDyn = sharedKinDyn;
+    assert(timelySharedKinDyn);
+    assert(timelySharedKinDyn->isValid());
+    m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
     m_pimpl->dynamics = m_pimpl->stateVariables;
@@ -174,7 +175,7 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
 
     m_pimpl->totalMass = 0.0;
 
-    const iDynTree::Model & model = sharedKinDyn->model();
+    const iDynTree::Model & model = timelySharedKinDyn->model();
 
     for(size_t l=0; l < model.getNrOfLinks(); l++)
     {
@@ -237,10 +238,12 @@ DynamicalConstraints::~DynamicalConstraints()
 
 }
 
-bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double /*time*/, iDynTree::VectorDynSize &stateDynamics)
+bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double time, iDynTree::VectorDynSize &stateDynamics)
 {
     m_pimpl->stateVariables = state; //this line must remain before those computing the feet related quantities
     m_pimpl->controlVariables = controlInput(); //this line must remain before those computing the feet related quantities
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
 
@@ -266,10 +269,11 @@ bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double
     return true;
 }
 
-bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDynSize &state, double /*time*/, iDynTree::MatrixDynSize &dynamicsDerivative)
+bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDynSize &state, double time, iDynTree::MatrixDynSize &dynamicsDerivative)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = controlInput();
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
 //    m_pimpl->comPosition = m_pimpl->sharedKinDyn->getCenterOfMassPosition(m_pimpl->robotState);
@@ -299,10 +303,12 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
     return true;
 }
 
-bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::VectorDynSize &state, double /*time*/, iDynTree::MatrixDynSize &dynamicsDerivative)
+bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::VectorDynSize &state, double time, iDynTree::MatrixDynSize &dynamicsDerivative)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = controlInput();
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
 

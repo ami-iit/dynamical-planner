@@ -14,7 +14,7 @@
 
 using namespace DynamicalPlanner::Private;
 
-void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn) {
+void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputations> sharedKinDyn) {
     std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
                                          "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
                                          "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
@@ -35,7 +35,7 @@ void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn
 //    ASSERT_IS_TRUE(sharedKinDyn->model().getNrOfDOFs() == 23);
 }
 
-void validateMomentumDerivative(RobotState& robotState, std::shared_ptr<SharedKinDynComputation> sharedKinDyn) {
+void validateMomentumDerivative(RobotState& robotState, std::shared_ptr<SharedKinDynComputations> sharedKinDyn) {
     double perturbationValue = 1e-2;
     RobotState perturbedState = robotState;
     iDynTree::SpatialMomentum originalMomentum, perturbedMomentum;
@@ -62,7 +62,7 @@ void validateMomentumDerivative(RobotState& robotState, std::shared_ptr<SharedKi
     }
 }
 
-void validateVelocityDerivative(RobotState& robotState, std::shared_ptr<SharedKinDynComputation> sharedKinDyn) {
+void validateVelocityDerivative(RobotState& robotState, std::shared_ptr<SharedKinDynComputations> sharedKinDyn) {
     double perturbationValue = 1e-2;
     RobotState perturbedState = robotState;
     iDynTree::Twist originalVelocity, perturbedVelocity;
@@ -90,7 +90,7 @@ void validateVelocityDerivative(RobotState& robotState, std::shared_ptr<SharedKi
 
 int main() {
 
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn = std::make_shared<SharedKinDynComputation>();
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn = std::make_shared<SharedKinDynComputations>();
     configureSharedKinDyn(sharedKinDyn);
 
     RobotState robotState;

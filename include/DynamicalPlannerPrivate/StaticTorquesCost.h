@@ -11,7 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -28,7 +28,7 @@ class DynamicalPlanner::Private::StaticTorquesCost : public iDynTree::optimalcon
 public:
 
     StaticTorquesCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                      std::shared_ptr<SharedKinDynComputation> sharedKinDyn, const iDynTree::FrameIndex &leftFootFrame,
+                      std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const iDynTree::FrameIndex &leftFootFrame,
                       const iDynTree::FrameIndex &rightFootFrame, const std::vector<iDynTree::Position> &positionsInLeftFoot,
                       const std::vector<iDynTree::Position> &positionsInRightFoot);
 
@@ -36,17 +36,17 @@ public:
 
     bool setWeights(const iDynTree::VectorDynSize& torquesWeights);
 
-    void computeStaticTorques(const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize& staticTorques); //DEBUG
+    void computeStaticTorques(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize& staticTorques); //DEBUG
 
-    virtual bool costEvaluation(double,
+    virtual bool costEvaluation(double time,
                                 const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&control,
                                 double& costValue) override;
 
-    void computeStaticTorquesJacobian(const iDynTree::VectorDynSize& state,
+    void computeStaticTorquesJacobian(double time, const iDynTree::VectorDynSize& state,
                                       const iDynTree::VectorDynSize& control,
                                       iDynTree::MatrixDynSize& staticTorquesJacobian); //DEBUG
 
-    virtual bool costFirstPartialDerivativeWRTState(double,
+    virtual bool costFirstPartialDerivativeWRTState(double time,
                                                     const iDynTree::VectorDynSize& state,
                                                     const iDynTree::VectorDynSize& control,
                                                     iDynTree::VectorDynSize& partialDerivative) override;

@@ -29,7 +29,8 @@ public:
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
 
     RobotState robotState;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
     std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredTrajectory;
 
@@ -70,21 +71,21 @@ public:
 
 };
 
-FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn, const iDynTree::FrameIndex &desiredFrame)
+FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const iDynTree::FrameIndex &desiredFrame)
     : iDynTree::optimalcontrol::Cost ("FrameOrientation")
     , m_pimpl(new Implementation())
 {
-    assert(sharedKinDyn);
-    assert(sharedKinDyn->isValid());
+    assert(timelySharedKinDyn);
+    assert(timelySharedKinDyn->isValid());
     assert(desiredFrame != iDynTree::FRAME_INVALID_INDEX);
-    assert(sharedKinDyn->model().isValidFrameIndex(desiredFrame));
+    assert(timelySharedKinDyn->model().isValidFrameIndex(desiredFrame));
 
     m_pimpl->desiredFrame = desiredFrame;
 
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
 
-    m_pimpl->sharedKinDyn = sharedKinDyn;
+    m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
 
     m_pimpl->basePositionRange = m_pimpl->stateVariables.getIndexRange("BasePosition");
     assert(m_pimpl->basePositionRange.isValid());
@@ -106,7 +107,6 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
     m_pimpl->reducedGradientBuffer.resize(7 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->reducedGradientBuffer.zero();
 
-    m_pimpl->robotState = sharedKinDyn->currentState();
     m_pimpl->desiredTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantRotation>(iDynTree::Rotation::Identity());
     m_pimpl->identityQuaternion = iDynTree::Rotation::Identity().asQuaternion();
 
@@ -133,6 +133,7 @@ bool FrameOrientationCost::costEvaluation(double time, const iDynTree::VectorDyn
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceCost, time, m_pimpl->lastUpdateTimeCost))) {
 
@@ -168,6 +169,7 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian, time, m_pimpl->lastUpdateTimeStateJacobian))) {
 

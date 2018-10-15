@@ -33,7 +33,8 @@ public:
     iDynTree::MatrixFixSize<3, 4> notNormalizedQuaternionMap;
 
     RobotState robotState;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
     bool updateDoneOnceConstraint = false;
     bool updateDoneOnceStateJacobian = false;
@@ -72,13 +73,13 @@ public:
 };
 
 
-CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn)
+CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
     : iDynTree::optimalcontrol::Constraint (3, "CoMPosition")
     , m_pimpl(new Implementation)
 {
-    assert(sharedKinDyn);
-    assert(sharedKinDyn->isValid());
-    m_pimpl->sharedKinDyn = sharedKinDyn;
+    assert(timelySharedKinDyn);
+    assert(timelySharedKinDyn->isValid());
+    m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
 
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
@@ -108,8 +109,7 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
     m_pimpl->controlJacobianBuffer.resize(3, static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
 
-    m_pimpl->robotState = sharedKinDyn->currentState();
-    m_pimpl->tolerance = sharedKinDyn->getUpdateTolerance();
+    m_pimpl->tolerance = timelySharedKinDyn->getUpdateTolerance();
 }
 
 CoMPositionConstraint::~CoMPositionConstraint()
@@ -123,9 +123,10 @@ void CoMPositionConstraint::setEqualityTolerance(double tolerance)
     iDynTree::toEigen(m_upperBound).setConstant(tolerance/2.0);
 }
 
-bool CoMPositionConstraint::evaluateConstraint(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::VectorDynSize &constraint)
+bool CoMPositionConstraint::evaluateConstraint(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
@@ -141,9 +142,10 @@ bool CoMPositionConstraint::evaluateConstraint(double /*time*/, const iDynTree::
 
 }
 
-bool CoMPositionConstraint::constraintJacobianWRTState(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &jacobian)
+bool CoMPositionConstraint::constraintJacobianWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &jacobian)
 {
     m_pimpl->stateVariables = state;
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 

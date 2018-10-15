@@ -78,7 +78,8 @@ set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/Costs.h
                              include/DynamicalPlannerPrivate/SmoothingFunction.h
                              include/DynamicalPlannerPrivate/HyperbolicTangent.h
-                             include/DynamicalPlannerPrivate/DynamicalComplementarityConstraint.h)
+                             include/DynamicalPlannerPrivate/DynamicalComplementarityConstraint.h
+                             include/DynamicalPlannerPrivate/TimelySharedKinDynComputations.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp
@@ -103,7 +104,8 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/Control.cpp
                      src/SmoothingFunction.cpp
                      src/HyperbolicTangent.cpp
-                     src/DynamicalComplementarityConstraint.cpp)
+                     src/DynamicalComplementarityConstraint.cpp
+                     src/TimelySharedKinDynComputations.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

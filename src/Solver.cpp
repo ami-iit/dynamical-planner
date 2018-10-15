@@ -11,7 +11,7 @@
 #include <DynamicalPlannerPrivate/Constraints.h>
 #include <DynamicalPlannerPrivate/DynamicalConstraints.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 
 #include <iDynTree/OptimalControlProblem.h>
@@ -188,7 +188,7 @@ public:
     std::shared_ptr<iDynTree::optimalcontrol::integrators::Integrator> integrationMethod = nullptr;
     std::shared_ptr<iDynTree::optimalcontrol::OptimalControlProblem> ocProblem;
     std::shared_ptr<iDynTree::optimalcontrol::MultipleShootingSolver> multipleShootingSolver;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn;
+    std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn;
 
     CostsSet costs;
     ConstraintSet constraints;
@@ -287,7 +287,7 @@ public:
         }
 
         if (st.frameCostActive) {
-            costs.frameOrientation = std::make_shared<FrameOrientationCost>(stateStructure, controlStructure, sharedKinDyn,
+            costs.frameOrientation = std::make_shared<FrameOrientationCost>(stateStructure, controlStructure, timelySharedKinDyn,
                                                                             st.robotModel.getFrameIndex(st.frameForOrientationCost));
 
             ok = costs.frameOrientation->setDesiredRotationTrajectory(st.desiredRotationTrajectory);
@@ -364,7 +364,7 @@ public:
         }
 
         if (st.staticTorquesCostActive) {
-            costs.staticTorques = std::make_shared<StaticTorquesCost>(stateStructure, controlStructure, sharedKinDyn,
+            costs.staticTorques = std::make_shared<StaticTorquesCost>(stateStructure, controlStructure, timelySharedKinDyn,
                                                                       st.robotModel.getFrameIndex(st.leftFrameName),
                                                                       st.robotModel.getFrameIndex(st.rightFrameName),
                                                                       st.leftPointsPosition, st.rightPointsPosition);
@@ -510,21 +510,21 @@ public:
 
         bool ok = false;
 
-        constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateStructure, controlStructure, sharedKinDyn);
+        constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateStructure, controlStructure, timelySharedKinDyn);
         constraints.centroidalMomentum->setEqualityTolerance(st.centroidalMomentumConstraintTolerance);
         ok = ocp->addConstraint(constraints.centroidalMomentum);
         if (!ok) {
             return false;
         }
 
-        constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateStructure, controlStructure, sharedKinDyn);
+        constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateStructure, controlStructure, timelySharedKinDyn);
         constraints.comPosition->setEqualityTolerance(st.comPositionConstraintTolerance);
         ok = ocp->addConstraint(constraints.comPosition);
         if (!ok) {
             return false;
         }
 
-        constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateStructure, controlStructure, sharedKinDyn,
+        constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateStructure, controlStructure, timelySharedKinDyn,
                                                                                           st.indexOfLateralDirection,
                                                                                           st.robotModel.getFrameIndex(
                                                                                               st.referenceFrameNameForFeetDistance),
@@ -592,7 +592,7 @@ public:
             }
 
             constraints.leftContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateStructure, controlStructure,
-                                                                                                         sharedKinDyn, leftFrame, "Left",
+                                                                                                         timelySharedKinDyn, leftFrame, "Left",
                                                                                                          st.leftPointsPosition[i], i);
 
             constraints.leftContactsPosition[i]->setEqualityTolerance(st.pointPositionConstraintTolerance);
@@ -651,7 +651,7 @@ public:
             }
 
             constraints.rightContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateStructure, controlStructure,
-                                                                                                          sharedKinDyn, rightFrame, "Right",
+                                                                                                          timelySharedKinDyn, rightFrame, "Right",
                                                                                                           st.rightPointsPosition[i], i);
 
             constraints.rightContactsPosition[i]->setEqualityTolerance(st.pointPositionConstraintTolerance);
@@ -906,8 +906,8 @@ bool Solver::specifySettings(const Settings &settings)
         return false;
     }
 
-    m_pimpl->sharedKinDyn = std::make_shared<SharedKinDynComputation>();
-    ok = m_pimpl->sharedKinDyn->loadRobotModel(st.robotModel);
+    m_pimpl->timelySharedKinDyn = std::make_shared<TimelySharedKinDynComputations>();
+    ok = m_pimpl->timelySharedKinDyn->loadRobotModel(st.robotModel);
 
     if (!ok) {
         std::cerr << "[ERROR][Solver::specifySettings] Failed to configure SharedKinDynComputationsObject." << std::endl;
@@ -916,7 +916,7 @@ bool Solver::specifySettings(const Settings &settings)
 
     m_pimpl->constraints.dynamical = std::make_shared<DynamicalConstraints>(m_pimpl->stateStructure,
                                                                             m_pimpl->controlStructure,
-                                                                            m_pimpl->sharedKinDyn);
+                                                                            m_pimpl->timelySharedKinDyn);
 
     m_pimpl->ocProblem = std::make_shared<iDynTree::optimalcontrol::OptimalControlProblem>();
 
@@ -1018,6 +1018,13 @@ bool Solver::specifySettings(const Settings &settings)
 
     if (!ok) {
         std::cerr << "[ERROR][Solver::specifySettings] Failed to get the possible timings." << std::endl;
+        return false;
+    }
+
+    ok = m_pimpl->timelySharedKinDyn->setTimings(m_pimpl->stateTimings);
+
+    if (!ok) {
+        std::cerr << "[ERROR][Solver::specifySettings] Failed to set the timings to TimelySharedKinDynComputations object." << std::endl;
         return false;
     }
 
@@ -1140,7 +1147,10 @@ bool Solver::solve(std::vector<State> &optimalStates, std::vector<Control> &opti
 
     if (m_pimpl->stateGuess && m_pimpl->controlGuess) {
         ok = m_pimpl->multipleShootingSolver->setGuesses(m_pimpl->stateGuess, m_pimpl->controlGuess);
-
+        if (!ok) {
+            std::cerr << "[ERROR][Solver::solve] Failed to set guesses." << std::endl;
+            return false;
+        }
     }
 
     ok = m_pimpl->multipleShootingSolver->solve();

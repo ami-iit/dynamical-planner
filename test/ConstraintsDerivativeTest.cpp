@@ -77,7 +77,7 @@ void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlV
     ASSERT_IS_TRUE(ok);
 }
 
-void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn) {
+void configureSharedKinDyn(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn) {
     std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
                                          "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
                                          "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
@@ -90,15 +90,21 @@ void configureSharedKinDyn(std::shared_ptr<SharedKinDynComputation> sharedKinDyn
     ASSERT_IS_TRUE(ok);
     ok = modelLoader.loadReducedModelFromFullModel(modelLoader.model(), vectorList);
     ASSERT_IS_TRUE(ok);
-    assert(sharedKinDyn);
-    ok = sharedKinDyn->loadRobotModel(modelLoader.model());
+    assert(timelySharedKinDyn);
+    ok = timelySharedKinDyn->loadRobotModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
 //    ASSERT_IS_TRUE(sharedKinDyn->model().getNrOfDOFs() == 23);
+    std::vector<double> timings(2);
+    timings[0] = 0.0;
+    timings[1] = 1.0;
+
+    ok = timelySharedKinDyn->setTimings(timings);
+    ASSERT_IS_TRUE(ok);
 }
 
 void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTree::Position>& leftPositions,
                            const std::vector<iDynTree::Position>& rightPositions, const VariablesLabeller& stateVariables,
-                           const VariablesLabeller& controlVariables, std::shared_ptr<SharedKinDynComputation> sharedKinDyn,
+                           const VariablesLabeller& controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                            iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
     iDynTree::Vector3 velocityMaximumDerivative;
 
@@ -113,8 +119,8 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     velocityActivationXY.setScaling(1.0);
     velocityActivationZ.setScaling(1.0);
 
-    iDynTree::FrameIndex leftFrame = sharedKinDyn->model().getFrameIndex("l_sole"),
-            rightFrame = sharedKinDyn->model().getFrameIndex("r_sole");
+    iDynTree::FrameIndex leftFrame = timelySharedKinDyn->model().getFrameIndex("l_sole"),
+            rightFrame = timelySharedKinDyn->model().getFrameIndex("r_sole");
 
     ASSERT_IS_TRUE(leftPositions.size() == rightPositions.size());
     size_t numberOfPoints = leftPositions.size();
@@ -135,7 +141,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
 
     bool ok = false;
-    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, sharedKinDyn);
+    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn);
     ok = ocProblem.setDynamicalSystemConstraint(constraints.dynamical);
     ASSERT_IS_TRUE(ok);
 
@@ -165,7 +171,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ASSERT_IS_TRUE(ok);
 
         constraints.leftContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
-                                                                                                     sharedKinDyn, leftFrame, "Left",
+                                                                                                     timelySharedKinDyn, leftFrame, "Left",
                                                                                                      leftPositions[i], i);
         ok = ocProblem.addConstraint(constraints.leftContactsPosition[i]);
         ASSERT_IS_TRUE(ok);
@@ -200,7 +206,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ASSERT_IS_TRUE(ok);
 
         constraints.rightContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
-                                                                                                     sharedKinDyn, rightFrame, "Right",
+                                                                                                     timelySharedKinDyn, rightFrame, "Right",
                                                                                                      rightPositions[i], i);
         ok = ocProblem.addConstraint(constraints.rightContactsPosition[i]);
         ASSERT_IS_TRUE(ok);
@@ -210,15 +216,15 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ok = ocProblem.addConstraint(constraints.rightComplementarity[i]);
         ASSERT_IS_TRUE(ok);
     }
-    constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables, sharedKinDyn);
+    constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables, timelySharedKinDyn);
     ok = ocProblem.addConstraint(constraints.centroidalMomentum);
     ASSERT_IS_TRUE(ok);
 
-    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, sharedKinDyn);
+    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, timelySharedKinDyn);
     ok = ocProblem.addConstraint(constraints.comPosition);
     ASSERT_IS_TRUE(ok);
 
-    constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, sharedKinDyn,
+    constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, timelySharedKinDyn,
                                                                                       1, rightFrame, leftFrame);
     ok = ocProblem.addConstraint(constraints.feetLateralDistance);
     ASSERT_IS_TRUE(ok);
@@ -228,7 +234,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     ASSERT_IS_TRUE(ok);
 }
 
-void checkDynamicalConstraintDerivative(const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
+void checkDynamicalConstraintDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
                                         double perturbation, ConstraintSet& constraints) {
     iDynTree::VectorDynSize originalDynamics, perturbedDynamics, perturbedState, perturbedControl, firstOrderTaylor;
     iDynTree::MatrixDynSize stateJacobian, controlJacobian;
@@ -237,15 +243,15 @@ void checkDynamicalConstraintDerivative(const iDynTree::VectorDynSize& originalS
     firstOrderTaylor = originalDynamics;
     bool ok = constraints.dynamical->setControlInput(originalControlVector);
     ASSERT_IS_TRUE(ok);
-    ok = constraints.dynamical->dynamics(originalStateVector, 0.0, originalDynamics);
+    ok = constraints.dynamical->dynamics(originalStateVector, time, originalDynamics);
     ASSERT_IS_TRUE(ok);
 //    std::cerr << "Original dynamics:" << std::endl << originalDynamics.toString() << std::endl;
 
 
-    ok = constraints.dynamical->dynamicsStateFirstDerivative(originalStateVector, 0.0, stateJacobian);
+    ok = constraints.dynamical->dynamicsStateFirstDerivative(originalStateVector, time, stateJacobian);
     ASSERT_IS_TRUE(ok);
 
-    ok = constraints.dynamical->dynamicsControlFirstDerivative(originalStateVector, 0.0, controlJacobian);
+    ok = constraints.dynamical->dynamicsControlFirstDerivative(originalStateVector, time, controlJacobian);
     ASSERT_IS_TRUE(ok);
 
     for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
@@ -275,7 +281,7 @@ void checkDynamicalConstraintDerivative(const iDynTree::VectorDynSize& originalS
     }
 }
 
-void checkConstraintsDerivative(const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
+void checkConstraintsDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
                                 double perturbation, iDynTree::optimalcontrol::OptimalControlProblem &ocProblem) {
 
     iDynTree::VectorDynSize originalConstraints, perturbedConstraints, perturbedState, perturbedControl, firstOrderTaylor;
@@ -287,13 +293,13 @@ void checkConstraintsDerivative(const iDynTree::VectorDynSize& originalStateVect
     firstOrderTaylor = originalConstraints;
     bool ok = false;
 
-    ok = ocProblem.constraintsEvaluation(0.0, originalStateVector, originalControlVector, originalConstraints);
+    ok = ocProblem.constraintsEvaluation(time, originalStateVector, originalControlVector, originalConstraints);
     ASSERT_IS_TRUE(ok);
 
-    ok = ocProblem.constraintsJacobianWRTState(0.0, originalStateVector, originalControlVector, stateJacobian);
+    ok = ocProblem.constraintsJacobianWRTState(time, originalStateVector, originalControlVector, stateJacobian);
     ASSERT_IS_TRUE(ok);
 
-    ok = ocProblem.constraintsJacobianWRTControl(0.0, originalStateVector, originalControlVector, controlJacobian);
+    ok = ocProblem.constraintsJacobianWRTControl(time, originalStateVector, originalControlVector, controlJacobian);
     ASSERT_IS_TRUE(ok);
 
     for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
@@ -326,12 +332,12 @@ void checkConstraintsDerivative(const iDynTree::VectorDynSize& originalStateVect
 int main() {
 
     VariablesLabeller stateVariables, controlVariables;
-    std::shared_ptr<SharedKinDynComputation> sharedKinDyn = std::make_shared<SharedKinDynComputation>();
+    std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn = std::make_shared<TimelySharedKinDynComputations>();
     ConstraintSet constraints;
     iDynTree::optimalcontrol::OptimalControlProblem ocProblem;
 
-    configureSharedKinDyn(sharedKinDyn);
-    setVariables(stateVariables, controlVariables, 4, sharedKinDyn->model().getNrOfDOFs());
+    configureSharedKinDyn(timelySharedKinDyn);
+    setVariables(stateVariables, controlVariables, 4, timelySharedKinDyn->model().getNrOfDOFs());
     std::vector<iDynTree::Position> leftPositions, rightPositions;
     leftPositions.resize(4);
     iDynTree::toEigen(leftPositions[0]) << 0.125, -0.04, 0.0;
@@ -344,7 +350,7 @@ int main() {
     iDynTree::toEigen(rightPositions[2]) << -0.063, -0.04, 0.0;
     iDynTree::toEigen(rightPositions[3]) << 0.063,  0.04, 0.0;
 
-    initializeConstraints(constraints, leftPositions, rightPositions, stateVariables, controlVariables, sharedKinDyn, ocProblem);
+    initializeConstraints(constraints, leftPositions, rightPositions, stateVariables, controlVariables, timelySharedKinDyn, ocProblem);
 
     iDynTree::VectorDynSize stateVector, controlVector;
     stateVector.resize(static_cast<unsigned int>(stateVariables.size()));
@@ -355,9 +361,13 @@ int main() {
 //    std::cerr << "Original control:" << std::endl << controlVector.toString() << std::endl;
 
 
-    checkDynamicalConstraintDerivative(stateVector, controlVector, 0.01, constraints);
+    checkDynamicalConstraintDerivative(0.0, stateVector, controlVector, 0.01, constraints);
 
-    checkConstraintsDerivative(stateVector, controlVector, 0.001, ocProblem);
+    checkConstraintsDerivative(0.0, stateVector, controlVector, 0.001, ocProblem);
+
+    checkDynamicalConstraintDerivative(1.0, stateVector, controlVector, 0.01, constraints);
+
+    checkConstraintsDerivative(1.0, stateVector, controlVector, 0.001, ocProblem);
 
     return EXIT_SUCCESS;
 }

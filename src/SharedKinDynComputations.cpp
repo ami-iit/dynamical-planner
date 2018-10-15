@@ -14,7 +14,7 @@
 
 using namespace DynamicalPlanner::Private;
 
-bool SharedKinDynComputation::sameState(const RobotState &other)
+bool SharedKinDynComputations::sameState(const RobotState &other)
 {
     if (VectorsAreEqual(other.world_T_base.getPosition(), m_state.world_T_base.getPosition(), m_tol)
             && VectorsAreEqual(other.world_T_base.getRotation().asQuaternion(), m_state.world_T_base.getRotation().asQuaternion(), m_tol)
@@ -26,7 +26,7 @@ bool SharedKinDynComputation::sameState(const RobotState &other)
     return false;
 }
 
-bool SharedKinDynComputation::updateRobotState(const RobotState &currentState)
+bool SharedKinDynComputations::updateRobotState(const RobotState &currentState)
 {
     if (m_updateNecessary || !sameState(currentState)) {
         m_kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION); //The base_velocity saved in the robot state is supposed to be in body frame
@@ -40,7 +40,7 @@ bool SharedKinDynComputation::updateRobotState(const RobotState &currentState)
     return true;
 }
 
-void SharedKinDynComputation::fillJointsInfo()
+void SharedKinDynComputations::fillJointsInfo()
 {
     const iDynTree::Model& model = m_kinDyn.model();
     m_childrenForceDerivatives.resize(model.getNrOfLinks());
@@ -56,7 +56,7 @@ void SharedKinDynComputation::fillJointsInfo()
     }
 }
 
-void SharedKinDynComputation::updateChildBuffersForMomentumDerivative()
+void SharedKinDynComputations::updateChildBuffersForMomentumDerivative()
 {
     iDynTree::LinkIndex baseIndex = m_kinDyn.model().getLinkIndex(m_kinDyn.getFloatingBase());
     assert(baseIndex != iDynTree::LINK_INVALID_INDEX);
@@ -74,7 +74,7 @@ void SharedKinDynComputation::updateChildBuffersForMomentumDerivative()
     }
 }
 
-void SharedKinDynComputation::computeChildStaticForceDerivative(const iDynTree::LinkWrenches &linkStaticForces)
+void SharedKinDynComputations::computeChildStaticForceDerivative(const iDynTree::LinkWrenches &linkStaticForces)
 {
 
     iDynTree::LinkIndex childLink, parentLink;
@@ -101,7 +101,7 @@ void SharedKinDynComputation::computeChildStaticForceDerivative(const iDynTree::
     }
 }
 
-bool SharedKinDynComputation::computeStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces)
+bool SharedKinDynComputations::computeStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces)
 {
     iDynTree::toEigen(m_gravityAccInBaseLinkFrame) =
             iDynTree::toEigen(currentState.world_T_base.getRotation().inverse())*iDynTree::toEigen(m_gravity);
@@ -134,7 +134,7 @@ bool SharedKinDynComputation::computeStaticForces(const RobotState &currentState
     return ok;
 }
 
-SharedKinDynComputation::SharedKinDynComputation()
+SharedKinDynComputations::SharedKinDynComputations()
 {
     m_state.world_T_base.setRotation(iDynTree::Rotation::Identity());
     m_state.world_T_base.setPosition(iDynTree::Position::Zero());
@@ -145,7 +145,26 @@ SharedKinDynComputation::SharedKinDynComputation()
     m_tol = iDynTree::DEFAULT_TOL;
 }
 
-bool SharedKinDynComputation::loadRobotModel(const iDynTree::Model &model)
+SharedKinDynComputations::SharedKinDynComputations(const DynamicalPlanner::Private::SharedKinDynComputations &other)
+{
+    assert(other.isValid());
+
+    m_state.world_T_base.setRotation(iDynTree::Rotation::Identity());
+    m_state.world_T_base.setPosition(iDynTree::Position::Zero());
+    m_state.base_velocity.zero();
+    m_gravity = other.gravity();
+    m_updateNecessary = true;
+
+    loadRobotModel(other.model());
+
+    setToleranceForUpdate(other.getUpdateTolerance());
+
+    setFloatingBase(other.getFloatingBase());
+
+    assert(isValid());
+}
+
+bool SharedKinDynComputations::loadRobotModel(const iDynTree::Model &model)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     bool ok = m_kinDyn.loadRobotModel(model);
@@ -182,17 +201,17 @@ bool SharedKinDynComputation::loadRobotModel(const iDynTree::Model &model)
     return ok;
 }
 
-const iDynTree::Model &SharedKinDynComputation::model() const
+const iDynTree::Model &SharedKinDynComputations::model() const
 {
     return m_kinDyn.model();
 }
 
-bool SharedKinDynComputation::isValid() const
+bool SharedKinDynComputations::isValid() const
 {
     return m_kinDyn.isValid();
 }
 
-void SharedKinDynComputation::setGravity(const iDynTree::Vector3 &gravity)
+void SharedKinDynComputations::setGravity(const iDynTree::Vector3 &gravity)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     if (!VectorsAreEqual(gravity, m_gravity, m_tol))
@@ -201,12 +220,12 @@ void SharedKinDynComputation::setGravity(const iDynTree::Vector3 &gravity)
     m_gravity = gravity;
 }
 
-const iDynTree::Vector3 &SharedKinDynComputation::gravity() const
+const iDynTree::Vector3 &SharedKinDynComputations::gravity() const
 {
     return m_gravity;
 }
 
-bool SharedKinDynComputation::setToleranceForUpdate(double tol)
+bool SharedKinDynComputations::setToleranceForUpdate(double tol)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -219,12 +238,12 @@ bool SharedKinDynComputation::setToleranceForUpdate(double tol)
     return true;
 }
 
-double SharedKinDynComputation::getUpdateTolerance() const
+double SharedKinDynComputations::getUpdateTolerance() const
 {
     return m_tol;
 }
 
-bool SharedKinDynComputation::setFloatingBase(const std::string &floatingBaseName)
+bool SharedKinDynComputations::setFloatingBase(const std::string &floatingBaseName)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -243,17 +262,22 @@ bool SharedKinDynComputation::setFloatingBase(const std::string &floatingBaseNam
     return true;
 }
 
-const iDynTree::Traversal &SharedKinDynComputation::traversal() const
+std::string SharedKinDynComputations::getFloatingBase() const
+{
+    return m_kinDyn.getFloatingBase();
+}
+
+const iDynTree::Traversal &SharedKinDynComputations::traversal() const
 {
     return m_traversal;
 }
 
-const RobotState &SharedKinDynComputation::currentState() const
+const RobotState &SharedKinDynComputations::currentState() const
 {
     return m_state;
 }
 
-iDynTree::Position SharedKinDynComputation::getCenterOfMassPosition(const RobotState &currentState)
+iDynTree::Position SharedKinDynComputations::getCenterOfMassPosition(const RobotState &currentState)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -263,7 +287,7 @@ iDynTree::Position SharedKinDynComputation::getCenterOfMassPosition(const RobotS
     return m_kinDyn.getCenterOfMassPosition();
 }
 
-bool SharedKinDynComputation::getCenterOfMassJacobian(const RobotState &currentState, iDynTree::MatrixDynSize &comJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+bool SharedKinDynComputations::getCenterOfMassJacobian(const RobotState &currentState, iDynTree::MatrixDynSize &comJacobian, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -276,7 +300,7 @@ bool SharedKinDynComputation::getCenterOfMassJacobian(const RobotState &currentS
 
 }
 
-iDynTree::Transform SharedKinDynComputation::getWorldTransform(const RobotState &currentState, std::string frameName)
+iDynTree::Transform SharedKinDynComputations::getWorldTransform(const RobotState &currentState, std::string frameName)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -286,7 +310,7 @@ iDynTree::Transform SharedKinDynComputation::getWorldTransform(const RobotState 
     return m_kinDyn.getWorldTransform(frameName);
 }
 
-iDynTree::Transform SharedKinDynComputation::getWorldTransform(const RobotState &currentState, const iDynTree::FrameIndex frameIndex)
+iDynTree::Transform SharedKinDynComputations::getWorldTransform(const RobotState &currentState, const iDynTree::FrameIndex frameIndex)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -296,7 +320,7 @@ iDynTree::Transform SharedKinDynComputation::getWorldTransform(const RobotState 
     return m_kinDyn.getWorldTransform(frameIndex);
 }
 
-bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &currentState, const std::string &frameName, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+bool SharedKinDynComputations::getFrameFreeFloatingJacobian(const RobotState &currentState, const std::string &frameName, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -308,7 +332,7 @@ bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &cur
     return m_kinDyn.getFrameFreeFloatingJacobian(frameName, outJacobian);
 }
 
-bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &currentState, const iDynTree::FrameIndex frameIndex, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+bool SharedKinDynComputations::getFrameFreeFloatingJacobian(const RobotState &currentState, const iDynTree::FrameIndex frameIndex, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -320,7 +344,7 @@ bool SharedKinDynComputation::getFrameFreeFloatingJacobian(const RobotState &cur
     return m_kinDyn.getFrameFreeFloatingJacobian(frameIndex, outJacobian);
 }
 
-iDynTree::Transform SharedKinDynComputation::getRelativeTransform(const RobotState &currentState,
+iDynTree::Transform SharedKinDynComputations::getRelativeTransform(const RobotState &currentState,
                                                                   const iDynTree::FrameIndex refFrameIndex,
                                                                   const iDynTree::FrameIndex frameIndex)
 {
@@ -332,7 +356,7 @@ iDynTree::Transform SharedKinDynComputation::getRelativeTransform(const RobotSta
     return m_kinDyn.getRelativeTransform(refFrameIndex, frameIndex);
 }
 
-iDynTree::Transform SharedKinDynComputation::getRelativeTransform(const RobotState &currentState,
+iDynTree::Transform SharedKinDynComputations::getRelativeTransform(const RobotState &currentState,
                                                                   const std::string &refFrameName,
                                                                   const std::string &frameName)
 {
@@ -344,7 +368,7 @@ iDynTree::Transform SharedKinDynComputation::getRelativeTransform(const RobotSta
     return m_kinDyn.getRelativeTransform(refFrameName, frameName);
 }
 
-bool SharedKinDynComputation::getRelativeJacobian(const RobotState &currentState, const iDynTree::FrameIndex refFrameIndex, const iDynTree::FrameIndex frameIndex, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+bool SharedKinDynComputations::getRelativeJacobian(const RobotState &currentState, const iDynTree::FrameIndex refFrameIndex, const iDynTree::FrameIndex frameIndex, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -356,7 +380,7 @@ bool SharedKinDynComputation::getRelativeJacobian(const RobotState &currentState
     return m_kinDyn.getRelativeJacobian(refFrameIndex, frameIndex, outJacobian);
 }
 
-iDynTree::Twist SharedKinDynComputation::getFrameVel(const RobotState &currentState, const std::string &frameName, iDynTree::FrameVelocityRepresentation trivialization)
+iDynTree::Twist SharedKinDynComputations::getFrameVel(const RobotState &currentState, const std::string &frameName, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -368,7 +392,7 @@ iDynTree::Twist SharedKinDynComputation::getFrameVel(const RobotState &currentSt
     return m_kinDyn.getFrameVel(frameName);
 }
 
-iDynTree::Twist SharedKinDynComputation::getFrameVel(const RobotState &currentState, const iDynTree::FrameIndex frameIdx, iDynTree::FrameVelocityRepresentation trivialization)
+iDynTree::Twist SharedKinDynComputations::getFrameVel(const RobotState &currentState, const iDynTree::FrameIndex frameIdx, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -380,7 +404,7 @@ iDynTree::Twist SharedKinDynComputation::getFrameVel(const RobotState &currentSt
     return m_kinDyn.getFrameVel(frameIdx);
 }
 
-bool SharedKinDynComputation::getFrameVelJointsDerivative(const RobotState &currentState, const iDynTree::FrameIndex frameIdx, iDynTree::MatrixDynSize &velocityDerivative)
+bool SharedKinDynComputations::getFrameVelJointsDerivative(const RobotState &currentState, const iDynTree::FrameIndex frameIdx, iDynTree::MatrixDynSize &velocityDerivative)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -427,7 +451,7 @@ bool SharedKinDynComputation::getFrameVelJointsDerivative(const RobotState &curr
     return true;
 }
 
-iDynTree::SpatialMomentum SharedKinDynComputation::getLinearAngularMomentum(const RobotState &currentState, iDynTree::FrameVelocityRepresentation trivialization)
+iDynTree::SpatialMomentum SharedKinDynComputations::getLinearAngularMomentum(const RobotState &currentState, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -439,7 +463,7 @@ iDynTree::SpatialMomentum SharedKinDynComputation::getLinearAngularMomentum(cons
     return m_kinDyn.getLinearAngularMomentum();
 }
 
-bool SharedKinDynComputation::getLinearAngularMomentumJacobian(const RobotState &currentState, iDynTree::MatrixDynSize &linAngMomentumJacobian, iDynTree::FrameVelocityRepresentation trivialization)
+bool SharedKinDynComputations::getLinearAngularMomentumJacobian(const RobotState &currentState, iDynTree::MatrixDynSize &linAngMomentumJacobian, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -451,7 +475,7 @@ bool SharedKinDynComputation::getLinearAngularMomentumJacobian(const RobotState 
     return m_kinDyn.getLinearAngularMomentumJacobian(linAngMomentumJacobian);
 }
 
-bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const RobotState &currentState,
+bool SharedKinDynComputations::getLinearAngularMomentumJointsDerivative(const RobotState &currentState,
                                                                        iDynTree::MatrixDynSize &linAngMomentumDerivative)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
@@ -521,7 +545,7 @@ bool SharedKinDynComputation::getLinearAngularMomentumJointsDerivative(const Rob
     return true;
 }
 
-bool SharedKinDynComputation::getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::FreeFloatingGeneralizedTorques& generalizedStaticTorques, iDynTree::LinkWrenches& linkStaticForces)
+bool SharedKinDynComputations::getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::FreeFloatingGeneralizedTorques& generalizedStaticTorques, iDynTree::LinkWrenches& linkStaticForces)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -535,7 +559,7 @@ bool SharedKinDynComputation::getStaticForces(const RobotState &currentState, co
     return true;
 }
 
-bool SharedKinDynComputation::getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::FreeFloatingGeneralizedTorques &generalizedStaticTorques)
+bool SharedKinDynComputations::getStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::FreeFloatingGeneralizedTorques &generalizedStaticTorques)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -549,7 +573,7 @@ bool SharedKinDynComputation::getStaticForces(const RobotState &currentState, co
 }
 
 
-bool SharedKinDynComputation::getStaticForcesJointsDerivative(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::MatrixDynSize &staticTorquesDerivatives)
+bool SharedKinDynComputations::getStaticForcesJointsDerivative(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces, iDynTree::MatrixDynSize &staticTorquesDerivatives)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -643,7 +667,7 @@ bool SharedKinDynComputation::getStaticForcesJointsDerivative(const RobotState &
     return true;
 }
 
-bool SharedKinDynComputation::getFreeFloatingMassMatrix(const RobotState &currentState, iDynTree::MatrixDynSize &freeFloatingMassMatrix, iDynTree::FrameVelocityRepresentation trivialization)
+bool SharedKinDynComputations::getFreeFloatingMassMatrix(const RobotState &currentState, iDynTree::MatrixDynSize &freeFloatingMassMatrix, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
