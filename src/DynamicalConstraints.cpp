@@ -41,6 +41,7 @@ public:
     iDynTree::IndexRange momentumRange, comPositionRange, basePositionRange, baseQuaternionRange, jointsPositionRange, baseVelocityRange, jointsVelocityRange;
 
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 
     void checkFootVariables(const std::string& footName, size_t numberOfPoints, FootRanges& foot) {
         foot.positionPoints.resize(numberOfPoints);
@@ -99,7 +100,7 @@ public:
         }
     }
 
-    void computeFootRelatedStateJacobian(FootRanges& foot) {
+    void computeFootRelatedStateJacobian(const FootRanges& foot) {
         iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(stateJacobianBuffer);
         Eigen::Vector3d distance, appliedForce;
 
@@ -157,6 +158,40 @@ public:
 
 
         robotState.base_velocity = iDynTree::Twist(baseLinVelocity, baseAngVelocity);
+    }
+
+    void setFootRelatedStateSparsity(const FootRanges& foot) {
+
+        for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
+            stateSparsity.addIdentityBlock(momentumRange.offset, foot.forcePoints[i].offset, 3);
+            stateSparsity.addDenseBlock(momentumRange.offset+3, foot.forcePoints[i].offset, 3, 3);
+            stateSparsity.addDenseBlock(momentumRange.offset+3, foot.positionPoints[i].offset, 3, 3);
+        }
+    }
+
+    void setFootRelatedControlSparsity(const FootRanges& foot) {
+        for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
+            controlSparsity.addIdentityBlock(foot.forcePoints[i].offset, foot.forceControlPoints[i].offset, 3);
+            controlSparsity.addIdentityBlock(foot.positionPoints[i].offset, foot.velocityControlPoints[i].offset, 3);
+        }
+    }
+
+    void setSparsity() {
+        stateSparsity.clear();
+        controlSparsity.clear();
+
+        setFootRelatedStateSparsity(leftRanges);
+        setFootRelatedStateSparsity(rightRanges);
+        stateSparsity.addDenseBlock(momentumRange.offset+3, comPositionRange.offset, 3, 3);
+        stateSparsity.addIdentityBlock(comPositionRange.offset, momentumRange.offset, 3);
+        stateSparsity.addDenseBlock(basePositionRange, baseQuaternionRange);
+        stateSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
+
+        setFootRelatedControlSparsity(leftRanges);
+        setFootRelatedControlSparsity(rightRanges);
+        controlSparsity.addDenseBlock(basePositionRange.offset, baseVelocityRange.offset, 3, 3);
+        controlSparsity.addDenseBlock(baseQuaternionRange.offset, baseVelocityRange.offset + 3, 4, 3);
+        controlSparsity.addIdentityBlock(jointsPositionRange.offset, jointsVelocityRange.offset, jointsPositionRange.size);
     }
 };
 
@@ -230,6 +265,8 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
 
     m_pimpl->comjacobianBuffer.resize(3, 6 + static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
     m_pimpl->comjacobianBuffer.zero();
+
+    m_pimpl->setSparsity();
 
 }
 
@@ -325,5 +362,17 @@ bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::Vector
     jacobianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsVelocityRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->jointsVelocityRange.size).setIdentity();
 
     dynamicsDerivative = m_pimpl->controlJacobianBuffer;
+    return true;
+}
+
+bool DynamicalConstraints::dynamicsStateFirstDerivativeSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool DynamicalConstraints::dynamicsControlFirstDerivativeSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
     return true;
 }

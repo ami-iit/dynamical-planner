@@ -12,6 +12,7 @@
 #include <iDynTree/Core/Position.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
+#include <iDynTree/SparsityStructure.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -39,6 +40,10 @@ public:
 
     virtual bool dynamicsControlFirstDerivative(const iDynTree::VectorDynSize& state, double time,
                                                 iDynTree::MatrixDynSize& dynamicsDerivative) override;
+
+    virtual bool dynamicsStateFirstDerivativeSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
+
+    virtual bool dynamicsControlFirstDerivativeSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 
 };
 

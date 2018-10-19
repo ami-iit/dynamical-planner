@@ -46,7 +46,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 
-find_package(iDynTree 0.10.0 REQUIRED)
+find_package(iDynTree 0.11.2 REQUIRED)
 find_package(Eigen3 REQUIRED)
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
