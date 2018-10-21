@@ -14,6 +14,7 @@
 #include <iDynTree/Optimizers/WorhpInterface.h>
 #include <iDynTree/Integrators/ForwardEuler.h>
 #include <URDFdir.h>
+#include <chrono>
 
 void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::SettingsStruct settings,
                       const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::State &initialState) {
@@ -212,6 +213,7 @@ int main() {
     settingsStruct.minimumDt = 0.1;
     settingsStruct.controlPeriod = 0.1;
     settingsStruct.maximumDt = 1.0;
+    settingsStruct.horizon = 1.0;
 
     settingsStruct.comPositionConstraintTolerance = 1e-2;
     settingsStruct.centroidalMomentumConstraintTolerance = 1e-2;
@@ -239,7 +241,7 @@ int main() {
 
     ASSERT_IS_TRUE(ipoptSolver->isAvailable());
 
-    ok = ipoptSolver->setIpoptOption("linear_solver", "ma27");
+    ok = ipoptSolver->setIpoptOption("linear_solver", "ma97");
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("print_level", 5);
     ASSERT_IS_TRUE(ok);
@@ -307,14 +309,21 @@ int main() {
     std::vector<DynamicalPlanner::State> optimalStates;
     std::vector<DynamicalPlanner::Control> optimalControls;
 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     ok = solver.solve(optimalStates, optimalControls);
-
     ASSERT_IS_TRUE(ok);
+    std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+    std::cout << "Elapsed time (1st): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+
     ok = ipoptSolver->setIpoptOption("print_level", 3);
     ASSERT_IS_TRUE(ok);
 
+    begin = std::chrono::steady_clock::now();
     ok = solver.solve(optimalStates, optimalControls);
     ASSERT_IS_TRUE(ok);
+
+    end= std::chrono::steady_clock::now();
+    std::cout << "Elapsed time (2nd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
 
     return EXIT_SUCCESS;
