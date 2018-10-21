@@ -8,6 +8,7 @@
 #define DPLANNER_QUATERNIONNORMCONSTRAINT_H
 
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
+#include <iDynTree/SparsityStructure.h>
 #include <iDynTree/Constraint.h>
 #include <memory>
 
@@ -39,6 +40,10 @@ public:
     virtual size_t expectedStateSpaceSize() const override;
 
     virtual size_t expectedControlSpaceSize() const override;
+
+    virtual bool constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
+
+    virtual bool constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 };
 
 #endif // DPLANNER_QUATERNIONNORMCONSTRAINT_H

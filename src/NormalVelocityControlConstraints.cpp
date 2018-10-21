@@ -26,6 +26,8 @@ public:
 
     iDynTree::VectorDynSize constraintValues;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 };
 
 
@@ -62,6 +64,14 @@ NormalVelocityControlConstraints::NormalVelocityControlConstraints(const Variabl
     m_isLowerBounded = true;
     m_isUpperBounded = false;
     m_lowerBound.zero();
+
+    m_pimpl->stateSparsity.clear();
+    m_pimpl->controlSparsity.clear();
+
+    size_t forceIndex = static_cast<size_t>(m_pimpl->forcePointRange.offset + 2);
+    m_pimpl->stateSparsity.addDenseBlock(0, forceIndex, 2, 1);
+    size_t velocityIndex = static_cast<size_t>(m_pimpl->velocityControlRange.offset + 2);
+    m_pimpl->controlSparsity.addDenseBlock(0, velocityIndex, 2, 1);
 }
 
 NormalVelocityControlConstraints::~NormalVelocityControlConstraints()
@@ -133,4 +143,16 @@ size_t NormalVelocityControlConstraints::expectedStateSpaceSize() const
 size_t NormalVelocityControlConstraints::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool NormalVelocityControlConstraints::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool NormalVelocityControlConstraints::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

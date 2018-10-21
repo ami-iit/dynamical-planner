@@ -21,6 +21,8 @@ public:
     iDynTree::IndexRange baseQuaternionRange;
     iDynTree::Vector4 baseQuaternion;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 };
 
 
@@ -42,6 +44,11 @@ QuaternionNormConstraint::QuaternionNormConstraint(const VariablesLabeller &stat
     m_pimpl->stateJacobianBuffer.zero();
     m_pimpl->controlJacobianBuffer.resize(1, static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
+
+    m_pimpl->stateSparsity.clear();
+    m_pimpl->controlSparsity.clear();
+
+    m_pimpl->stateSparsity.addDenseBlock(0, m_pimpl->baseQuaternionRange.offset, 1, 4);
 }
 
 QuaternionNormConstraint::~QuaternionNormConstraint()
@@ -87,4 +94,16 @@ size_t QuaternionNormConstraint::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
 
+}
+
+bool QuaternionNormConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool QuaternionNormConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

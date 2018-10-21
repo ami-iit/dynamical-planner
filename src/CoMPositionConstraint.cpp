@@ -40,6 +40,8 @@ public:
     bool updateDoneOnceStateJacobian = false;
     double tolerance;
 
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+
     void updateRobotState() {
 
         robotState = sharedKinDyn->currentState();
@@ -68,6 +70,20 @@ public:
         same = same && VectorsAreEqual(baseQuaternion, stateVariables(baseQuaternionRange), tolerance);
         same = same && VectorsAreEqual(robotState.s, stateVariables(jointsPositionRange), tolerance);
         return same;
+    }
+
+    void setSparsity() {
+        stateSparsity.clear();
+        controlSparsity.clear();
+
+        iDynTree::IndexRange fullRange;
+        fullRange.offset = 0;
+        fullRange.size = 3;
+
+        stateSparsity.addIdentityBlock(0, basePositionRange.offset, 3);
+        stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
+        stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
+        stateSparsity.addIdentityBlock(0, comPositionRange.offset, 3);
     }
 
 };
@@ -110,6 +126,8 @@ CoMPositionConstraint::CoMPositionConstraint(const VariablesLabeller &stateVaria
     m_pimpl->controlJacobianBuffer.zero();
 
     m_pimpl->tolerance = timelySharedKinDyn->getUpdateTolerance();
+
+    m_pimpl->setSparsity();
 }
 
 CoMPositionConstraint::~CoMPositionConstraint()
@@ -187,4 +205,16 @@ size_t CoMPositionConstraint::expectedStateSpaceSize() const
 size_t CoMPositionConstraint::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool CoMPositionConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool CoMPositionConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

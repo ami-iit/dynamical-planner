@@ -40,6 +40,8 @@ public:
     bool updateDoneOnceControlJacobian = false;
     double tolerance;
 
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+
     void getRanges() {
 
         momentumRange = stateVariables.getIndexRange("Momentum");
@@ -113,6 +115,24 @@ public:
         return same;
     }
 
+    void setSparsity() {
+        stateSparsity.clear();
+        controlSparsity.clear();
+
+        iDynTree::IndexRange fullRange;
+        fullRange.size = 3;
+        fullRange.offset = 0;
+
+        stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
+        stateSparsity.addIdentityBlock(0, momentumRange.offset + 3, 3);
+        stateSparsity.addDenseBlock(fullRange, basePositionRange);
+        stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
+
+        controlSparsity.addDenseBlock(0, baseVelocityRange.offset + 3, 3, 3);
+        controlSparsity.addDenseBlock(fullRange, jointsVelocityRange);
+
+    }
+
 };
 
 
@@ -150,6 +170,8 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
     m_pimpl->comJacobianBuffer.zero();
 
     m_pimpl->tolerance = timelySharedKinDyn->getUpdateTolerance();
+
+    m_pimpl->setSparsity();
 
 }
 
@@ -299,4 +321,16 @@ size_t CentroidalMomentumConstraint::expectedStateSpaceSize() const
 size_t CentroidalMomentumConstraint::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool CentroidalMomentumConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool CentroidalMomentumConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

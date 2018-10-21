@@ -24,6 +24,8 @@ public:
 
     iDynTree::VectorDynSize constraintValues;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 };
 
 
@@ -63,6 +65,22 @@ DynamicalComplementarityConstraint::DynamicalComplementarityConstraint(const Var
     m_isUpperBounded = true;
     m_lowerBound.zero();
     m_upperBound.zero();
+
+    m_pimpl->stateSparsity.clear();
+    m_pimpl->controlSparsity.clear();
+
+    size_t fzIndex = static_cast<size_t>(m_pimpl->forcePointRange.offset + 2);
+    size_t pzIndex = static_cast<size_t>(m_pimpl->positionPointRange.offset + 2);
+
+    m_pimpl->stateSparsity.addNonZeroIfNotPresent(0, fzIndex);
+    m_pimpl->stateSparsity.addNonZeroIfNotPresent(0, pzIndex);
+
+    size_t fzDotIndex = static_cast<size_t>(m_pimpl->forceControlRange.offset + 2);
+    size_t vzIndex = static_cast<size_t>(m_pimpl->velocityControlRange.offset + 2);
+
+    m_pimpl->controlSparsity.addNonZeroIfNotPresent(0, vzIndex);
+    m_pimpl->controlSparsity.addNonZeroIfNotPresent(0, fzDotIndex);
+
 }
 
 DynamicalComplementarityConstraint::~DynamicalComplementarityConstraint()
@@ -134,4 +152,16 @@ size_t DynamicalComplementarityConstraint::expectedStateSpaceSize() const
 size_t DynamicalComplementarityConstraint::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool DynamicalComplementarityConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool DynamicalComplementarityConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

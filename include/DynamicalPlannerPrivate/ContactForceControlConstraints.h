@@ -8,6 +8,7 @@
 #define DPLANNER_CONTACTFORCECONTROLCONSTRAINTS_H
 
 #include <iDynTree/Constraint.h>
+#include <iDynTree/SparsityStructure.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
@@ -54,6 +55,10 @@ public:
     virtual size_t expectedStateSpaceSize() const override;
 
     virtual size_t expectedControlSpaceSize() const override;
+
+    virtual bool constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
+
+    virtual bool constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 
 };
 

@@ -22,6 +22,8 @@ public:
 
     iDynTree::Vector3 pointForce;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 };
 
 
@@ -52,6 +54,12 @@ ContactFrictionConstraint::ContactFrictionConstraint(const VariablesLabeller &st
     m_isUpperBounded = true;
     m_upperBound.zero();
 
+    m_pimpl->stateSparsity.clear();
+    m_pimpl->controlSparsity.clear();
+
+    size_t fCol = static_cast<size_t>(m_pimpl->forcePointRange.offset);
+
+    m_pimpl->stateSparsity.addDenseBlock(0, fCol, 1, 3);
 }
 
 ContactFrictionConstraint::~ContactFrictionConstraint()
@@ -111,4 +119,16 @@ size_t ContactFrictionConstraint::expectedStateSpaceSize() const
 size_t ContactFrictionConstraint::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool ContactFrictionConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool ContactFrictionConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

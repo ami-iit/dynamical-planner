@@ -27,6 +27,8 @@ public:
 
     iDynTree::VectorDynSize constraintValues;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 };
 
 
@@ -67,6 +69,20 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
     m_isLowerBounded = true;
     m_isUpperBounded = false;
     m_lowerBound.zero();
+
+    m_pimpl->stateSparsity.clear();
+    m_pimpl->controlSparsity.clear();
+
+    size_t pzCol = static_cast<size_t>(m_pimpl->positionPointRange.offset + 2);
+    size_t fzCol = static_cast<size_t>(m_pimpl->forcePointRange.offset + 2);
+    size_t fzCtrlCol = static_cast<size_t>(m_pimpl->forceControlRange.offset + 2);
+
+    m_pimpl->stateSparsity.addDenseBlock(0, pzCol, 2, 1);
+    m_pimpl->stateSparsity.addDenseBlock(0, fzCol, 2, 1);
+
+    m_pimpl->controlSparsity.addDenseBlock(0, fzCtrlCol, 2, 1);
+
+
 }
 
 ContactForceControlConstraints::~ContactForceControlConstraints()
@@ -143,4 +159,16 @@ size_t ContactForceControlConstraints::expectedStateSpaceSize() const
 size_t ContactForceControlConstraints::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool ContactForceControlConstraints::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool ContactForceControlConstraints::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

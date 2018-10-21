@@ -43,6 +43,8 @@ public:
     bool updateDoneOnceStateJacobian = false;
     double tolerance;
 
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+
     void getRanges() {
 
         positionPointRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(contactIndex));
@@ -87,6 +89,21 @@ public:
         same = same && VectorsAreEqual(robotState.s, stateVariables(jointsPositionRange), tolerance);
 
         return same;
+    }
+
+    void setSparsity() {
+        stateSparsity.clear();
+        controlSparsity.clear();
+
+        iDynTree::IndexRange fullRange;
+        fullRange.offset = 0;
+        fullRange.size = 3;
+
+        stateSparsity.addIdentityBlock(0, basePositionRange.offset, 3);
+        stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
+        stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
+        stateSparsity.addIdentityBlock(0, positionPointRange.offset, 3);
+
     }
 };
 
@@ -133,6 +150,8 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     m_isUpperBounded = true;
     m_upperBound.zero();
     m_lowerBound.zero();
+
+    m_pimpl->setSparsity();
 
 }
 
@@ -246,4 +265,16 @@ size_t ContactPositionConsistencyConstraint::expectedStateSpaceSize() const
 size_t ContactPositionConsistencyConstraint::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool ContactPositionConsistencyConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool ContactPositionConsistencyConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }

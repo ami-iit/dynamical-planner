@@ -8,6 +8,7 @@
 #define DPLANNER_DYNAMICALCOMPLEMENTARITYCONSTRAINT_H
 
 #include <iDynTree/Constraint.h>
+#include <iDynTree/SparsityStructure.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <memory>
 #include <string>
@@ -49,6 +50,10 @@ public:
     virtual size_t expectedStateSpaceSize() const override;
 
     virtual size_t expectedControlSpaceSize() const override;
+
+    virtual bool constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
+
+    virtual bool constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 
 };
 

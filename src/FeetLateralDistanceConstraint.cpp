@@ -32,6 +32,8 @@ public:
     bool updateDoneOnceStateJacobian = false;
     double tolerance;
 
+    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+
     void updateRobotState() {
 
         robotState = sharedKinDyn->currentState();
@@ -43,6 +45,17 @@ public:
         bool same = updateDoneOnce;
         same = same && VectorsAreEqual(robotState.s, stateVariables(jointsPositionRange), tolerance);
         return same;
+    }
+
+    void setSparsity() {
+        stateSparsity.clear();
+        controlSparsity.clear();
+
+        iDynTree::IndexRange fullRange;
+        fullRange.offset = 0;
+        fullRange.size = 1;
+
+        stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
     }
 
 };
@@ -86,6 +99,8 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
     m_isLowerBounded = true;
     m_isUpperBounded = false;
     m_lowerBound.zero();
+
+    m_pimpl->setSparsity();
 
 }
 
@@ -162,4 +177,16 @@ size_t FeetLateralDistanceConstraint::expectedStateSpaceSize() const
 size_t FeetLateralDistanceConstraint::expectedControlSpaceSize() const
 {
     return m_pimpl->controlVariables.size();
+}
+
+bool FeetLateralDistanceConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateSparsity;
+    return true;
+}
+
+bool FeetLateralDistanceConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlSparsity;
+    return true;
 }
