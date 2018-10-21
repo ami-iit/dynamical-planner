@@ -30,7 +30,7 @@ size_t TimelySharedKinDynComputations::getClosestIndex(double time)
         return m_previousIndex;
     }
 
-    if (iDynTree::checkDoublesAreEqual(time, m_pointerContainer[m_previousIndex + 1].time)) {
+    if (((m_previousIndex + 1) < m_pointerContainer.size()) && (iDynTree::checkDoublesAreEqual(time, m_pointerContainer[m_previousIndex + 1].time))) {
         m_previousIndex++;
         return m_previousIndex;
     }

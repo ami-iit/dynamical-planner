@@ -85,6 +85,8 @@ public:
 
     SharedKinDynComputations(const SharedKinDynComputations& other);
 
+    SharedKinDynComputations(const SharedKinDynComputations&& other) = delete;
+
     //Setup
 
     bool loadRobotModel(const iDynTree::Model& model);
