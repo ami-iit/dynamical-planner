@@ -6,6 +6,7 @@
  */
 
 #include <DynamicalPlanner/Solver.h>
+#include <DynamicalPlanner/Visualizer.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
@@ -72,14 +73,15 @@ void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::Sett
 
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
     iDynTree::VectorDynSize desiredCoM;
-    double xVelocity, yVelocity;
+    double xVelocity, yVelocity, zVelocity;
     iDynTree::Vector3 initialCoM;
 
 public:
-    CoMReference(iDynTree::Vector3 &CoMinitial, double velX, double velY)
+    CoMReference(iDynTree::Vector3 &CoMinitial, double velX, double velY, double velZ)
         : desiredCoM(3)
         , xVelocity(velX)
         , yVelocity(velY)
+        , zVelocity(velZ)
         , initialCoM(CoMinitial)
     { }
 
@@ -88,7 +90,7 @@ public:
     iDynTree::VectorDynSize &get(double time, bool &isValid) override {
         desiredCoM(0) = initialCoM(0) + xVelocity * time;
         desiredCoM(1) = initialCoM(1) + yVelocity * time;
-        desiredCoM(2) = initialCoM(2);
+        desiredCoM(2) = initialCoM(2) + zVelocity * time;
         isValid = true;
         return desiredCoM;
     }
@@ -188,23 +190,26 @@ int main() {
 
     fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, initialState);
 
-    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 1.0, 0.0);
+    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.0, 0.0, 0.1);
 
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     settingsStruct.frameCostActive = true;
-    settingsStruct.staticTorquesCostActive = true;
-    settingsStruct.forceMeanCostActive = true;
+    settingsStruct.staticTorquesCostActive = false;
+    settingsStruct.forceMeanCostActive = false;
     settingsStruct.comCostActive = true;
-    settingsStruct.forceDerivativeCostActive = true;
-    settingsStruct.pointAccelerationCostActive = true;
+    settingsStruct.forceDerivativeCostActive = false;
+    settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = true;
-    settingsStruct.jointsVelocityCostActive = true;
+    settingsStruct.jointsVelocityCostActive = false;
 
     settingsStruct.jointsVelocityCostOverallWeight = 1e-4;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
+    settingsStruct.jointsRegularizationCostOverallWeight = 1e-2;
+    settingsStruct.forceMeanCostOverallWeight = 1.0;
+    settingsStruct.comCostOverallWeight = 100;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -215,14 +220,14 @@ int main() {
     settingsStruct.maximumDt = 1.0;
     settingsStruct.horizon = 1.0;
 
-    settingsStruct.comPositionConstraintTolerance = 1e-2;
-    settingsStruct.centroidalMomentumConstraintTolerance = 1e-2;
+    settingsStruct.comPositionConstraintTolerance = 1e-5;
+    settingsStruct.centroidalMomentumConstraintTolerance = 1e-5;
     settingsStruct.quaternionModulusConstraintTolerance = 1e-2;
-    settingsStruct.pointPositionConstraintTolerance = 5e-3;
+    settingsStruct.pointPositionConstraintTolerance = 1e-4;
 
     iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
-    settingsStruct.normalForceDissipationRatio = 1.0;
-    settingsStruct.normalForceHyperbolicSecantScaling = 200.0;
+    settingsStruct.normalForceDissipationRatio = 5.0;
+    settingsStruct.normalForceHyperbolicSecantScaling = 150.0;
 
     //ContactFrictionConstraint
     settingsStruct.frictionCoefficient = 0.3;
@@ -309,21 +314,33 @@ int main() {
     std::vector<DynamicalPlanner::State> optimalStates;
     std::vector<DynamicalPlanner::Control> optimalControls;
 
+    DynamicalPlanner::Visualizer visualizer;
+    ok = visualizer.setModel(modelLoader.model());
+    ASSERT_IS_TRUE(ok);
+    visualizer.setCameraPosition(iDynTree::Position(2.0, 0.0, 0.5));
+    ok = visualizer.visualizeState(initialState);
+    ASSERT_IS_TRUE(ok);
+
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     ok = solver.solve(optimalStates, optimalControls);
     ASSERT_IS_TRUE(ok);
     std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (1st): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = ipoptSolver->setIpoptOption("print_level", 3);
+    ok = visualizer.visualizeStates(optimalStates);
     ASSERT_IS_TRUE(ok);
+
+    //ok = ipoptSolver->setIpoptOption("print_level", 3);
+    //ASSERT_IS_TRUE(ok);
 
     begin = std::chrono::steady_clock::now();
     ok = solver.solve(optimalStates, optimalControls);
     ASSERT_IS_TRUE(ok);
-
     end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (2nd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+
+    ok = visualizer.visualizeStates(optimalStates);
+    ASSERT_IS_TRUE(ok);
 
 
     return EXIT_SUCCESS;

@@ -555,13 +555,13 @@ public:
                 return false;
             }
 
-            constraints.leftNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                          "Left", i, velocityActivationZ,
-                                                                                                          st.velocityMaximumDerivative(2));
-            ok = ocp->addConstraint(constraints.leftNormalVelocityControl[i]);
-            if (!ok) {
-                return false;
-            }
+//            constraints.leftNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
+//                                                                                                          "Left", i, velocityActivationZ,
+//                                                                                                          st.velocityMaximumDerivative(2));
+//            ok = ocp->addConstraint(constraints.leftNormalVelocityControl[i]);
+//            if (!ok) {
+//                return false;
+//            }
 
             constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
                                                                                                        i, forceActivation,
@@ -614,13 +614,13 @@ public:
                 return false;
             }
 
-            constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                          "Right", i, velocityActivationZ,
-                                                                                                          st.velocityMaximumDerivative(2));
-            ok = ocp->addConstraint(constraints.rightNormalVelocityControl[i]);
-            if (!ok) {
-                return false;
-            }
+            //            constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
+            //                                                                                                          "Right", i, velocityActivationZ,
+            //                                                                                                          st.velocityMaximumDerivative(2));
+            //            ok = ocp->addConstraint(constraints.rightNormalVelocityControl[i]);
+            //            if (!ok) {
+            //                return false;
+            //            }
 
             constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
                                                                                                         i, forceActivation,
