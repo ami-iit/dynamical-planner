@@ -54,7 +54,8 @@ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
                      include/DynamicalPlanner/Solver.h
                      include/DynamicalPlanner/State.h
-                     include/DynamicalPlanner/Control.h)
+                     include/DynamicalPlanner/Control.h
+                     include/DynamicalPlanner/Visualizer.h)
 
 set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                              include/DynamicalPlannerPrivate/DynamicalConstraints.h
@@ -105,7 +106,8 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/SmoothingFunction.cpp
                      src/HyperbolicTangent.cpp
                      src/DynamicalComplementarityConstraint.cpp
-                     src/TimelySharedKinDynComputations.cpp)
+                     src/TimelySharedKinDynComputations.cpp
+                     src/Visualizer.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
