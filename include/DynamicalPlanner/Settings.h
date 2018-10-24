@@ -118,6 +118,11 @@ namespace DynamicalPlanner {
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredPointAccelerationTrajectory;
         iDynTree::VectorDynSize pointAccelerationWeights;
 
+        //Swing height (each contact point has a different cost with same settings)
+        bool swingCostActive;
+        double swingCostOverallWeight;
+        double desiredSwingHeight;
+
     } SettingsStruct;
 }
 

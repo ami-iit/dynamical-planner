@@ -50,6 +50,7 @@ typedef struct {
     std::shared_ptr<StaticTorquesCost> staticTorques;
     std::vector<std::shared_ptr<iDynTree::optimalcontrol::L2NormCost>> leftPointsForceDerivative, rightPointsForceDerivative;
     std::vector<std::shared_ptr<iDynTree::optimalcontrol::L2NormCost>> leftPointsAcceleration, rightPointsAcceleration;
+    std::vector<std::shared_ptr<SwingCost>> leftSwings, rightSwings;
 } CostsSet;
 
 typedef struct {
@@ -280,7 +281,7 @@ public:
                 return false;
             }
 
-            ok = ocp->addLagrangeTerm(st.comCostOverallWeight, costs.comPosition);
+            ok = ocp->addMayerTerm(st.comCostOverallWeight, costs.comPosition);
             if (!ok) {
                 return false;
             }
@@ -480,6 +481,26 @@ public:
             }
         }
 
+        if (st.swingCostActive) {
+            costs.leftSwings.resize(st.leftPointsPosition.size());
+            for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
+                costs.leftSwings[i] = std::make_shared<SwingCost>(stateStructure, controlStructure, "Left", i, st.desiredSwingHeight);
+                ok = ocProblem->addLagrangeTerm(st.swingCostOverallWeight, costs.leftSwings[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+            costs.rightSwings.resize(st.rightPointsPosition.size());
+            for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
+                costs.rightSwings[i] = std::make_shared<SwingCost>(stateStructure, controlStructure, "Right", i, st.desiredSwingHeight);
+                ok = ocProblem->addLagrangeTerm(st.swingCostOverallWeight, costs.rightSwings[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+        }
+
+
         return true;
     }
 
@@ -546,14 +567,14 @@ public:
 
         for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
 
-            constraints.leftPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                          "Left", i,velocityActivationXY,
-                                                                                                          st.velocityMaximumDerivative(0),
-                                                                                                          st.velocityMaximumDerivative(1));
-            ok = ocp->addConstraint(constraints.leftPlanarVelocityControl[i]);
-            if (!ok) {
-                return false;
-            }
+//            constraints.leftPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
+//                                                                                                          "Left", i,velocityActivationXY,
+//                                                                                                          st.velocityMaximumDerivative(0),
+//                                                                                                          st.velocityMaximumDerivative(1));
+//            ok = ocp->addConstraint(constraints.leftPlanarVelocityControl[i]);
+//            if (!ok) {
+//                return false;
+//            }
 
 //            constraints.leftNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
 //                                                                                                          "Left", i, velocityActivationZ,
@@ -605,14 +626,14 @@ public:
 
         for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
 
-            constraints.rightPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
-                                                                                                          "Right", i,velocityActivationXY,
-                                                                                                          st.velocityMaximumDerivative(0),
-                                                                                                          st.velocityMaximumDerivative(1));
-            ok = ocp->addConstraint(constraints.rightPlanarVelocityControl[i]);
-            if (!ok) {
-                return false;
-            }
+//            constraints.rightPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
+//                                                                                                          "Right", i,velocityActivationXY,
+//                                                                                                          st.velocityMaximumDerivative(0),
+//                                                                                                          st.velocityMaximumDerivative(1));
+//            ok = ocp->addConstraint(constraints.rightPlanarVelocityControl[i]);
+//            if (!ok) {
+//                return false;
+//            }
 
             //            constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
             //                                                                                                          "Right", i, velocityActivationZ,
@@ -681,6 +702,8 @@ public:
             segment(stateLowerBound, ranges.left.forcePoints[i])(2) = 0.0;
             iDynTree::toEigen(segment(controlLowerBound, ranges.left.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
             iDynTree::toEigen(segment(controlUpperBound, ranges.left.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
+            iDynTree::toEigen(segment(controlLowerBound, ranges.left.velocityControlPoints[i])) = -iDynTree::toEigen(st.velocityMaximumDerivative);
+            iDynTree::toEigen(segment(controlUpperBound, ranges.left.velocityControlPoints[i])) = iDynTree::toEigen(st.velocityMaximumDerivative);
         }
 
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
@@ -688,7 +711,10 @@ public:
             segment(stateLowerBound, ranges.right.forcePoints[i])(2) = 0.0;
             iDynTree::toEigen(segment(controlLowerBound, ranges.right.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
             iDynTree::toEigen(segment(controlUpperBound, ranges.right.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
+            iDynTree::toEigen(segment(controlLowerBound, ranges.right.velocityControlPoints[i])) = -iDynTree::toEigen(st.velocityMaximumDerivative);
+            iDynTree::toEigen(segment(controlUpperBound, ranges.right.velocityControlPoints[i])) = iDynTree::toEigen(st.velocityMaximumDerivative);
         }
+
 
         segment(stateLowerBound, ranges.comPosition)(2) = st.minimumCoMHeight;
 
@@ -914,9 +940,13 @@ bool Solver::specifySettings(const Settings &settings)
         return false;
     }
 
+    HyperbolicTangent velocityActivationXY;
+    velocityActivationXY.setScaling(st.planarVelocityHyperbolicTangentScaling);
+
     m_pimpl->constraints.dynamical = std::make_shared<DynamicalConstraints>(m_pimpl->stateStructure,
                                                                             m_pimpl->controlStructure,
-                                                                            m_pimpl->timelySharedKinDyn);
+                                                                            m_pimpl->timelySharedKinDyn,
+                                                                            velocityActivationXY);
 
     m_pimpl->ocProblem = std::make_shared<iDynTree::optimalcontrol::OptimalControlProblem>();
 

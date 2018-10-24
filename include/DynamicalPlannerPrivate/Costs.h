@@ -10,6 +10,7 @@
 #include <DynamicalPlannerPrivate/ForceMeanCost.h>
 #include <DynamicalPlannerPrivate/FrameOrientationCost.h>
 #include <DynamicalPlannerPrivate/StaticTorquesCost.h>
+#include <DynamicalPlannerPrivate/SwingCost.h>
 #include <iDynTree/L2NormCost.h>
 
 

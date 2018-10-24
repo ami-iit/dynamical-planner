@@ -117,6 +117,10 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(inputSettings.pointAccelerationWeights.size() != 3, "The pointVelocityWeights is expected to be three dimensional.");
     }
 
+    if (inputSettings.swingCostActive) {
+        errors += checkError(inputSettings.desiredSwingHeight < 0, "The desiredSwingHeight is supposed to be non-negative.");
+    }
+
     checkError(errors > 0, "The were errors when importing the settings struct. The settings will not be updated.");
 
     if (errors == 0) {
@@ -206,14 +210,13 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //for each joint, ask the limits
     for (iDynTree::JointIndex jointIdx = 0; jointIdx < static_cast<int>(n); ++jointIdx) {
         iDynTree::IJointConstPtr joint = newModel.getJoint(jointIdx);
-        //if the joint does not have limits skip it
-        if (!joint->hasPosLimits())
-            continue;
+
         //for each DoF modelled by the joint get the limits
         for (unsigned dof = 0; dof < joint->getNrOfDOFs(); ++dof) {
-            if (!joint->getPosLimits(dof, singleJointLimit.first, singleJointLimit.second))
-                continue;
-
+            if (!joint->getPosLimits(dof, singleJointLimit.first, singleJointLimit.second)) {
+                singleJointLimit.first = -1E19;
+                singleJointLimit.second = 1E19;
+            }
             defaults.jointsLimits.push_back(singleJointLimit);
         }
     }
@@ -281,6 +284,10 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.desiredPointAccelerationTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredPointVelocity);
     defaults.pointAccelerationWeights.resize(3);
     iDynTree::toEigen(defaults.pointAccelerationWeights).setConstant(1.0);
+
+    defaults.swingCostActive = true;
+    defaults.swingCostOverallWeight = 0.1;
+    defaults.desiredSwingHeight = 0.03;
 
     return defaults;
 }

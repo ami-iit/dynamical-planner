@@ -190,7 +190,7 @@ int main() {
 
     fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, initialState);
 
-    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.0, 0.0, 0.1);
+    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.0, 0.0, 0.0);
 
     settingsStruct.desiredCoMTrajectory  = comReference;
 
@@ -207,9 +207,13 @@ int main() {
 
     settingsStruct.jointsVelocityCostOverallWeight = 1e-4;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
-    settingsStruct.jointsRegularizationCostOverallWeight = 1e-2;
+    settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
+    settingsStruct.jointsVelocityCostOverallWeight = 1e-3;
     settingsStruct.forceMeanCostOverallWeight = 1.0;
     settingsStruct.comCostOverallWeight = 100;
+    settingsStruct.comWeights(0) = 1.0;
+    settingsStruct.comWeights(1) = 1.0;
+    settingsStruct.comWeights(2) = 1.0;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -235,9 +239,15 @@ int main() {
     settingsStruct.minimumFeetDistance = 0.05;
 
     //ContactVelocityControlConstraints
-    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(10.0);
+    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(1.0);
+    settingsStruct.velocityMaximumDerivative(0) = 0.1;
+    settingsStruct.velocityMaximumDerivative(1) = 0.1;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
+
+    settingsStruct.complementarityDissipation = 10.0;
+
+    settingsStruct.minimumCoMHeight = 0.95 * initialState.comPosition(2);
 
     ok = settings.setFromStruct(settingsStruct);
     ASSERT_IS_TRUE(ok);
@@ -268,6 +278,8 @@ int main() {
     ok = ipoptSolver->setIpoptOption("acceptable_iter", 3);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("alpha_for_y", "min-dual-infeas");
+    ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("max_iter", 4000);
     ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("mu_strategy", "adaptive");
 //    ASSERT_IS_TRUE(ok);
@@ -317,7 +329,7 @@ int main() {
     DynamicalPlanner::Visualizer visualizer;
     ok = visualizer.setModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
-    visualizer.setCameraPosition(iDynTree::Position(2.0, 0.0, 0.5));
+    visualizer.setCameraPosition(iDynTree::Position(1.0, 0.0, 0.5));
     ok = visualizer.visualizeState(initialState);
     ASSERT_IS_TRUE(ok);
 

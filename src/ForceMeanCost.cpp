@@ -42,7 +42,7 @@ ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const Vari
     m_pimpl->forcePointRange = stateVariables.getIndexRange(footName + "ForcePoint" + std::to_string(contactIndex));
     assert(m_pimpl->forcePointRange.isValid());
 
-    for (auto label : stateVariables.listOfLabels()) {
+    for (auto& label : stateVariables.listOfLabels()) {
         if ((label.find(footName + "ForcePoint") != std::string::npos) && (label != (footName + "ForcePoint" + std::to_string(contactIndex)))) {
             m_pimpl->otherPointsRanges.push_back(stateVariables.getIndexRange(label));
             assert(m_pimpl->otherPointsRanges.back().isValid());

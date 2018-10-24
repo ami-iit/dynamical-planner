@@ -34,6 +34,8 @@ public:
     std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
     std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
 
+    HyperbolicTangent activationXY;
+
     typedef struct {
         std::vector<iDynTree::IndexRange> positionPoints, forcePoints, velocityControlPoints, forceControlPoints;
     } FootRanges;
@@ -90,7 +92,9 @@ public:
 //Span operator = does not copy content!
 
             iDynTree::toEigen(dynamics(foot.forcePoints[i])) = iDynTree::toEigen(controlVariables(foot.forceControlPoints[i]));
-            iDynTree::toEigen(dynamics(foot.positionPoints[i])) = iDynTree::toEigen(controlVariables(foot.velocityControlPoints[i]));
+            double deltaXY = activationXY.eval(stateVariables(foot.positionPoints[i])(2));
+            iDynTree::toEigen(dynamics(foot.positionPoints[i])).topRows<2>() = deltaXY * iDynTree::toEigen(controlVariables(foot.velocityControlPoints[i])).topRows<2>();
+            dynamics(foot.positionPoints[i])(2) = controlVariables(foot.velocityControlPoints[i])(2);
 
             iDynTree::toEigen(dynamics(momentumRange)).topRows<3>() +=  iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
 
@@ -104,8 +108,8 @@ public:
         iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(stateJacobianBuffer);
         Eigen::Vector3d distance, appliedForce;
 
-
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
+            double deltaXYDerivative = activationXY.evalDerivative(stateVariables(foot.positionPoints[i])(2));
 
             distance = iDynTree::toEigen(stateVariables(foot.positionPoints[i])) - iDynTree::toEigen(comPosition);
             appliedForce = iDynTree::toEigen(stateVariables(foot.forcePoints[i]));
@@ -114,6 +118,7 @@ public:
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.forcePoints[i].offset) = iDynTree::skew(distance);
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.positionPoints[i].offset) = -iDynTree::skew(appliedForce);
             jacobianMap.block<3,3>(momentumRange.offset+3, comPositionRange.offset) += iDynTree::skew(appliedForce);
+            jacobianMap.block<2,1>(foot.positionPoints[i].offset, foot.positionPoints[i].offset + 2) = deltaXYDerivative * iDynTree::toEigen(controlVariables(foot.velocityControlPoints[i])).topRows<2>();
 
 //            jacobianMap.block<3,3>(momentumRange.offset+3, basePositionRange.offset) += iDynTree::skew(appliedForce) * iDynTree::toEigen(comjacobianBuffer).leftCols<3>();
 //            jacobianMap.block<3,4>(momentumRange.offset+3, baseQuaternionRange.offset) += iDynTree::skew(appliedForce) * iDynTree::toEigen(comjacobianBuffer).block<3,3>(0,3) *
@@ -127,10 +132,12 @@ public:
         iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(controlJacobianBuffer);
 
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
+            double deltaXY = activationXY.eval(stateVariables(foot.positionPoints[i])(2));
 
             jacobianMap.block<3,3>(foot.forcePoints[i].offset, foot.forceControlPoints[i].offset).setIdentity();
 
             jacobianMap.block<3,3>(foot.positionPoints[i].offset, foot.velocityControlPoints[i].offset).setIdentity();
+            jacobianMap.block<2,2>(foot.positionPoints[i].offset, foot.velocityControlPoints[i].offset) *= deltaXY;
         }
     }
 
@@ -166,6 +173,7 @@ public:
             stateSparsity.addIdentityBlock(momentumRange.offset, foot.forcePoints[i].offset, 3);
             stateSparsity.addDenseBlock(momentumRange.offset+3, foot.forcePoints[i].offset, 3, 3);
             stateSparsity.addDenseBlock(momentumRange.offset+3, foot.positionPoints[i].offset, 3, 3);
+            stateSparsity.addDenseBlock(foot.positionPoints[i].offset, foot.positionPoints[i].offset + 2, 2, 1);
         }
     }
 
@@ -196,7 +204,7 @@ public:
 };
 
 
-DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
+DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const HyperbolicTangent& planarVelocityActivation)
    : iDynTree::optimalcontrol::DynamicalSystem (stateVariables.size(), controlVariables.size())
    , m_pimpl(new Implementation)
 {
@@ -227,9 +235,10 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
     m_pimpl->controlJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
 
+    m_pimpl->activationXY = planarVelocityActivation;
 
     size_t leftPoints = 0, rightPoints = 0;
-    for (auto label : stateVariables.listOfLabels()) {
+    for (auto& label : stateVariables.listOfLabels()) {
         if (label.find("LeftForcePoint") != std::string::npos) {
             leftPoints++;
         }
@@ -267,7 +276,6 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
     m_pimpl->comjacobianBuffer.zero();
 
     m_pimpl->setSparsity();
-
 }
 
 DynamicalConstraints::~DynamicalConstraints()

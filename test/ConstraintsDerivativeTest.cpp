@@ -141,7 +141,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
 
     bool ok = false;
-    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn);
+    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, velocityActivationXY);
     ok = ocProblem.setDynamicalSystemConstraint(constraints.dynamical);
     ASSERT_IS_TRUE(ok);
 
