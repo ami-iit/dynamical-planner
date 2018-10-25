@@ -7,6 +7,7 @@
 
 #include <DynamicalPlanner/Solver.h>
 #include <DynamicalPlanner/Visualizer.h>
+#include <DynamicalPlanner/RectangularFoot.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
@@ -18,7 +19,8 @@
 #include <chrono>
 
 void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::SettingsStruct settings,
-                      const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::State &initialState) {
+                      const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::RectangularFoot &foot,
+                      DynamicalPlanner::State &initialState) {
 
     iDynTree::KinDynComputations kinDyn;
 
@@ -57,18 +59,37 @@ void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::Sett
         totalMass += model.getLink(static_cast<iDynTree::LinkIndex>(l))->getInertia().getMass();
     }
 
-    double pointForce = totalMass * 9.81 / (2 * settings.leftPointsPosition.size());
+    double normalForce = totalMass * 9.81;
 
     for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
         initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
         initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
-
-        initialState.leftContactPointsState[i].pointForce.zero();
-        initialState.leftContactPointsState[i].pointForce(2) = pointForce;
-
-        initialState.rightContactPointsState[i].pointForce.zero();
-        initialState.rightContactPointsState[i].pointForce(2) = pointForce;
     }
+
+    iDynTree::Wrench leftWrench, rightWrench;
+    leftWrench.zero();
+    rightWrench.zero();
+
+    leftWrench(2) = normalForce/(1 + std::fabs(initialState.comPosition(1) - leftTransform.getPosition()(1))/std::fabs(initialState.comPosition(1) - rightTransform.getPosition()(1)));
+
+    rightWrench(2) = normalForce - leftWrench(2);
+
+    leftWrench(4) = -leftWrench(2) * (initialState.comPosition(0) - leftTransform.getPosition()(0));
+    rightWrench(4) = -rightWrench(2) * (initialState.comPosition(0) - rightTransform.getPosition()(0));
+
+    std::vector<iDynTree::Force> leftPointForces, rightPointForces;
+
+    ok = foot.getForces(leftWrench, leftPointForces);
+    ASSERT_IS_TRUE(ok);
+
+    ok = foot.getForces(rightWrench, rightPointForces);
+    ASSERT_IS_TRUE(ok);
+
+    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
+        initialState.leftContactPointsState[i].pointForce = leftPointForces[i];
+        initialState.rightContactPointsState[i].pointForce =rightPointForces[i];
+    }
+
 }
 
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
@@ -100,10 +121,10 @@ CoMReference::~CoMReference() { }
 
 class StateGuess : public DynamicalPlanner::TimeVaryingState {
     DynamicalPlanner::State m_state, m_initialState;
-    std::shared_ptr<CoMReference> m_comReference;
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> m_comReference;
 public:
 
-    StateGuess(std::shared_ptr<CoMReference> comReference, const DynamicalPlanner::State &initialState)
+    StateGuess(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> comReference, const DynamicalPlanner::State &initialState)
         : m_state(initialState)
         , m_initialState(initialState)
         , m_comReference(comReference)
@@ -112,7 +133,7 @@ public:
     ~StateGuess() override;
 
     DynamicalPlanner::State &get(double time, bool &isValid) override {
-        m_state.comPosition = m_comReference->get(time, isValid);
+        iDynTree::toEigen(m_state.comPosition) = iDynTree::toEigen(m_comReference->get(time, isValid));
         m_state.jointsConfiguration = m_initialState.jointsConfiguration;
         m_state.momentumInCoM.zero();
         m_state.worldToBaseTransform.setRotation(m_initialState.worldToBaseTransform.getRotation());
@@ -169,6 +190,19 @@ int main() {
 
     DynamicalPlanner::SettingsStruct settingsStruct = DynamicalPlanner::Settings::Defaults(modelLoader.model());
 
+    DynamicalPlanner::RectangularFoot foot;
+
+    double d = 0.08;
+    double l = 0.188;
+
+    iDynTree::Position topLeftPosition(0.125,  0.04, 0.0);
+    ok = foot.setFoot(l, d, topLeftPosition);
+    ASSERT_IS_TRUE(ok);
+
+    ok = foot.getPoints(iDynTree::Transform::Identity(), settingsStruct.leftPointsPosition);
+    ASSERT_IS_TRUE(ok);
+
+    settingsStruct.rightPointsPosition = settingsStruct.leftPointsPosition;
 
     DynamicalPlanner::State initialState;
 
@@ -188,9 +222,12 @@ int main() {
     iDynTree::toEigen(desiredInitialJoints) *= iDynTree::deg2rad(1.0);
 
 
-    fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, initialState);
+    fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, foot, initialState);
 
-    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.0, 0.0, 0.0);
+//    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.2, 0.0, 0.0);
+    iDynTree::VectorDynSize comPointReference(3);
+    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.5, 0.0, 0.0));
+    auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
 
     settingsStruct.desiredCoMTrajectory  = comReference;
 
@@ -204,6 +241,7 @@ int main() {
     settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = true;
     settingsStruct.jointsVelocityCostActive = false;
+    settingsStruct.swingCostActive = true;
 
     settingsStruct.jointsVelocityCostOverallWeight = 1e-4;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
@@ -222,7 +260,7 @@ int main() {
     settingsStruct.minimumDt = 0.1;
     settingsStruct.controlPeriod = 0.1;
     settingsStruct.maximumDt = 1.0;
-    settingsStruct.horizon = 1.0;
+    settingsStruct.horizon = 2.0;
 
     settingsStruct.comPositionConstraintTolerance = 1e-5;
     settingsStruct.centroidalMomentumConstraintTolerance = 1e-5;
@@ -276,6 +314,8 @@ int main() {
     ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e-3);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_iter", 3);
+    ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("acceptable_compl_inf_tol", 5e-2);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("alpha_for_y", "min-dual-infeas");
     ASSERT_IS_TRUE(ok);

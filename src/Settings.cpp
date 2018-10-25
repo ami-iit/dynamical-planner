@@ -163,12 +163,12 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::toEigen(defaults.leftPointsPosition[0]) << 0.125, -0.04, 0.0;
     iDynTree::toEigen(defaults.leftPointsPosition[1]) << 0.125,  0.04, 0.0;
     iDynTree::toEigen(defaults.leftPointsPosition[2]) << -0.063,  0.04, 0.0;
-    iDynTree::toEigen(defaults.leftPointsPosition[3]) << 0.063, -0.04, 0.0;
+    iDynTree::toEigen(defaults.leftPointsPosition[3]) << -0.063, -0.04, 0.0;
     defaults.rightPointsPosition.resize(4);
     iDynTree::toEigen(defaults.rightPointsPosition[0]) << 0.125,  0.04, 0.0;
     iDynTree::toEigen(defaults.rightPointsPosition[1]) << 0.125, -0.04, 0.0;
     iDynTree::toEigen(defaults.rightPointsPosition[2]) << -0.063, -0.04, 0.0;
-    iDynTree::toEigen(defaults.rightPointsPosition[3]) << 0.063,  0.04, 0.0;
+    iDynTree::toEigen(defaults.rightPointsPosition[3]) << -0.063,  0.04, 0.0;
     defaults.leftFrameName = "l_sole";
     defaults.rightFrameName = "r_sole";
 

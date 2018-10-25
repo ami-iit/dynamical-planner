@@ -11,6 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/Transform.h>
 #include <iDynTree/TimeVaryingObject.h>
+#include <iDynTree/Core/LinearForceVector3.h>
 
 namespace DynamicalPlanner {
     class State;
@@ -19,7 +20,7 @@ namespace DynamicalPlanner {
     typedef iDynTree::optimalcontrol::TimeInvariantObject<DynamicalPlanner::State> TimeInvariantState;
 
     typedef struct {
-        iDynTree::Vector3 pointForce;
+        iDynTree::Force pointForce;
         iDynTree::Vector3 pointPosition;
     } ContactPointState;
 }

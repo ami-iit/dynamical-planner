@@ -281,7 +281,7 @@ public:
                 return false;
             }
 
-            ok = ocp->addMayerTerm(st.comCostOverallWeight, costs.comPosition);
+            ok = ocp->addLagrangeTerm(st.comCostOverallWeight, st.horizon/2.0, st.horizon, costs.comPosition);
             if (!ok) {
                 return false;
             }
@@ -840,12 +840,12 @@ private:
     void setStateFromVariables(const iDynTree::VectorDynSize &unstructured, double time, State &stateToFill) {
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             stateToFill.leftContactPointsState[i].pointPosition = segment(unstructured, ranges.left.positionPoints[i]);
-            stateToFill.leftContactPointsState[i].pointForce = segment(unstructured, ranges.left.forcePoints[i]);
+            iDynTree::toEigen(stateToFill.leftContactPointsState[i].pointForce) = iDynTree::toEigen(segment(unstructured, ranges.left.forcePoints[i]));
         }
 
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
             stateToFill.rightContactPointsState[i].pointPosition = segment(unstructured, ranges.right.positionPoints[i]);
-            stateToFill.rightContactPointsState[i].pointForce = segment(unstructured, ranges.right.forcePoints[i]);
+            iDynTree::toEigen(stateToFill.rightContactPointsState[i].pointForce) = iDynTree::toEigen(segment(unstructured, ranges.right.forcePoints[i]));
         }
 
         stateToFill.momentumInCoM = segment(unstructured, ranges.momentum);

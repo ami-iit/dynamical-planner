@@ -31,6 +31,7 @@ add_dp_test(MomentumDerivative)
 add_dp_test(CostsDerivative)
 add_dp_test(StaticForcesDerivative)
 add_dp_test(BoundsAndSparsity)
+add_dp_test(RectangularFoot)
 add_dp_test(Solver)
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/meshes" DESTINATION "${CMAKE_BINARY_DIR}/bin")
