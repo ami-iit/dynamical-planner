@@ -253,6 +253,7 @@ int main() {
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
+    settingsStruct.comCostActiveRange.setTimeInterval(1.0, 2.0);
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -262,6 +263,7 @@ int main() {
     settingsStruct.controlPeriod = 0.1;
     settingsStruct.maximumDt = 1.0;
     settingsStruct.horizon = 2.0;
+    settingsStruct.activeControlPercentage = 0.5;
 
     settingsStruct.comPositionConstraintTolerance = 1e-5;
     settingsStruct.centroidalMomentumConstraintTolerance = 1e-5;
@@ -380,7 +382,7 @@ int main() {
     std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (1st): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon/2.0);
+    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     //ok = ipoptSolver->setIpoptOption("print_level", 3);
@@ -392,7 +394,7 @@ int main() {
     end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (2nd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon/2.0);
+    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
 

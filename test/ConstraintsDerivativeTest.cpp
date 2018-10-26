@@ -162,7 +162,8 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
         constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Left",
                                                                                                    i, forceActivation, forceMaximumDerivative,
-                                                                                                   forceDissipationRatios);
+                                                                                                   forceDissipationRatios,
+                                                                                                   0.5);
         ok = ocProblem.addConstraint(constraints.leftContactsForceControl[i]);
         ASSERT_IS_TRUE(ok);
 
@@ -197,7 +198,8 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
         constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Right",
                                                                                                    i, forceActivation, forceMaximumDerivative,
-                                                                                                   forceDissipationRatios);
+                                                                                                   forceDissipationRatios,
+                                                                                                   0.5);
         ok = ocProblem.addConstraint(constraints.rightContactsForceControl[i]);
         ASSERT_IS_TRUE(ok);
 
@@ -307,7 +309,7 @@ void checkConstraintsDerivative(double time, const iDynTree::VectorDynSize& orig
 //        std::cerr << "State: " << i << std::endl;
         perturbedState = originalStateVector;
         perturbedState(i) = perturbedState(i) + perturbation;
-        ok = ocProblem.constraintsEvaluation(0.0, perturbedState, originalControlVector, perturbedConstraints);
+        ok = ocProblem.constraintsEvaluation(time, perturbedState, originalControlVector, perturbedConstraints);
         ASSERT_IS_TRUE(ok);
 
         iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalConstraints) +
@@ -319,7 +321,7 @@ void checkConstraintsDerivative(double time, const iDynTree::VectorDynSize& orig
         perturbedControl = originalControlVector;
         perturbedControl(i) = perturbedControl(i) + perturbation;
 
-        ok = ocProblem.constraintsEvaluation(0.0, originalStateVector, perturbedControl, perturbedConstraints);
+        ok = ocProblem.constraintsEvaluation(time, originalStateVector, perturbedControl, perturbedConstraints);
         ASSERT_IS_TRUE(ok);
 
         iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalConstraints) +

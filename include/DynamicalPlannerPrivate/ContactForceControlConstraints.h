@@ -32,7 +32,7 @@ public:
 
     ContactForceControlConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
                                    const std::string &footName, size_t contactIndex, const HyperbolicSecant& forceActivation,
-                                   double maximumNormalDerivative, double dissipationRatio);
+                                   double maximumNormalDerivative, double dissipationRatio, double deactivationTime);
 
     ~ContactForceControlConstraints() override;
 

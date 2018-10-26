@@ -21,6 +21,7 @@ public:
     HyperbolicSecant activation;
     double maximumNormalDerivative;
     double dissipationRatio;
+    double deactivationTime;
 
     iDynTree::IndexRange positionPointRange, forcePointRange, forceControlRange;
     iDynTree::Vector3 pointPosition, pointForce, pointForceControl;
@@ -36,7 +37,7 @@ public:
 
 ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
                                                                const std::string &footName, size_t contactIndex, const HyperbolicSecant &forceActivation,
-                                                               double maximumNormalDerivative, double dissipationRatio)
+                                                               double maximumNormalDerivative, double dissipationRatio, double deactivationTime)
     : iDynTree::optimalcontrol::Constraint (2, "ForceControlBounds" + footName + std::to_string(contactIndex))
     , m_pimpl(new Implementation)
 {
@@ -48,6 +49,7 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
     m_pimpl->activation = forceActivation;
     m_pimpl->maximumNormalDerivative = maximumNormalDerivative;
     m_pimpl->dissipationRatio = dissipationRatio;
+    m_pimpl->deactivationTime = deactivationTime;
 
     m_pimpl->positionPointRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(contactIndex));
     assert(m_pimpl->positionPointRange.isValid());
@@ -100,7 +102,7 @@ bool ContactForceControlConstraints::evaluateConstraint(double time, const iDynT
     double fz = m_pimpl->pointForce(2);
     double uz = m_pimpl->pointForceControl(2);
 
-    if (time > 1.0) {
+    if (time > m_pimpl->deactivationTime) {
         m_pimpl->constraintValues(0) = - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
 
         m_pimpl->constraintValues(1) = uz + (1- delta) * m_pimpl->dissipationRatio * fz;
@@ -130,7 +132,7 @@ bool ContactForceControlConstraints::constraintJacobianWRTState(double time, con
     unsigned int pzCol = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
     unsigned int fzCol = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
 
-    if (time > 1.0) {
+    if (time > m_pimpl->deactivationTime) {
         m_pimpl->stateJacobianBuffer(0, pzCol) = +deltaDerivative * m_pimpl->dissipationRatio * fz;
 
         m_pimpl->stateJacobianBuffer(0, fzCol) = -(1- delta) * m_pimpl->dissipationRatio;

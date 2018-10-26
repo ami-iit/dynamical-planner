@@ -47,6 +47,8 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
                          "The minimumDt is supposed to be lower than half of the maximumDt.");
     errors += checkError(inputSettings.controlPeriod < 0, "The controlPeriod is supposed to be non-negative.");
     errors += checkError(inputSettings.horizon < 0, "The horizon is supposed to be non-negative.");
+    errors += checkError((inputSettings.activeControlPercentage > 1) || (inputSettings.activeControlPercentage < 0),
+                         "The activeControlPercentage is supposed to be in the [0, 1] range.");
 
     //errors += checkError(inputSettings.updateTolerance < 0, "The updateTolerance is supposed to be non-negative.");
     errors += checkError(!(inputSettings.robotModel.isLinkNameUsed(inputSettings.floatingBaseName)),
@@ -87,6 +89,7 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
 
     if (inputSettings.comCostActive) {
         errors += checkError(inputSettings.comWeights.size() != 3, "The comWeight vector is expected to be three dimensional.");
+        errors += checkError(!inputSettings.comCostActiveRange.isValid(), "The specified time range for the CoM cost is not valid.");
         errors += checkError(!inputSettings.desiredCoMTrajectory, "The desiredCoMTrajectory is empty.");
     }
 
@@ -149,6 +152,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.maximumDt = 0.1;
     defaults.controlPeriod = 0.01;
     defaults.horizon = 1.0;
+    defaults.activeControlPercentage = 1.0;
 
         // SharedKinDyn
     defaults.robotModel = newModel;
@@ -227,6 +231,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //Costs
     //CoM cost
     defaults.comCostActive = true;
+    defaults.comCostActiveRange = iDynTree::optimalcontrol::TimeRange::AnyTime();
     defaults.comCostOverallWeight = 1.0;
     defaults.comWeights.resize(3);
     iDynTree::toEigen(defaults.comWeights).setConstant(1.0);

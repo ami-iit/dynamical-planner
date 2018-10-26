@@ -301,7 +301,7 @@ public:
                 return false;
             }
 
-            ok = ocp->addLagrangeTerm(st.comCostOverallWeight, st.horizon/2.0, st.horizon, costs.comPosition);
+            ok = ocp->addLagrangeTerm(st.comCostOverallWeight, st.comCostActiveRange, costs.comPosition);
             if (!ok) {
                 return false;
             }
@@ -607,7 +607,8 @@ public:
             constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
                                                                                                        i, forceActivation,
                                                                                                        st.forceMaximumDerivative(2),
-                                                                                                       st.normalForceDissipationRatio);
+                                                                                                       st.normalForceDissipationRatio,
+                                                                                                       st.horizon * st.activeControlPercentage);
             ok = ocp->addConstraint(constraints.leftContactsForceControl[i]);
             if (!ok) {
                 return false;
@@ -666,7 +667,8 @@ public:
             constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
                                                                                                         i, forceActivation,
                                                                                                         st.forceMaximumDerivative(2),
-                                                                                                        st.normalForceDissipationRatio);
+                                                                                                        st.normalForceDissipationRatio,
+                                                                                                        st.horizon * st.activeControlPercentage);
             ok = ocp->addConstraint(constraints.rightContactsForceControl[i]);
             if (!ok) {
                 return false;
@@ -772,10 +774,10 @@ public:
             iDynTree::toEigen(segment(secondControlUpperBound, ranges.right.velocityControlPoints[i])).setZero();
         }
 
-        auto variableStateLowerBounds = std::make_shared<BistableBound>(stateLowerBound, secondStateLowerBound, st.horizon/2);
-        auto variableStateUpperBounds = std::make_shared<BistableBound>(stateUpperBound, secondStateUpperBound, st.horizon/2);
-        auto variableControlLowerBounds = std::make_shared<BistableBound>(controlLowerBound, secondControlLowerBound, st.horizon/2);
-        auto variableControlUpperBounds = std::make_shared<BistableBound>(controlUpperBound, secondControlUpperBound, st.horizon/2);
+        auto variableStateLowerBounds = std::make_shared<BistableBound>(stateLowerBound, secondStateLowerBound, st.horizon * st.activeControlPercentage);
+        auto variableStateUpperBounds = std::make_shared<BistableBound>(stateUpperBound, secondStateUpperBound, st.horizon * st.activeControlPercentage);
+        auto variableControlLowerBounds = std::make_shared<BistableBound>(controlLowerBound, secondControlLowerBound, st.horizon * st.activeControlPercentage);
+        auto variableControlUpperBounds = std::make_shared<BistableBound>(controlUpperBound, secondControlUpperBound, st.horizon * st.activeControlPercentage);
 
 
         bool ok = ocProblem->setStateBoxConstraints(variableStateLowerBounds, variableStateUpperBounds);

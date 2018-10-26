@@ -11,6 +11,7 @@
 #include <iDynTree/Core/Position.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/TimeVaryingObject.h>
+#include <iDynTree/TimeRange.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,6 +26,7 @@ namespace DynamicalPlanner {
         double maximumDt; //in seconds
         double controlPeriod; //in seconds
         double horizon; //in seconds
+        double activeControlPercentage; //if 1, feet and forces can be changed for the full horizon. If 0 feet and forces are kept to the initial value
 
         // SharedKinDyn
         iDynTree::Model robotModel;
@@ -76,6 +78,7 @@ namespace DynamicalPlanner {
         //CoM cost
         bool comCostActive;
         double comCostOverallWeight;
+        iDynTree::optimalcontrol::TimeRange comCostActiveRange;
         iDynTree::VectorDynSize comWeights;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredCoMTrajectory;
 
