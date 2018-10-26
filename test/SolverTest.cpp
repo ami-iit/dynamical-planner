@@ -226,7 +226,7 @@ int main() {
 
 //    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.2, 0.0, 0.0);
     iDynTree::VectorDynSize comPointReference(3);
-    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.5, 0.0, 0.0));
+    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.3, 0.1, 0.0));
     auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
 
     settingsStruct.desiredCoMTrajectory  = comReference;
@@ -248,6 +248,7 @@ int main() {
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-3;
     settingsStruct.forceMeanCostOverallWeight = 1.0;
+    settingsStruct.swingCostOverallWeight = 10;
     settingsStruct.comCostOverallWeight = 100;
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
@@ -277,9 +278,9 @@ int main() {
     settingsStruct.minimumFeetDistance = 0.05;
 
     //ContactVelocityControlConstraints
-    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(1.0);
-    settingsStruct.velocityMaximumDerivative(0) = 0.1;
-    settingsStruct.velocityMaximumDerivative(1) = 0.1;
+    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(10.0);
+    settingsStruct.velocityMaximumDerivative(0) = 10.0;
+    settingsStruct.velocityMaximumDerivative(1) = 10.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
 
@@ -313,9 +314,9 @@ int main() {
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e-3);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("acceptable_iter", 3);
+    ok = ipoptSolver->setIpoptOption("acceptable_iter", 2);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("acceptable_compl_inf_tol", 5e-2);
+    ok = ipoptSolver->setIpoptOption("acceptable_compl_inf_tol", 1.0);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("alpha_for_y", "min-dual-infeas");
     ASSERT_IS_TRUE(ok);
@@ -379,7 +380,7 @@ int main() {
     std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (1st): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = visualizer.visualizeStates(optimalStates);
+    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon/2.0);
     ASSERT_IS_TRUE(ok);
 
     //ok = ipoptSolver->setIpoptOption("print_level", 3);
@@ -391,7 +392,7 @@ int main() {
     end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (2nd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = visualizer.visualizeStates(optimalStates);
+    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon/2.0);
     ASSERT_IS_TRUE(ok);
 
 

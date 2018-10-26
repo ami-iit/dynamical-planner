@@ -69,7 +69,7 @@ bool Visualizer::visualizeState(const State &stateToVisualize)
     return true;
 }
 
-bool Visualizer::visualizeStates(const std::vector<State> &states)
+bool Visualizer::visualizeStates(const std::vector<State> &states, double endTime)
 {
     if (!(m_pimpl->viz.getNrOfVisualizedModels())) {
         std::cerr << "[ERROR][Visualizer::visualizeState] First you have to load a model." << std::endl;
@@ -77,6 +77,9 @@ bool Visualizer::visualizeStates(const std::vector<State> &states)
     }
 
     for (size_t i = 0; i < states.size(); ++i) {
+        if ((endTime > 0) && (states[i].time > endTime)) {
+            break;
+        }
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         visualizeState(states[i]);
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -93,7 +96,7 @@ bool Visualizer::visualizeStates(const std::vector<State> &states)
     return true;
 }
 
-bool Visualizer::visualizeStates(const std::vector<State> &states, const std::vector<iDynTree::Position> &cameraPosition, const std::vector<iDynTree::Position> &cameraTarget)
+bool Visualizer::visualizeStates(const std::vector<State> &states, const std::vector<iDynTree::Position> &cameraPosition, const std::vector<iDynTree::Position> &cameraTarget, double endTime)
 {
     if (!(m_pimpl->viz.getNrOfVisualizedModels())) {
         std::cerr << "[ERROR][Visualizer::visualizeState] First you have to load a model." << std::endl;
@@ -111,6 +114,9 @@ bool Visualizer::visualizeStates(const std::vector<State> &states, const std::ve
     }
 
     for (size_t i = 0; i < states.size(); ++i) {
+        if ((endTime > 0) && (states[i].time > endTime)) {
+            break;
+        }
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         m_pimpl->viz.camera().setPosition(cameraPosition[i]);
         m_pimpl->viz.camera().setTarget(cameraTarget[i]);

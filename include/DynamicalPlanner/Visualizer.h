@@ -28,9 +28,12 @@ public:
 
     bool visualizeState(const DynamicalPlanner::State& stateToVisualize);
 
-    bool visualizeStates(const std::vector<State>& states);
+    bool visualizeStates(const std::vector<State>& states, double endTime = -1.0);
 
-    bool visualizeStates(const std::vector<State>& states, const std::vector<iDynTree::Position>& cameraPosition, const std::vector<iDynTree::Position>& cameraTarget);
+    bool visualizeStates(const std::vector<State>& states,
+                         const std::vector<iDynTree::Position>& cameraPosition,
+                         const std::vector<iDynTree::Position>& cameraTarget,
+                         double endTime = -1.0);
 
     bool setCameraPosition(const iDynTree::Position& cameraPosition);
 

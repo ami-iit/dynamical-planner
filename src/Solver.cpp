@@ -181,6 +181,25 @@ public:
 };
 ControlGuesses::~ControlGuesses() { }
 
+class BistableBound : public iDynTree::optimalcontrol::TimeVaryingVector {
+    iDynTree::VectorDynSize m_firstBounds;
+    iDynTree::VectorDynSize m_secondBounds;
+    double m_switchTime;
+public:
+    BistableBound(iDynTree::VectorDynSize& firstBounds, iDynTree::VectorDynSize& secondBounds, double switchTime)
+        : m_firstBounds(firstBounds)
+        , m_secondBounds(secondBounds)
+        , m_switchTime(switchTime)
+    {}
+    virtual ~BistableBound() override;
+
+    virtual const iDynTree::VectorDynSize& get(double time, bool& isValid) override {
+        isValid = true;
+        return (time < m_switchTime) ? m_firstBounds : m_secondBounds;
+    }
+};
+BistableBound::~BistableBound(){}
+
 class Solver::Implementation {
 public:
     SettingsStruct settings;
@@ -202,6 +221,7 @@ public:
     iDynTree::Vector4 baseQuaternion;
 
     iDynTree::VectorDynSize stateLowerBound, stateUpperBound, controlLowerBound, controlUpperBound, initialStateVector;
+    iDynTree::VectorDynSize secondStateLowerBound, secondStateUpperBound, secondControlLowerBound, secondControlUpperBound;
     double plusInfinity, minusInfinity;
 
     State initialState;
@@ -692,10 +712,16 @@ public:
         iDynTree::toEigen(stateLowerBound).setConstant(minusInfinity);
         iDynTree::toEigen(stateUpperBound).setConstant(plusInfinity);
 
+        secondStateLowerBound = stateLowerBound;
+        secondStateUpperBound = stateUpperBound;
+
         controlLowerBound.resize(static_cast<unsigned int>(controlStructure.size()));
         controlUpperBound.resize(static_cast<unsigned int>(controlStructure.size()));
         iDynTree::toEigen(controlLowerBound).setConstant(minusInfinity);
         iDynTree::toEigen(controlUpperBound).setConstant(plusInfinity);
+
+        secondControlLowerBound = controlLowerBound;
+        secondControlUpperBound = controlUpperBound;
 
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.left.positionPoints[i])(2) = 0.0;
@@ -735,12 +761,29 @@ public:
             segment(controlUpperBound, ranges.jointsVelocity)(static_cast<long>(j)) = st.jointsVelocityLimits[j].second;
         }
 
-        bool ok = ocProblem->setStateBoxConstraints(stateLowerBound, stateUpperBound);
+
+        for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
+            iDynTree::toEigen(segment(secondControlLowerBound, ranges.left.velocityControlPoints[i])).setZero();
+            iDynTree::toEigen(segment(secondControlUpperBound, ranges.left.velocityControlPoints[i])).setZero();
+        }
+
+        for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
+            iDynTree::toEigen(segment(secondControlLowerBound, ranges.right.velocityControlPoints[i])).setZero();
+            iDynTree::toEigen(segment(secondControlUpperBound, ranges.right.velocityControlPoints[i])).setZero();
+        }
+
+        auto variableStateLowerBounds = std::make_shared<BistableBound>(stateLowerBound, secondStateLowerBound, st.horizon/2);
+        auto variableStateUpperBounds = std::make_shared<BistableBound>(stateUpperBound, secondStateUpperBound, st.horizon/2);
+        auto variableControlLowerBounds = std::make_shared<BistableBound>(controlLowerBound, secondControlLowerBound, st.horizon/2);
+        auto variableControlUpperBounds = std::make_shared<BistableBound>(controlUpperBound, secondControlUpperBound, st.horizon/2);
+
+
+        bool ok = ocProblem->setStateBoxConstraints(variableStateLowerBounds, variableStateUpperBounds);
         if (!ok) {
             return false;
         }
 
-        ok = ocProblem->setControlBoxConstraints(controlLowerBound, controlUpperBound);
+        ok = ocProblem->setControlBoxConstraints(variableControlLowerBounds, variableControlUpperBounds);
         if (!ok) {
             return false;
         }

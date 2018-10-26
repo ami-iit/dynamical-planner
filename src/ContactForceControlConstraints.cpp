@@ -88,7 +88,7 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
 ContactForceControlConstraints::~ContactForceControlConstraints()
 { }
 
-bool ContactForceControlConstraints::evaluateConstraint(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
+bool ContactForceControlConstraints::evaluateConstraint(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
@@ -100,16 +100,22 @@ bool ContactForceControlConstraints::evaluateConstraint(double, const iDynTree::
     double fz = m_pimpl->pointForce(2);
     double uz = m_pimpl->pointForceControl(2);
 
-    m_pimpl->constraintValues(0) = delta * m_pimpl->maximumNormalDerivative - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
+    if (time > 1.0) {
+        m_pimpl->constraintValues(0) = - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
 
-    m_pimpl->constraintValues(1) = uz + delta * m_pimpl->maximumNormalDerivative + (1- delta) * m_pimpl->dissipationRatio * fz;
+        m_pimpl->constraintValues(1) = uz + (1- delta) * m_pimpl->dissipationRatio * fz;
+    } else {
+        m_pimpl->constraintValues(0) = delta * m_pimpl->maximumNormalDerivative - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
+
+        m_pimpl->constraintValues(1) = uz + delta * m_pimpl->maximumNormalDerivative + (1- delta) * m_pimpl->dissipationRatio * fz;
+    }
 
     constraint = m_pimpl->constraintValues;
 
     return true;
 }
 
-bool ContactForceControlConstraints::constraintJacobianWRTState(double, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &jacobian)
+bool ContactForceControlConstraints::constraintJacobianWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &jacobian)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
@@ -124,15 +130,25 @@ bool ContactForceControlConstraints::constraintJacobianWRTState(double, const iD
     unsigned int pzCol = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
     unsigned int fzCol = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
 
-    m_pimpl->stateJacobianBuffer(0, pzCol) = deltaDerivative * m_pimpl->maximumNormalDerivative +
-            deltaDerivative * m_pimpl->dissipationRatio * fz;
+    if (time > 1.0) {
+        m_pimpl->stateJacobianBuffer(0, pzCol) = +deltaDerivative * m_pimpl->dissipationRatio * fz;
 
-    m_pimpl->stateJacobianBuffer(0, fzCol) = -(1- delta) * m_pimpl->dissipationRatio;
+        m_pimpl->stateJacobianBuffer(0, fzCol) = -(1- delta) * m_pimpl->dissipationRatio;
 
-    m_pimpl->stateJacobianBuffer(1, pzCol) = deltaDerivative * m_pimpl->maximumNormalDerivative -
-            deltaDerivative * m_pimpl->dissipationRatio * fz;
+        m_pimpl->stateJacobianBuffer(1, pzCol) = -deltaDerivative * m_pimpl->dissipationRatio * fz;
 
-    m_pimpl->stateJacobianBuffer(1, fzCol) = (1- delta) * m_pimpl->dissipationRatio;
+        m_pimpl->stateJacobianBuffer(1, fzCol) = (1- delta) * m_pimpl->dissipationRatio;
+    } else {
+        m_pimpl->stateJacobianBuffer(0, pzCol) = deltaDerivative * m_pimpl->maximumNormalDerivative +
+                deltaDerivative * m_pimpl->dissipationRatio * fz;
+
+        m_pimpl->stateJacobianBuffer(0, fzCol) = -(1- delta) * m_pimpl->dissipationRatio;
+
+        m_pimpl->stateJacobianBuffer(1, pzCol) = deltaDerivative * m_pimpl->maximumNormalDerivative -
+                deltaDerivative * m_pimpl->dissipationRatio * fz;
+
+        m_pimpl->stateJacobianBuffer(1, fzCol) = (1- delta) * m_pimpl->dissipationRatio;
+    }
 
     jacobian = m_pimpl->stateJacobianBuffer;
     return true;

@@ -36,12 +36,12 @@ public:
 
     ~ContactForceControlConstraints() override;
 
-    virtual bool evaluateConstraint(double,
+    virtual bool evaluateConstraint(double time,
                                     const iDynTree::VectorDynSize& state,
                                     const iDynTree::VectorDynSize& control,
                                     iDynTree::VectorDynSize& constraint) override;
 
-    virtual bool constraintJacobianWRTState(double,
+    virtual bool constraintJacobianWRTState(double time,
                                             const iDynTree::VectorDynSize& state,
                                             const iDynTree::VectorDynSize& control,
                                             iDynTree::MatrixDynSize& jacobian) override;
