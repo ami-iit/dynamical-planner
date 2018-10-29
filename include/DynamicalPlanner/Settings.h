@@ -72,6 +72,10 @@ namespace DynamicalPlanner {
         double minimumCoMHeight;
         std::vector<std::pair<double, double>> jointsLimits;
         std::vector<std::pair<double, double>> jointsVelocityLimits;
+        bool constrainTargetCoMPosition;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> targetCoMPositionTolerance;
+        iDynTree::optimalcontrol::TimeRange constrainTargetCoMPositionRange;
+
 
 
         //Costs
@@ -125,6 +129,10 @@ namespace DynamicalPlanner {
         bool swingCostActive;
         double swingCostOverallWeight;
         double desiredSwingHeight;
+
+        //Phantom forces aka forces when point is not in contact (each contact point has a different cost with same settings)
+        bool phantomForcesCostActive;
+        double phantomForcesCostOverallWeight;
 
     } SettingsStruct;
 }

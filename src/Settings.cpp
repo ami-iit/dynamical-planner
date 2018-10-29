@@ -87,6 +87,11 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
                              "The lower velocity limit of joint " + std::to_string(j) + " is bigger than its upper limit.");
     }
 
+    if (inputSettings.constrainTargetCoMPosition) {
+        errors += checkError(!inputSettings.constrainTargetCoMPositionRange.isValid(), "The constrainTargetCoMPositionRange is not valid.");
+        errors += checkError(!inputSettings.targetCoMPositionTolerance, "The targetCoMPositionTolerance pointer is empty.");
+    }
+
     if (inputSettings.comCostActive) {
         errors += checkError(inputSettings.comWeights.size() != 3, "The comWeight vector is expected to be three dimensional.");
         errors += checkError(!inputSettings.comCostActiveRange.isValid(), "The specified time range for the CoM cost is not valid.");
@@ -228,6 +233,10 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     std::pair<double, double> defaultJointsVelocityLimits(-1E19, 1E19);
     defaults.jointsVelocityLimits.resize(newModel.getNrOfDOFs(), defaultJointsVelocityLimits);
 
+    defaults.constrainTargetCoMPosition = true;
+    defaults.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.01);
+    defaults.constrainTargetCoMPositionRange = iDynTree::optimalcontrol::TimeRange::Instant(defaults.horizon);
+
     //Costs
     //CoM cost
     defaults.comCostActive = true;
@@ -290,9 +299,14 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.pointAccelerationWeights.resize(3);
     iDynTree::toEigen(defaults.pointAccelerationWeights).setConstant(1.0);
 
+    //Swing height (each contact point has a different cost with same settings)
     defaults.swingCostActive = true;
     defaults.swingCostOverallWeight = 0.1;
     defaults.desiredSwingHeight = 0.03;
+
+    //Phantom forces aka forces when point is not in contact (each contact point has a different cost with same settings)
+    defaults.phantomForcesCostActive = true;
+    defaults.phantomForcesCostOverallWeight = 0.1;
 
     return defaults;
 }

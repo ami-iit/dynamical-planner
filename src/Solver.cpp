@@ -51,6 +51,7 @@ typedef struct {
     std::vector<std::shared_ptr<iDynTree::optimalcontrol::L2NormCost>> leftPointsForceDerivative, rightPointsForceDerivative;
     std::vector<std::shared_ptr<iDynTree::optimalcontrol::L2NormCost>> leftPointsAcceleration, rightPointsAcceleration;
     std::vector<std::shared_ptr<SwingCost>> leftSwings, rightSwings;
+    std::vector<std::shared_ptr<PhantomForcesCost>> leftPhantomForces, rightPhantomForces;
 } CostsSet;
 
 typedef struct {
@@ -181,24 +182,78 @@ public:
 };
 ControlGuesses::~ControlGuesses() { }
 
-class BistableBound : public iDynTree::optimalcontrol::TimeVaryingVector {
+class VariableBound : public iDynTree::optimalcontrol::TimeVaryingVector {
     iDynTree::VectorDynSize m_firstBounds;
     iDynTree::VectorDynSize m_secondBounds;
+    iDynTree::VectorDynSize m_outputBounds;
     double m_switchTime;
+    iDynTree::optimalcontrol::TimeRange m_constrainTargetCoMPositionRange;
+    iDynTree::IndexRange m_comRange;
+    double m_signForTolerance;
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> m_desiredCoMTrajectory;
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> m_targetCoMPositionTolerance;
+    iDynTree::Vector3 m_toleranceVector;
+
 public:
-    BistableBound(iDynTree::VectorDynSize& firstBounds, iDynTree::VectorDynSize& secondBounds, double switchTime)
+    VariableBound(iDynTree::VectorDynSize& firstBounds, iDynTree::VectorDynSize& secondBounds, double switchTime)
         : m_firstBounds(firstBounds)
         , m_secondBounds(secondBounds)
+        , m_outputBounds(firstBounds)
         , m_switchTime(switchTime)
+        , m_desiredCoMTrajectory(nullptr)
     {}
-    virtual ~BistableBound() override;
+
+    VariableBound(iDynTree::VectorDynSize& firstBounds, iDynTree::VectorDynSize& secondBounds, double switchTime,
+                  const iDynTree::optimalcontrol::TimeRange &constrainTargetCoMPositionRange,
+                  const iDynTree::IndexRange& comRange, double signForTolerance,
+                  std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredCoMTrajectory,
+                  std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> targetCoMPositionTolerance)
+        : m_firstBounds(firstBounds)
+        , m_secondBounds(secondBounds)
+        , m_outputBounds(firstBounds)
+        , m_switchTime(switchTime)
+        , m_constrainTargetCoMPositionRange(constrainTargetCoMPositionRange)
+        , m_comRange(comRange)
+        , m_signForTolerance(signForTolerance)
+        , m_desiredCoMTrajectory(desiredCoMTrajectory)
+        , m_targetCoMPositionTolerance(targetCoMPositionTolerance)
+    {
+        assert(m_comRange.isValid());
+    }
+
+    virtual ~VariableBound() override;
 
     virtual const iDynTree::VectorDynSize& get(double time, bool& isValid) override {
         isValid = true;
-        return (time < m_switchTime) ? m_firstBounds : m_secondBounds;
+
+        if (m_desiredCoMTrajectory && m_targetCoMPositionTolerance && m_constrainTargetCoMPositionRange.isInRange(time)) {
+            const iDynTree::VectorDynSize& comReference = m_desiredCoMTrajectory->get(time, isValid);
+            if (!isValid) {
+                return (time < m_switchTime) ? m_firstBounds : m_secondBounds;
+            }
+
+            bool isValidTolerance = false;
+            double tolerance = m_targetCoMPositionTolerance->get(time, isValidTolerance);
+            if (!isValidTolerance) {
+                tolerance = 0;
+            }
+
+            m_outputBounds = (time < m_switchTime) ? m_firstBounds : m_secondBounds;
+
+            iDynTree::toEigen(m_toleranceVector).setConstant(m_signForTolerance * tolerance);
+
+            iDynTree::toEigen(m_outputBounds).segment(m_comRange.offset, 3) = iDynTree::toEigen(comReference) + iDynTree::toEigen(m_toleranceVector);
+
+            isValid = true;
+
+            return m_outputBounds;
+
+        } else {
+            return (time < m_switchTime) ? m_firstBounds : m_secondBounds;
+        }
     }
 };
-BistableBound::~BistableBound(){}
+VariableBound::~VariableBound(){}
 
 class Solver::Implementation {
 public:
@@ -520,6 +575,30 @@ public:
             }
         }
 
+        if (st.phantomForcesCostActive) {
+            HyperbolicSecant forceActivation;
+            forceActivation.setScaling(st.normalForceHyperbolicSecantScaling);
+
+            costs.leftPhantomForces.resize(st.leftPointsPosition.size());
+            for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
+                costs.leftPhantomForces[i] = std::make_shared<PhantomForcesCost>(stateStructure, controlStructure, "Left", i,
+                                                                                 forceActivation);
+                ok = ocProblem->addLagrangeTerm(st.phantomForcesCostOverallWeight, costs.leftPhantomForces[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+            costs.rightPhantomForces.resize(st.rightPointsPosition.size());
+            for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
+                costs.rightPhantomForces[i] = std::make_shared<PhantomForcesCost>(stateStructure, controlStructure, "Right", i,
+                                                                                  forceActivation);
+                ok = ocProblem->addLagrangeTerm(st.phantomForcesCostOverallWeight, costs.rightPhantomForces[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+        }
+
 
         return true;
     }
@@ -746,8 +825,8 @@ public:
 
         segment(stateLowerBound, ranges.comPosition)(2) = st.minimumCoMHeight;
 
-//        iDynTree::toEigen(segment(stateLowerBound, ranges.momentum)).bottomRows<3>().setConstant(-1);
-//        iDynTree::toEigen(segment(stateUpperBound, ranges.momentum)).bottomRows<3>().setConstant(1);
+        iDynTree::toEigen(segment(stateLowerBound, ranges.momentum)).bottomRows<3>().setConstant(-1);
+        iDynTree::toEigen(segment(stateUpperBound, ranges.momentum)).bottomRows<3>().setConstant(1);
 
 //        iDynTree::toEigen(segment(stateLowerBound, ranges.baseQuaternion)).setConstant(-1.0);
 //        segment(stateLowerBound, ranges.baseQuaternion)(0) = 0.0;
@@ -774,11 +853,24 @@ public:
             iDynTree::toEigen(segment(secondControlUpperBound, ranges.right.velocityControlPoints[i])).setZero();
         }
 
-        auto variableStateLowerBounds = std::make_shared<BistableBound>(stateLowerBound, secondStateLowerBound, st.horizon * st.activeControlPercentage);
-        auto variableStateUpperBounds = std::make_shared<BistableBound>(stateUpperBound, secondStateUpperBound, st.horizon * st.activeControlPercentage);
-        auto variableControlLowerBounds = std::make_shared<BistableBound>(controlLowerBound, secondControlLowerBound, st.horizon * st.activeControlPercentage);
-        auto variableControlUpperBounds = std::make_shared<BistableBound>(controlUpperBound, secondControlUpperBound, st.horizon * st.activeControlPercentage);
+        std::shared_ptr<VariableBound> variableStateLowerBounds;
+        std::shared_ptr<VariableBound> variableStateUpperBounds;
+        std::shared_ptr<VariableBound> variableControlLowerBounds;
+        std::shared_ptr<VariableBound> variableControlUpperBounds;
 
+        if (st.constrainTargetCoMPosition) {
+            variableStateLowerBounds = std::make_shared<VariableBound>(stateLowerBound, secondStateLowerBound, st.horizon * st.activeControlPercentage,
+                                                                       st.constrainTargetCoMPositionRange, ranges.comPosition, -1.0,
+                                                                       st.desiredCoMTrajectory, st.targetCoMPositionTolerance);
+            variableStateUpperBounds = std::make_shared<VariableBound>(stateUpperBound, secondStateUpperBound, st.horizon * st.activeControlPercentage,
+                                                                       st.constrainTargetCoMPositionRange, ranges.comPosition, +1.0,
+                                                                       st.desiredCoMTrajectory, st.targetCoMPositionTolerance);
+        } else {
+            variableStateLowerBounds = std::make_shared<VariableBound>(stateLowerBound, secondStateLowerBound, st.horizon * st.activeControlPercentage);
+            variableStateUpperBounds = std::make_shared<VariableBound>(stateUpperBound, secondStateUpperBound, st.horizon * st.activeControlPercentage);
+        }
+        variableControlLowerBounds = std::make_shared<VariableBound>(controlLowerBound, secondControlLowerBound, st.horizon * st.activeControlPercentage);
+        variableControlUpperBounds = std::make_shared<VariableBound>(controlUpperBound, secondControlUpperBound, st.horizon * st.activeControlPercentage);
 
         bool ok = ocProblem->setStateBoxConstraints(variableStateLowerBounds, variableStateUpperBounds);
         if (!ok) {

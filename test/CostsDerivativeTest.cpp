@@ -95,6 +95,9 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
                     const std::vector<iDynTree::Position>& rightPositions, std::shared_ptr<StaticTorquesCost>& staticTorquesCost,
                     iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
     bool ok = false;
+    HyperbolicSecant forceActivation;
+    forceActivation.setScaling(1.0);
+
     for (size_t i = 0; i < leftPositions.size(); ++i) {
         std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Left", i);
         ok = ocProblem.addLagrangeTerm(1.0, forceCost);
@@ -104,6 +107,10 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
         ok = ocProblem.addLagrangeTerm(1.0, swingCost);
         ASSERT_IS_TRUE(ok);
 
+        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Left",
+                                                                                                  i, forceActivation);
+        ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
+        ASSERT_IS_TRUE(ok);
     }
     for (size_t i = 0; i < rightPositions.size(); ++i) {
         std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Right", i);
@@ -112,6 +119,11 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
 
         std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
         ok = ocProblem.addLagrangeTerm(1.0, swingCost);
+        ASSERT_IS_TRUE(ok);
+
+        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Right",
+                                                                                                  i, forceActivation);
+        ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
         ASSERT_IS_TRUE(ok);
     }
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> comCost = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("CoMCost", stateVariables.getIndexRange("CoMPosition"),

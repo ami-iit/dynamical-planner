@@ -236,24 +236,27 @@ int main() {
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
     settingsStruct.forceMeanCostActive = false;
-    settingsStruct.comCostActive = true;
+    settingsStruct.comCostActive = false;
     settingsStruct.forceDerivativeCostActive = false;
     settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = true;
     settingsStruct.jointsVelocityCostActive = false;
     settingsStruct.swingCostActive = true;
+    settingsStruct.phantomForcesCostActive = false;
 
     settingsStruct.jointsVelocityCostOverallWeight = 1e-4;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.jointsVelocityCostOverallWeight = 1e-3;
+    settingsStruct.jointsVelocityCostOverallWeight = 1e-20;
     settingsStruct.forceMeanCostOverallWeight = 1.0;
+    settingsStruct.forceDerivativesCostOverallWeight = 1e-15;
+    settingsStruct.pointAccelerationCostOverallWeight = 1e-15;
     settingsStruct.swingCostOverallWeight = 10;
+    settingsStruct.phantomForcesCostOverallWeight = 1.0;
     settingsStruct.comCostOverallWeight = 100;
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
-    settingsStruct.comCostActiveRange.setTimeInterval(1.0, 2.0);
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -264,13 +267,19 @@ int main() {
     settingsStruct.maximumDt = 1.0;
     settingsStruct.horizon = 2.0;
     settingsStruct.activeControlPercentage = 0.5;
+    settingsStruct.comCostActiveRange.setTimeInterval(settingsStruct.horizon * settingsStruct.activeControlPercentage, settingsStruct.horizon);
+
+    settingsStruct.constrainTargetCoMPosition = true;
+    settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
+    settingsStruct.constrainTargetCoMPositionRange = settingsStruct.comCostActiveRange;
+    settingsStruct.activeControlPercentage = 1.0;
 
     settingsStruct.comPositionConstraintTolerance = 1e-5;
     settingsStruct.centroidalMomentumConstraintTolerance = 1e-5;
     settingsStruct.quaternionModulusConstraintTolerance = 1e-2;
     settingsStruct.pointPositionConstraintTolerance = 1e-4;
 
-    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
+    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(50.0);
     settingsStruct.normalForceDissipationRatio = 5.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 150.0;
 
@@ -314,16 +323,19 @@ int main() {
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("constr_viol_tol", 1e-3);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e-3);
+    ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e-1);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_iter", 2);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_compl_inf_tol", 1.0);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("alpha_for_y", "min-dual-infeas");
+    ok = ipoptSolver->setIpoptOption("alpha_for_y", "full");
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("max_iter", 4000);
     ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("ma97_print_level", -10);
+    ASSERT_IS_TRUE(ok);
+
 //    ok = ipoptSolver->setIpoptOption("mu_strategy", "adaptive");
 //    ASSERT_IS_TRUE(ok);
 
@@ -372,7 +384,7 @@ int main() {
     DynamicalPlanner::Visualizer visualizer;
     ok = visualizer.setModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
-    visualizer.setCameraPosition(iDynTree::Position(1.0, 0.0, 0.5));
+    visualizer.setCameraPosition(iDynTree::Position(1.5, 0.0, 0.0));
     ok = visualizer.visualizeState(initialState);
     ASSERT_IS_TRUE(ok);
 
@@ -397,6 +409,14 @@ int main() {
     ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
+    begin = std::chrono::steady_clock::now();
+    ok = solver.solve(optimalStates, optimalControls);
+    ASSERT_IS_TRUE(ok);
+    end= std::chrono::steady_clock::now();
+    std::cout << "Elapsed time (3rd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+
+    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    ASSERT_IS_TRUE(ok);
 
     return EXIT_SUCCESS;
 }

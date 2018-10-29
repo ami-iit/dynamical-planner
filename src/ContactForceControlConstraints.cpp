@@ -103,9 +103,9 @@ bool ContactForceControlConstraints::evaluateConstraint(double time, const iDynT
     double uz = m_pimpl->pointForceControl(2);
 
     if (time > m_pimpl->deactivationTime) {
-        m_pimpl->constraintValues(0) = - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
+        m_pimpl->constraintValues(0) = delta * 0 - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
 
-        m_pimpl->constraintValues(1) = uz + (1- delta) * m_pimpl->dissipationRatio * fz;
+        m_pimpl->constraintValues(1) = uz + delta * 0 + (1- delta) * m_pimpl->dissipationRatio * fz;
     } else {
         m_pimpl->constraintValues(0) = delta * m_pimpl->maximumNormalDerivative - (1- delta) * m_pimpl->dissipationRatio * fz - uz;
 
@@ -133,11 +133,13 @@ bool ContactForceControlConstraints::constraintJacobianWRTState(double time, con
     unsigned int fzCol = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
 
     if (time > m_pimpl->deactivationTime) {
-        m_pimpl->stateJacobianBuffer(0, pzCol) = +deltaDerivative * m_pimpl->dissipationRatio * fz;
+        m_pimpl->stateJacobianBuffer(0, pzCol) = deltaDerivative * 0 +
+                deltaDerivative * m_pimpl->dissipationRatio * fz;
 
         m_pimpl->stateJacobianBuffer(0, fzCol) = -(1- delta) * m_pimpl->dissipationRatio;
 
-        m_pimpl->stateJacobianBuffer(1, pzCol) = -deltaDerivative * m_pimpl->dissipationRatio * fz;
+        m_pimpl->stateJacobianBuffer(1, pzCol) = deltaDerivative * 0 -
+                deltaDerivative * m_pimpl->dissipationRatio * fz;
 
         m_pimpl->stateJacobianBuffer(1, fzCol) = (1- delta) * m_pimpl->dissipationRatio;
     } else {
