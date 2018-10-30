@@ -139,6 +139,59 @@ bool Visualizer::visualizeStates(const std::vector<State> &states, const std::ve
     return true;
 }
 
+bool Visualizer::visualizeStatesAndSaveAnimation(const std::vector<State> &states, const std::string &workingFolder, const std::string &fileName, const std::string &fileExtension, double endTime)
+{
+    if (!(m_pimpl->viz.getNrOfVisualizedModels())) {
+        std::cerr << "[ERROR][Visualizer::visualizeState] First you have to load a model." << std::endl;
+        return false;
+    }
+
+    unsigned int digits = static_cast<unsigned int>(std::floor(std::log(states.size()) + 1));
+
+    size_t i = 0;
+
+    while (i < states.size() && (!(endTime < 0) || (states[i].time <= endTime))) {
+
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        visualizeState(states[i]);
+        m_pimpl->viz.drawToFile(workingFolder + "/" + fileName + "_img_" + std::string(digits - std::to_string(i).size(), '0') + std::to_string(i) + ".png");
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        if ((i + 1) < states.size()) {
+            std::chrono::milliseconds durationMs(static_cast<int>(std::round((states[i + 1].time - states[i].time)*1000)));
+            std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+
+            if (elapsed < durationMs) {
+                std::this_thread::sleep_for (durationMs - elapsed);
+            }
+        }
+
+        ++i;
+    }
+
+    if (i == 0) {
+        return true;
+    }
+
+    std::string fps = std::to_string(static_cast<int>(std::round(i/states[i-1].time)));
+
+    auto frameArgs          = " -framerate " + fps;
+    auto inputArgs          = " -i " + workingFolder + "/" + fileName + "_img_%0" + std::to_string(digits) + "d" + ".png";
+    auto overwriteArgs      = " -y";
+    auto outputArgs         = " " + workingFolder + "/" + fileName + "." + fileExtension;
+    auto pixFormatArgs      = "";
+
+    // http://superuser.com/questions/533695/how-can-i-convert-a-series-of-png-images-to-a-video-for-youtube#answers-header
+    if (fileExtension == "mp4") {
+        pixFormatArgs = " -pix_fmt yuv420p";
+    }
+
+    auto args = "ffmpeg" + frameArgs + inputArgs + overwriteArgs + pixFormatArgs + outputArgs;
+
+    std::cout << "[INFO][Visualizer::visualizeState] Generating video with the following arguments:\n" << args << std::endl;
+
+    return system(args.c_str());;
+}
+
 bool Visualizer::setCameraPosition(const iDynTree::Position &cameraPosition)
 {
     m_pimpl->viz.camera().setPosition(cameraPosition);

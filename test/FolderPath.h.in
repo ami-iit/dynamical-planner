@@ -1,0 +1,17 @@
+/*
+ * Copyright (C) 2018 Fondazione Istituto Italiano di Tecnologia
+ * Authors: Stefano Dafarra
+ * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
+ *
+ */
+#ifndef DPLANNER_FOLDERPATH_H_IN
+#define DPLANNER_FOLDERPATH_H_IN
+
+#define BIN_DIR "@CMAKE_BINARY_DIR@"
+
+inline std::string getAbsDirPath(std::string dir)
+{
+    return std::string(BIN_DIR) + "/" + dir;
+}
+
+#endif // DPLANNER_FOLDERPATH_H_IN

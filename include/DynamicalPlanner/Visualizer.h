@@ -35,6 +35,9 @@ public:
                          const std::vector<iDynTree::Position>& cameraTarget,
                          double endTime = -1.0);
 
+    bool visualizeStatesAndSaveAnimation(const std::vector<State>& states, const std::string& workingFolder,
+                                const std::string& fileName, const std::string& fileExtension = "gif", double endTime = -1.0);
+
     bool setCameraPosition(const iDynTree::Position& cameraPosition);
 
     bool setCameraTarget(const iDynTree::Position& cameraTarget);

@@ -16,7 +16,10 @@
 #include <iDynTree/Optimizers/WorhpInterface.h>
 #include <iDynTree/Integrators/ForwardEuler.h>
 #include <URDFdir.h>
+#include <FolderPath.h>
 #include <chrono>
+#include <ctime>
+#include <sstream>
 
 void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::SettingsStruct settings,
                       const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::RectangularFoot &foot,
@@ -237,10 +240,10 @@ int main() {
     settingsStruct.staticTorquesCostActive = false;
     settingsStruct.forceMeanCostActive = false;
     settingsStruct.comCostActive = false;
-    settingsStruct.forceDerivativeCostActive = false;
-    settingsStruct.pointAccelerationCostActive = false;
+    settingsStruct.forceDerivativeCostActive = true;
+    settingsStruct.pointAccelerationCostActive = true;
     settingsStruct.jointsRegularizationCostActive = true;
-    settingsStruct.jointsVelocityCostActive = false;
+    settingsStruct.jointsVelocityCostActive = true;
     settingsStruct.swingCostActive = true;
     settingsStruct.phantomForcesCostActive = false;
 
@@ -266,13 +269,12 @@ int main() {
     settingsStruct.controlPeriod = 0.1;
     settingsStruct.maximumDt = 1.0;
     settingsStruct.horizon = 2.0;
-    settingsStruct.activeControlPercentage = 0.5;
+    settingsStruct.activeControlPercentage = 1.0;
     settingsStruct.comCostActiveRange.setTimeInterval(settingsStruct.horizon * settingsStruct.activeControlPercentage, settingsStruct.horizon);
 
     settingsStruct.constrainTargetCoMPosition = true;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
-    settingsStruct.constrainTargetCoMPositionRange = settingsStruct.comCostActiveRange;
-    settingsStruct.activeControlPercentage = 1.0;
+    settingsStruct.constrainTargetCoMPositionRange.setTimeInterval(settingsStruct.horizon * 0.8, settingsStruct.horizon);
 
     settingsStruct.comPositionConstraintTolerance = 1e-5;
     settingsStruct.centroidalMomentumConstraintTolerance = 1e-5;
@@ -415,7 +417,15 @@ int main() {
     end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (3rd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    auto timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm timeStruct;
+    timeStruct = *std::localtime(&timeNow);
+    std::ostringstream timeString;
+    timeString << timeStruct.tm_year + 1900 << "-" << timeStruct.tm_mon << "-";
+    timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
+    timeString << "_" << timeStruct.tm_sec;
+
+    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     return EXIT_SUCCESS;

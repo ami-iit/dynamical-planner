@@ -7,8 +7,11 @@
 # at your option.
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/data)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/data/URDFdir.h.in" "${CMAKE_CURRENT_BINARY_DIR}/data/URDFdir.h" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/FolderPath.h.in" "${CMAKE_CURRENT_BINARY_DIR}/FolderPath.h" @ONLY)
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/SavedVideos")
 
 macro(add_dp_test classname)
     set(testsrc ${classname}Test.cpp)
