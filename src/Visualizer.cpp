@@ -7,6 +7,7 @@
 
 #include <DynamicalPlanner/Visualizer.h>
 #include <iDynTree/Visualizer.h>
+#include <iDynTree/Core/EigenHelpers.h>
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -33,6 +34,7 @@ Visualizer::Visualizer()
     setCameraTarget(iDynTree::Position(0.4, 0.0, 0.5));
     double sqrt2 = std::sqrt(2.0);
     setLightDirection(iDynTree::Direction(-0.5/sqrt2, 0, -0.5/sqrt2));
+    m_pimpl->viz.vectors().setVectorsAspect(0.01, 0.0, 0.01);
 }
 
 Visualizer::~Visualizer()
@@ -64,6 +66,32 @@ bool Visualizer::visualizeState(const State &stateToVisualize)
     }
 
     m_pimpl->viz.modelViz(0).setPositions(stateToVisualize.worldToBaseTransform, stateToVisualize.jointsConfiguration);
+
+    iDynTree::IVectorsVisualization& forcesViz = m_pimpl->viz.vectors();
+
+    size_t vectorIndex = 0;
+    iDynTree::Position posBuf;
+
+    for (const ContactPointState& point : stateToVisualize.leftContactPointsState) {
+        iDynTree::toEigen(posBuf) = iDynTree::toEigen(point.pointPosition);
+        if (vectorIndex < forcesViz.getNrOfVectors()) {
+            forcesViz.updateVector(vectorIndex, posBuf, point.pointForce);
+        } else {
+            forcesViz.addVector(posBuf, point.pointForce);
+        }
+        vectorIndex++;
+    }
+
+    for (const ContactPointState& point : stateToVisualize.rightContactPointsState) {
+        iDynTree::toEigen(posBuf) = iDynTree::toEigen(point.pointPosition);
+        if (vectorIndex < forcesViz.getNrOfVectors()) {
+            forcesViz.updateVector(vectorIndex, posBuf, point.pointForce);
+        } else {
+            forcesViz.addVector(posBuf, point.pointForce);
+        }
+        vectorIndex++;
+    }
+
     m_pimpl->viz.draw();
 
     return true;
@@ -189,7 +217,9 @@ bool Visualizer::visualizeStatesAndSaveAnimation(const std::vector<State> &state
 
     std::cout << "[INFO][Visualizer::visualizeState] Generating video with the following arguments:\n" << args << std::endl;
 
-    return system(args.c_str());;
+    int useless_int = system(args.c_str());
+
+    return true;
 }
 
 bool Visualizer::setCameraPosition(const iDynTree::Position &cameraPosition)
