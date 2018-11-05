@@ -128,7 +128,7 @@ public:
         stateSparsity.addDenseBlock(fullRange, basePositionRange);
         stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
 
-        controlSparsity.addDenseBlock(0, baseVelocityRange.offset + 3, 3, 3);
+        controlSparsity.addDenseBlock(0, static_cast<size_t>(baseVelocityRange.offset) + 3, 3, 3);
         controlSparsity.addDenseBlock(fullRange, jointsVelocityRange);
 
     }

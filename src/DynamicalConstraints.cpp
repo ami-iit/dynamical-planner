@@ -171,9 +171,9 @@ public:
 
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
             stateSparsity.addIdentityBlock(momentumRange.offset, foot.forcePoints[i].offset, 3);
-            stateSparsity.addDenseBlock(momentumRange.offset+3, foot.forcePoints[i].offset, 3, 3);
-            stateSparsity.addDenseBlock(momentumRange.offset+3, foot.positionPoints[i].offset, 3, 3);
-            stateSparsity.addDenseBlock(foot.positionPoints[i].offset, foot.positionPoints[i].offset + 2, 2, 1);
+            stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(foot.forcePoints[i].offset), 3, 3);
+            stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(foot.positionPoints[i].offset), 3, 3);
+            stateSparsity.addDenseBlock(static_cast<size_t>(foot.positionPoints[i].offset), static_cast<size_t>(foot.positionPoints[i].offset) + 2, 2, 1);
         }
     }
 
@@ -190,15 +190,15 @@ public:
 
         setFootRelatedStateSparsity(leftRanges);
         setFootRelatedStateSparsity(rightRanges);
-        stateSparsity.addDenseBlock(momentumRange.offset+3, comPositionRange.offset, 3, 3);
+        stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(comPositionRange.offset), 3, 3);
         stateSparsity.addIdentityBlock(comPositionRange.offset, momentumRange.offset, 3);
         stateSparsity.addDenseBlock(basePositionRange, baseQuaternionRange);
         stateSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
 
         setFootRelatedControlSparsity(leftRanges);
         setFootRelatedControlSparsity(rightRanges);
-        controlSparsity.addDenseBlock(basePositionRange.offset, baseVelocityRange.offset, 3, 3);
-        controlSparsity.addDenseBlock(baseQuaternionRange.offset, baseVelocityRange.offset + 3, 4, 3);
+        controlSparsity.addDenseBlock(static_cast<size_t>(basePositionRange.offset), static_cast<size_t>(baseVelocityRange.offset), 3, 3);
+        controlSparsity.addDenseBlock(static_cast<size_t>(baseQuaternionRange.offset), static_cast<size_t>(baseVelocityRange.offset) + 3, 4, 3);
         controlSparsity.addIdentityBlock(jointsPositionRange.offset, jointsVelocityRange.offset, jointsPositionRange.size);
     }
 };

@@ -48,7 +48,7 @@ QuaternionNormConstraint::QuaternionNormConstraint(const VariablesLabeller &stat
     m_pimpl->stateSparsity.clear();
     m_pimpl->controlSparsity.clear();
 
-    m_pimpl->stateSparsity.addDenseBlock(0, m_pimpl->baseQuaternionRange.offset, 1, 4);
+    m_pimpl->stateSparsity.addDenseBlock(0, static_cast<size_t>(m_pimpl->baseQuaternionRange.offset), 1, 4);
 }
 
 QuaternionNormConstraint::~QuaternionNormConstraint()
