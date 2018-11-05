@@ -282,7 +282,7 @@ int main() {
     settingsStruct.pointPositionConstraintTolerance = 1e-4;
 
     iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(50.0);
-    settingsStruct.normalForceDissipationRatio = 5.0;
+    settingsStruct.normalForceDissipationRatio = 50.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 150.0;
 
     //ContactFrictionConstraint
@@ -309,6 +309,8 @@ int main() {
     ASSERT_IS_TRUE(ipoptSolver->isAvailable());
 
     ok = ipoptSolver->setIpoptOption("linear_solver", "ma97");
+    ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("ma97_order", "metis");
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("print_level", 5);
     ASSERT_IS_TRUE(ok);

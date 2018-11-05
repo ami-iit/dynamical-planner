@@ -81,7 +81,7 @@ bool ContactFrictionConstraint::evaluateConstraint(double, const iDynTree::Vecto
     m_pimpl->pointForce = m_pimpl->stateVariables(m_pimpl->forcePointRange);
 
     constraint(0) = m_pimpl->pointForce(0) * m_pimpl->pointForce(0) + m_pimpl->pointForce(1) * m_pimpl->pointForce(1) -
-            m_pimpl->frictionCoefficient * m_pimpl->pointForce(2);
+            m_pimpl->frictionCoefficient * m_pimpl->frictionCoefficient * m_pimpl->pointForce(2) * m_pimpl->pointForce(2);
 
     return true;
 
@@ -97,7 +97,7 @@ bool ContactFrictionConstraint::constraintJacobianWRTState(double, const iDynTre
 
     m_pimpl->stateJacobianBuffer(0, col) = 2 * m_pimpl->pointForce(0);
     m_pimpl->stateJacobianBuffer(0, col+1) = 2 * m_pimpl->pointForce(1);
-    m_pimpl->stateJacobianBuffer(0, col+2) = -m_pimpl->frictionCoefficient;
+    m_pimpl->stateJacobianBuffer(0, col+2) = -2 * m_pimpl->frictionCoefficient * m_pimpl->frictionCoefficient * m_pimpl->pointForce(2);
 
     jacobian = m_pimpl->stateJacobianBuffer;
 

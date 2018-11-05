@@ -807,8 +807,8 @@ public:
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.left.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.left.forcePoints[i])(2) = 0.0;
-            iDynTree::toEigen(segment(controlLowerBound, ranges.left.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
-            iDynTree::toEigen(segment(controlUpperBound, ranges.left.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
+//            iDynTree::toEigen(segment(controlLowerBound, ranges.left.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
+//            iDynTree::toEigen(segment(controlUpperBound, ranges.left.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
             iDynTree::toEigen(segment(controlLowerBound, ranges.left.velocityControlPoints[i])) = -iDynTree::toEigen(st.velocityMaximumDerivative);
             iDynTree::toEigen(segment(controlUpperBound, ranges.left.velocityControlPoints[i])) = iDynTree::toEigen(st.velocityMaximumDerivative);
         }
@@ -816,8 +816,8 @@ public:
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.right.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.right.forcePoints[i])(2) = 0.0;
-            iDynTree::toEigen(segment(controlLowerBound, ranges.right.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
-            iDynTree::toEigen(segment(controlUpperBound, ranges.right.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
+//            iDynTree::toEigen(segment(controlLowerBound, ranges.right.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
+//            iDynTree::toEigen(segment(controlUpperBound, ranges.right.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
             iDynTree::toEigen(segment(controlLowerBound, ranges.right.velocityControlPoints[i])) = -iDynTree::toEigen(st.velocityMaximumDerivative);
             iDynTree::toEigen(segment(controlUpperBound, ranges.right.velocityControlPoints[i])) = iDynTree::toEigen(st.velocityMaximumDerivative);
         }
