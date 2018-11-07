@@ -74,8 +74,8 @@ PlanarVelocityControlConstraints::PlanarVelocityControlConstraints(const Variabl
 
     m_pimpl->stateSparsity.addDenseBlock(0, pzIndex, 4, 1);
 
-    m_pimpl->controlSparsity.addIdentityBlock(0, m_pimpl->velocityControlRange.offset, 2);
-    m_pimpl->controlSparsity.addIdentityBlock(2, m_pimpl->velocityControlRange.offset, 2);
+    m_pimpl->controlSparsity.addIdentityBlock(0, static_cast<size_t>(m_pimpl->velocityControlRange.offset), 2);
+    m_pimpl->controlSparsity.addIdentityBlock(2, static_cast<size_t>(m_pimpl->velocityControlRange.offset), 2);
 }
 
 PlanarVelocityControlConstraints::~PlanarVelocityControlConstraints()

@@ -170,7 +170,7 @@ public:
     void setFootRelatedStateSparsity(const FootRanges& foot) {
 
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
-            stateSparsity.addIdentityBlock(momentumRange.offset, foot.forcePoints[i].offset, 3);
+            stateSparsity.addIdentityBlock(static_cast<size_t>(momentumRange.offset), static_cast<size_t>(foot.forcePoints[i].offset), 3);
             stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(foot.forcePoints[i].offset), 3, 3);
             stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(foot.positionPoints[i].offset), 3, 3);
             stateSparsity.addDenseBlock(static_cast<size_t>(foot.positionPoints[i].offset), static_cast<size_t>(foot.positionPoints[i].offset) + 2, 2, 1);
@@ -179,8 +179,8 @@ public:
 
     void setFootRelatedControlSparsity(const FootRanges& foot) {
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
-            controlSparsity.addIdentityBlock(foot.forcePoints[i].offset, foot.forceControlPoints[i].offset, 3);
-            controlSparsity.addIdentityBlock(foot.positionPoints[i].offset, foot.velocityControlPoints[i].offset, 3);
+            controlSparsity.addIdentityBlock(static_cast<size_t>(foot.forcePoints[i].offset), static_cast<size_t>(foot.forceControlPoints[i].offset), 3);
+            controlSparsity.addIdentityBlock(static_cast<size_t>(foot.positionPoints[i].offset), static_cast<size_t>(foot.velocityControlPoints[i].offset), 3);
         }
     }
 
@@ -191,7 +191,7 @@ public:
         setFootRelatedStateSparsity(leftRanges);
         setFootRelatedStateSparsity(rightRanges);
         stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(comPositionRange.offset), 3, 3);
-        stateSparsity.addIdentityBlock(comPositionRange.offset, momentumRange.offset, 3);
+        stateSparsity.addIdentityBlock(static_cast<size_t>(comPositionRange.offset), static_cast<size_t>(momentumRange.offset), 3);
         stateSparsity.addDenseBlock(basePositionRange, baseQuaternionRange);
         stateSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
 
@@ -199,7 +199,7 @@ public:
         setFootRelatedControlSparsity(rightRanges);
         controlSparsity.addDenseBlock(static_cast<size_t>(basePositionRange.offset), static_cast<size_t>(baseVelocityRange.offset), 3, 3);
         controlSparsity.addDenseBlock(static_cast<size_t>(baseQuaternionRange.offset), static_cast<size_t>(baseVelocityRange.offset) + 3, 4, 3);
-        controlSparsity.addIdentityBlock(jointsPositionRange.offset, jointsVelocityRange.offset, jointsPositionRange.size);
+        controlSparsity.addIdentityBlock(static_cast<size_t>(jointsPositionRange.offset), static_cast<size_t>(jointsVelocityRange.offset), static_cast<size_t>(jointsPositionRange.size));
     }
 };
 

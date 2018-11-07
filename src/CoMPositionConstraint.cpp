@@ -80,10 +80,10 @@ public:
         fullRange.offset = 0;
         fullRange.size = 3;
 
-        stateSparsity.addIdentityBlock(0, basePositionRange.offset, 3);
+        stateSparsity.addIdentityBlock(0, static_cast<size_t>(basePositionRange.offset), 3);
         stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
         stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
-        stateSparsity.addIdentityBlock(0, comPositionRange.offset, 3);
+        stateSparsity.addIdentityBlock(0, static_cast<size_t>(comPositionRange.offset), 3);
     }
 
 };

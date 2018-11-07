@@ -12,6 +12,7 @@
 #include <iDynTree/Core/Transform.h>
 #include <iDynTree/TimeVaryingObject.h>
 #include <iDynTree/Core/LinearForceVector3.h>
+#include <vector>
 
 namespace DynamicalPlanner {
     class State;

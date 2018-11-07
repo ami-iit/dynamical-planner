@@ -124,7 +124,7 @@ public:
         fullRange.offset = 0;
 
         stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
-        stateSparsity.addIdentityBlock(0, momentumRange.offset + 3, 3);
+        stateSparsity.addIdentityBlock(0, static_cast<size_t>(momentumRange.offset) + 3, 3);
         stateSparsity.addDenseBlock(fullRange, basePositionRange);
         stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
 
