@@ -247,10 +247,10 @@ int main() {
     settingsStruct.swingCostActive = true;
     settingsStruct.phantomForcesCostActive = false;
 
-    settingsStruct.jointsVelocityCostOverallWeight = 1e-4;
+    settingsStruct.frameCostOverallWeight = 10;
+    settingsStruct.jointsVelocityCostOverallWeight = 1e-2;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.jointsVelocityCostOverallWeight = 1e-20;
     settingsStruct.forceMeanCostOverallWeight = 1.0;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-15;
     settingsStruct.pointAccelerationCostOverallWeight = 1e-15;
@@ -281,8 +281,8 @@ int main() {
     settingsStruct.quaternionModulusConstraintTolerance = 1e-2;
     settingsStruct.pointPositionConstraintTolerance = 1e-4;
 
-    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(50.0);
-    settingsStruct.normalForceDissipationRatio = 50.0;
+    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
+    settingsStruct.normalForceDissipationRatio = 200.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 150.0;
 
     //ContactFrictionConstraint
@@ -299,7 +299,7 @@ int main() {
 
     settingsStruct.complementarityDissipation = 10.0;
 
-    settingsStruct.minimumCoMHeight = 0.95 * initialState.comPosition(2);
+    settingsStruct.minimumCoMHeight = 0.9 * initialState.comPosition(2);
 
     ok = settings.setFromStruct(settingsStruct);
     ASSERT_IS_TRUE(ok);
@@ -314,7 +314,7 @@ int main() {
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("print_level", 5);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("nlp_scaling_max_gradient", 10.0);
+    ok = ipoptSolver->setIpoptOption("nlp_scaling_max_gradient", 100.0);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("nlp_scaling_min_value", 1e-6);
     ASSERT_IS_TRUE(ok);
@@ -325,9 +325,13 @@ int main() {
 //    ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("tol", 1e-5);
     ASSERT_IS_TRUE(ok);
+//    ok = ipoptSolver->setIpoptOption("bound_relax_factor", 1e-5);
+//    ASSERT_IS_TRUE(ok);
+//    ok = ipoptSolver->setIpoptOption("honor_original_bounds", "no");
+//    ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("constr_viol_tol", 1e-3);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e-1);
+    ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e1);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_iter", 2);
     ASSERT_IS_TRUE(ok);
