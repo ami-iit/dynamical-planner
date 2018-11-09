@@ -42,7 +42,7 @@ public:
     FootRanges leftRanges, rightRanges;
     iDynTree::IndexRange momentumRange, comPositionRange, basePositionRange, baseQuaternionRange, jointsPositionRange, baseVelocityRange, jointsVelocityRange;
 
-    iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
+    //iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 
     void checkFootVariables(const std::string& footName, size_t numberOfPoints, FootRanges& foot) {
@@ -104,8 +104,7 @@ public:
         }
     }
 
-    void computeFootRelatedStateJacobian(const FootRanges& foot) {
-        iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(stateJacobianBuffer);
+    void computeFootRelatedStateJacobian(const FootRanges& foot, iDynTree::iDynTreeEigenMatrixMap& jacobianMap) {
         Eigen::Vector3d distance, appliedForce;
 
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
@@ -128,9 +127,7 @@ public:
         }
     }
 
-    void computeFootRelatedControlJacobian(FootRanges& foot) {
-        iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(controlJacobianBuffer);
-
+    void computeFootRelatedControlJacobian(FootRanges& foot, iDynTree::iDynTreeEigenMatrixMap& jacobianMap) {
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
             double deltaXY = activationXY.eval(stateVariables(foot.positionPoints[i])(2));
 
@@ -229,11 +226,11 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
     m_pimpl->gravityVector.zero();
     m_pimpl->gravityVector(2) = -9.81;
 
-    m_pimpl->stateJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(stateVariables.size()));
-    m_pimpl->stateJacobianBuffer.zero();
+//    m_pimpl->stateJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(stateVariables.size()));
+//    m_pimpl->stateJacobianBuffer.zero();
 
-    m_pimpl->controlJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(controlVariables.size()));
-    m_pimpl->controlJacobianBuffer.zero();
+//    m_pimpl->controlJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(controlVariables.size()));
+//    m_pimpl->controlJacobianBuffer.zero();
 
     m_pimpl->activationXY = planarVelocityActivation;
 
@@ -324,15 +321,16 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
 //    m_pimpl->comPosition = m_pimpl->sharedKinDyn->getCenterOfMassPosition(m_pimpl->robotState);
 //    bool ok = m_pimpl->sharedKinDyn->getCenterOfMassJacobian(m_pimpl->robotState, m_pimpl->comjacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
-    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
+//    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->stateJacobianBuffer);
+    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(dynamicsDerivative);
 
 //    jacobianMap.block<3,3>(m_pimpl->momentumRange.offset+3, m_pimpl->basePositionRange.offset).setZero();
 //    jacobianMap.block<3,4>(m_pimpl->momentumRange.offset+3, m_pimpl->baseQuaternionRange.offset).setZero();
 //    jacobianMap.block(m_pimpl->momentumRange.offset + 3, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size).setZero();
     jacobianMap.block<3,3>(m_pimpl->momentumRange.offset+3, m_pimpl->comPositionRange.offset).setZero();
 
-    m_pimpl->computeFootRelatedStateJacobian(m_pimpl->leftRanges);
-    m_pimpl->computeFootRelatedStateJacobian(m_pimpl->rightRanges);
+    m_pimpl->computeFootRelatedStateJacobian(m_pimpl->leftRanges, jacobianMap);
+    m_pimpl->computeFootRelatedStateJacobian(m_pimpl->rightRanges, jacobianMap);
 
     jacobianMap.block<3,3>(m_pimpl->comPositionRange.offset, m_pimpl->momentumRange.offset).setIdentity();
     jacobianMap.block<3,3>(m_pimpl->comPositionRange.offset, m_pimpl->momentumRange.offset) *= 1.0/m_pimpl->totalMass;
@@ -344,7 +342,7 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
 
     jacobianMap.block<4,4>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(m_pimpl->robotState.base_velocity.getAngularVec3())) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
-    dynamicsDerivative = m_pimpl->stateJacobianBuffer;
+   // dynamicsDerivative = m_pimpl->stateJacobianBuffer;
     return true;
 }
 
@@ -357,10 +355,12 @@ bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::Vector
 
     m_pimpl->updateRobotState();
 
-    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->controlJacobianBuffer);
+//    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(m_pimpl->controlJacobianBuffer);
+    iDynTree::iDynTreeEigenMatrixMap jacobianMap = iDynTree::toEigen(dynamicsDerivative);
 
-    m_pimpl->computeFootRelatedControlJacobian(m_pimpl->leftRanges);
-    m_pimpl->computeFootRelatedControlJacobian(m_pimpl->rightRanges);
+
+    m_pimpl->computeFootRelatedControlJacobian(m_pimpl->leftRanges, jacobianMap);
+    m_pimpl->computeFootRelatedControlJacobian(m_pimpl->rightRanges, jacobianMap);
 
 
     jacobianMap.block<3,3>(m_pimpl->basePositionRange.offset, m_pimpl->baseVelocityRange.offset) = iDynTree::toEigen(m_pimpl->baseRotation);
@@ -369,7 +369,7 @@ bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::Vector
 
     jacobianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsVelocityRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->jointsVelocityRange.size).setIdentity();
 
-    dynamicsDerivative = m_pimpl->controlJacobianBuffer;
+//    dynamicsDerivative = m_pimpl->controlJacobianBuffer;
     return true;
 }
 

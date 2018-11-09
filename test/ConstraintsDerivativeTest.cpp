@@ -239,7 +239,9 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 void checkDynamicalConstraintDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
                                         double perturbation, ConstraintSet& constraints) {
     iDynTree::VectorDynSize originalDynamics, perturbedDynamics, perturbedState, perturbedControl, firstOrderTaylor;
-    iDynTree::MatrixDynSize stateJacobian, controlJacobian;
+    iDynTree::MatrixDynSize stateJacobian(originalStateVector.size(), originalStateVector.size()), controlJacobian(originalStateVector.size(), originalControlVector.size());
+    stateJacobian.zero();
+    controlJacobian.zero();
     originalDynamics.resize(originalStateVector.size());
     perturbedDynamics = originalDynamics;
     firstOrderTaylor = originalDynamics;
