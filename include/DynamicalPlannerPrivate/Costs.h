@@ -12,7 +12,7 @@
 #include <DynamicalPlannerPrivate/StaticTorquesCost.h>
 #include <DynamicalPlannerPrivate/SwingCost.h>
 #include <DynamicalPlannerPrivate/PhantomForcesCost.h>
+#include <DynamicalPlannerPrivate/MeanPointPositionCost.h>
 #include <iDynTree/L2NormCost.h>
-
 
 #endif // DPLANNER_COSTS_H

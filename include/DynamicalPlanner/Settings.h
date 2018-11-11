@@ -134,6 +134,12 @@ namespace DynamicalPlanner {
         bool phantomForcesCostActive;
         double phantomForcesCostOverallWeight;
 
+        //Mean Position of the contact points
+        bool meanPointPositionCostActive;
+        double meanPointPositionCostOverallWeight;
+        iDynTree::optimalcontrol::TimeRange meanPointPositionCostActiveRange;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> desiredMeanPointPosition;
+
     } SettingsStruct;
 }
 

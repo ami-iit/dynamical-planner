@@ -52,6 +52,7 @@ typedef struct {
     std::vector<std::shared_ptr<iDynTree::optimalcontrol::L2NormCost>> leftPointsAcceleration, rightPointsAcceleration;
     std::vector<std::shared_ptr<SwingCost>> leftSwings, rightSwings;
     std::vector<std::shared_ptr<PhantomForcesCost>> leftPhantomForces, rightPhantomForces;
+    std::shared_ptr<MeanPointPositionCost> meanPositionCost;
 } CostsSet;
 
 typedef struct {
@@ -599,6 +600,15 @@ public:
             }
         }
 
+        if (st.meanPointPositionCostActive) {
+            costs.meanPositionCost = std::make_shared<MeanPointPositionCost>(stateStructure, controlStructure);
+            costs.meanPositionCost->setDesiredPositionTrajectory(st.desiredMeanPointPosition);
+            ok = ocProblem->addLagrangeTerm(st.meanPointPositionCostOverallWeight, st.meanPointPositionCostActiveRange, costs.meanPositionCost);
+            if (!ok) {
+                return false;
+            }
+        }
+
 
         return true;
     }
@@ -825,8 +835,8 @@ public:
 
         segment(stateLowerBound, ranges.comPosition)(2) = st.minimumCoMHeight;
 
-        iDynTree::toEigen(segment(stateLowerBound, ranges.momentum)).bottomRows<3>().setConstant(-1);
-        iDynTree::toEigen(segment(stateUpperBound, ranges.momentum)).bottomRows<3>().setConstant(1);
+        iDynTree::toEigen(segment(stateLowerBound, ranges.momentum)).bottomRows<3>().setConstant(-10);
+        iDynTree::toEigen(segment(stateUpperBound, ranges.momentum)).bottomRows<3>().setConstant(10);
 
 //        iDynTree::toEigen(segment(stateLowerBound, ranges.baseQuaternion)).setConstant(-1.0);
 //        segment(stateLowerBound, ranges.baseQuaternion)(0) = 0.0;

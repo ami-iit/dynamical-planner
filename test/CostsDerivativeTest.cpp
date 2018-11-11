@@ -141,6 +141,10 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     ok = ocProblem.addLagrangeTerm(0.5, staticTorquesCost);
     ASSERT_IS_TRUE(ok);
 
+    std::shared_ptr<MeanPointPositionCost> meanPositionCost = std::make_shared<MeanPointPositionCost>(stateVariables, controlVariables);
+    ok = ocProblem.addLagrangeTerm(0.5, meanPositionCost);
+    ASSERT_IS_TRUE(ok);
+
 }
 
 void checkCostsDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,

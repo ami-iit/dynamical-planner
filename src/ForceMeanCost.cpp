@@ -15,7 +15,7 @@ using namespace DynamicalPlanner::Private;
 
 class ForceMeanCost::Implementation {
 public:
-    VariablesLabeller stateVariables, controlVariables;
+    VariablesLabeller stateVariables;
 
     std::string footName;
     size_t contactIndex;
@@ -34,7 +34,6 @@ ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const Vari
     , m_pimpl(new Implementation)
 {
     m_pimpl->stateVariables = stateVariables;
-    m_pimpl->controlVariables = controlVariables;
 
     m_pimpl->footName = footName;
     m_pimpl->contactIndex = contactIndex;
@@ -58,11 +57,10 @@ ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const Vari
 ForceMeanCost::~ForceMeanCost()
 { }
 
-bool ForceMeanCost::costEvaluation(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control,
+bool ForceMeanCost::costEvaluation(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &,
                                    double &costValue)
 {
     m_pimpl->stateVariables = state;
-    m_pimpl->controlVariables = control;
 
     m_pimpl->sumOfForces = m_pimpl->stateVariables(m_pimpl->forcePointRange);
     for (auto force : m_pimpl->otherPointsRanges) {
@@ -79,10 +77,9 @@ bool ForceMeanCost::costEvaluation(double /*time*/, const iDynTree::VectorDynSiz
     return true;
 }
 
-bool ForceMeanCost::costFirstPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &partialDerivative)
+bool ForceMeanCost::costFirstPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &, iDynTree::VectorDynSize &partialDerivative)
 {
     m_pimpl->stateVariables = state;
-    m_pimpl->controlVariables = control;
 
     m_pimpl->sumOfForces = m_pimpl->stateVariables(m_pimpl->forcePointRange);
     for (auto force : m_pimpl->otherPointsRanges) {

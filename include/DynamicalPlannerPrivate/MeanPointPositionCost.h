@@ -4,38 +4,40 @@
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
-#ifndef DPLANNER_FORCEMEANCOST_H
-#define DPLANNER_FORCEMEANCOST_H
+#ifndef DPLANNER_MEANPOINTPOSITIONCOST_H
+#define DPLANNER_MEANPOINTPOSITIONCOST_H
 
 #include <iDynTree/Cost.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
+#include <iDynTree/TimeVaryingObject.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <memory>
 
 namespace DynamicalPlanner {
     namespace Private {
-        class ForceMeanCost;
+        class MeanPointPositionCost;
     }
 }
 
-class DynamicalPlanner::Private::ForceMeanCost : public iDynTree::optimalcontrol::Cost {
+class DynamicalPlanner::Private::MeanPointPositionCost : public iDynTree::optimalcontrol::Cost {
 
     class Implementation;
     std::unique_ptr<Implementation> m_pimpl;
 
 public:
 
-    ForceMeanCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                  const std::string &footName, size_t contactIndex);
+    MeanPointPositionCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables);
 
-    ~ForceMeanCost() override;
+    ~MeanPointPositionCost() override;
 
-    virtual bool costEvaluation(double,
+    bool setDesiredPositionTrajectory(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> desiredPosition);
+
+    virtual bool costEvaluation(double time,
                                 const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&,
                                 double& costValue) override;
 
-    virtual bool costFirstPartialDerivativeWRTState(double,
+    virtual bool costFirstPartialDerivativeWRTState(double time,
                                                     const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&,
                                                     iDynTree::VectorDynSize& partialDerivative) override;
 
@@ -43,5 +45,4 @@ public:
                                                       iDynTree::VectorDynSize& partialDerivative) override;
 };
 
-
-#endif // DPLANNER_FORCEMEANCOST_H
+#endif // DPLANNER_MEANPOINTPOSITIONCOST_H

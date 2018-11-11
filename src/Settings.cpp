@@ -129,6 +129,11 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(inputSettings.desiredSwingHeight < 0, "The desiredSwingHeight is supposed to be non-negative.");
     }
 
+    if (inputSettings.meanPointPositionCostActive) {
+        errors += checkError(!inputSettings.meanPointPositionCostActiveRange.isValid(), "The active range of the MeanPositionCost is not valid.");
+        errors += checkError(!inputSettings.desiredMeanPointPosition, "The desiredMeanPointPosition pointer is empty.");
+    }
+
     checkError(errors > 0, "The were errors when importing the settings struct. The settings will not be updated.");
 
     if (errors == 0) {
@@ -307,6 +312,12 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //Phantom forces aka forces when point is not in contact (each contact point has a different cost with same settings)
     defaults.phantomForcesCostActive = true;
     defaults.phantomForcesCostOverallWeight = 0.1;
+
+    //Mean Position of the contact points
+    defaults.meanPointPositionCostActive = true;
+    defaults.meanPointPositionCostOverallWeight = 1.0;
+    defaults.meanPointPositionCostActiveRange = iDynTree::optimalcontrol::TimeRange::AnyTime();
+    defaults.desiredMeanPointPosition = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(iDynTree::Position::Zero());
 
     return defaults;
 }
