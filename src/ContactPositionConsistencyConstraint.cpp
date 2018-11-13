@@ -115,7 +115,7 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
                                                                            iDynTree::FrameIndex footFrame, const std::string &footName,
                                                                            const iDynTree::Position &positionInFoot, size_t contactIndex)
     : iDynTree::optimalcontrol::Constraint(3, "ContactPositionConsistency" + footName + std::to_string(contactIndex))
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

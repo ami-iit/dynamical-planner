@@ -35,7 +35,7 @@ PlanarVelocityControlConstraints::PlanarVelocityControlConstraints(const Variabl
                                                                    const std::string &footName, size_t contactIndex,
                                                                    const HyperbolicTangent &planarVelocityActivation, double xMaximumDerivative, double yMaximumDerivative)
     : iDynTree::optimalcontrol::Constraint (4, "PlanarVelocityControlBounds" + footName + std::to_string(contactIndex))
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

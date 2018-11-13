@@ -139,7 +139,7 @@ public:
 
 CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
     : iDynTree::optimalcontrol::Constraint (3, "CentroidalMomentum")
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     assert(timelySharedKinDyn);
     assert(timelySharedKinDyn->isValid());

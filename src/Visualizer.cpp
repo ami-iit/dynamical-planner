@@ -27,7 +27,7 @@ public:
 };
 
 Visualizer::Visualizer()
-    : m_pimpl(new VisualizerImplementation)
+    : m_pimpl(std::make_unique<VisualizerImplementation>())
 {
     m_pimpl->viz.init();
     setCameraPosition(iDynTree::Position(1.0, 0.0, 0.5));

@@ -208,7 +208,7 @@ StaticTorquesCost::StaticTorquesCost(const VariablesLabeller &stateVariables, co
                                      const iDynTree::FrameIndex &leftFootFrame, const iDynTree::FrameIndex &rightFootFrame, const std::vector<iDynTree::Position> &positionsInLeftFoot,
                                      const std::vector<iDynTree::Position> &positionsInRightFoot)
     : iDynTree::optimalcontrol::Cost ("StaticTorques")
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

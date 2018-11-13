@@ -32,7 +32,7 @@ public:
 
 DynamicalComplementarityConstraint::DynamicalComplementarityConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const std::string &footName, size_t contactIndex, double dissipationGain)
     : iDynTree::optimalcontrol::Constraint (1, "DynamicalComplementarity" + footName + std::to_string(contactIndex))
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

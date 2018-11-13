@@ -23,7 +23,7 @@ public:
 
 SwingCost::SwingCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const std::string &footName, size_t contactIndex, double desiredSwingHeight)
     : iDynTree::optimalcontrol::Cost ("Swing" + footName + std::to_string(contactIndex))
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

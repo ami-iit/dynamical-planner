@@ -29,7 +29,7 @@ public:
 };
 
 RectangularFoot::RectangularFoot()
-    : m_pimpl(new Implementation)
+    : m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->pointsPositions.resize(4);
     m_pimpl->footSet = false;

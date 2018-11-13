@@ -67,7 +67,7 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
                                                              unsigned int lateralIndex, iDynTree::FrameIndex referenceFootFrame,
                                                              iDynTree::FrameIndex otherFootFrame)
     : iDynTree::optimalcontrol::Constraint (1, "FeetLateralConstraint")
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

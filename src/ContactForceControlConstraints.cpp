@@ -39,7 +39,7 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
                                                                const std::string &footName, size_t contactIndex, const HyperbolicSecant &forceActivation,
                                                                double maximumNormalDerivative, double dissipationRatio, double deactivationTime)
     : iDynTree::optimalcontrol::Constraint (2, "ForceControlBounds" + footName + std::to_string(contactIndex))
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

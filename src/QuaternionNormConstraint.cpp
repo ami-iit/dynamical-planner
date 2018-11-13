@@ -28,7 +28,7 @@ public:
 
 QuaternionNormConstraint::QuaternionNormConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables)
     : iDynTree::optimalcontrol::Constraint (1, "QuaternionNorm")
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;

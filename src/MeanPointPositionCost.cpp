@@ -28,7 +28,7 @@ public:
 
 MeanPointPositionCost::MeanPointPositionCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables)
     :iDynTree::optimalcontrol::Cost ("MeanPointPosition")
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
 

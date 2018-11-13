@@ -31,7 +31,7 @@ public:
 ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
                              const std::string &footName, size_t contactIndex)
     : iDynTree::optimalcontrol::Cost ("ForceMean" + footName + std::to_string(contactIndex))
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
 

@@ -73,7 +73,7 @@ public:
 
 FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const iDynTree::FrameIndex &desiredFrame)
     : iDynTree::optimalcontrol::Cost ("FrameOrientation")
-    , m_pimpl(new Implementation())
+    , m_pimpl(std::make_unique<Implementation>())
 {
     assert(timelySharedKinDyn);
     assert(timelySharedKinDyn->isValid());

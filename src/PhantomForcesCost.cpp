@@ -31,7 +31,7 @@ public:
 PhantomForcesCost::PhantomForcesCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
                                      const std::string &footName, size_t contactIndex, const HyperbolicSecant &forceActivation)
     : iDynTree::optimalcontrol::Cost ("PhantomForces" + footName + std::to_string(contactIndex))
-    , m_pimpl(new Implementation)
+    , m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
