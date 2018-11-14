@@ -803,16 +803,10 @@ public:
         iDynTree::toEigen(stateLowerBound).setConstant(minusInfinity);
         iDynTree::toEigen(stateUpperBound).setConstant(plusInfinity);
 
-        secondStateLowerBound = stateLowerBound;
-        secondStateUpperBound = stateUpperBound;
-
         controlLowerBound.resize(static_cast<unsigned int>(controlStructure.size()));
         controlUpperBound.resize(static_cast<unsigned int>(controlStructure.size()));
         iDynTree::toEigen(controlLowerBound).setConstant(minusInfinity);
         iDynTree::toEigen(controlUpperBound).setConstant(plusInfinity);
-
-        secondControlLowerBound = controlLowerBound;
-        secondControlUpperBound = controlUpperBound;
 
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.left.positionPoints[i])(2) = 0.0;
@@ -852,6 +846,10 @@ public:
             segment(controlUpperBound, ranges.jointsVelocity)(static_cast<long>(j)) = st.jointsVelocityLimits[j].second;
         }
 
+        secondStateLowerBound = stateLowerBound;
+        secondStateUpperBound = stateUpperBound;
+        secondControlLowerBound = controlLowerBound;
+        secondControlUpperBound = controlUpperBound;
 
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             iDynTree::toEigen(segment(secondControlLowerBound, ranges.left.velocityControlPoints[i])).setZero();
@@ -1030,7 +1028,7 @@ private:
 
 
 Solver::Solver()
-    : m_pimpl(new Implementation)
+    : m_pimpl(std::make_unique<Implementation>())
 {
     m_pimpl->plusInfinity = 1E19;
     m_pimpl->minusInfinity = -1E19;

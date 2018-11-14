@@ -12,6 +12,7 @@
 #include <Eigen/Dense>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlanner/Solver.h>
+#include <DynamicalPlanner/RectangularFoot.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
 #include <iDynTree/KinDynComputations.h>
 #include <URDFdir.h>
@@ -29,7 +30,7 @@ public:
     }
 
     virtual bool solve() override {
-        iDynTree::VectorDynSize variables, constraintsLB, constraintsUB, variablesLB, variablesUB;
+        iDynTree::VectorDynSize variables, constraintsLB, constraintsUB, variablesLB, variablesUB, constraints;
         iDynTree::MatrixDynSize dummyMatrix, jacobian;
         std::vector<size_t> nnzeroRows, nnzeroCols;
         ASSERT_IS_TRUE(m_problem != nullptr);
@@ -68,8 +69,29 @@ public:
         }
 
         ASSERT_EQUAL_MATRIX_TOL(dummyMatrix, jacobian, iDynTree::DEFAULT_TOL); //check the sparsity structure
-//        std::cerr << "Cost Jacobian" << std::endl << dummyMatrix.toString() << std::endl << std::endl;
-        //not evaluating the constraint hessian for the moment
+
+        ASSERT_IS_TRUE(m_problem->getGuess(variables));
+
+        for (unsigned int i = 0; i < variables.size(); ++i) {
+            if (iDynTree::checkDoublesAreEqual(variablesLB(i), variablesUB(i))) {
+                ASSERT_EQUAL_DOUBLE_TOL(variables(i), variablesLB(i), iDynTree::DEFAULT_TOL);
+            } else {
+                ASSERT_IS_TRUE(variables(i) >= variablesLB(i));
+                ASSERT_IS_TRUE(variables(i) <= variablesUB(i));
+            }
+        }
+
+        ASSERT_IS_TRUE(m_problem->setVariables(variables));
+        ASSERT_IS_TRUE(m_problem->evaluateConstraints(constraints));
+
+        for (unsigned int i = 0; i < constraints.size(); ++i) {
+            if (iDynTree::checkDoublesAreEqual(constraintsLB(i), constraintsUB(i))) {
+                ASSERT_EQUAL_DOUBLE_TOL(constraints(i), constraintsLB(i), 1e-3);
+            } else {
+                ASSERT_IS_TRUE(constraints(i) >= constraintsLB(i));
+                ASSERT_IS_TRUE(constraints(i) <= constraintsUB(i));
+            }
+        }
 
         return true;
     }
@@ -94,7 +116,8 @@ public:
 OptimizerTest::~OptimizerTest(){}
 
 void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::SettingsStruct settings,
-                      const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::State &initialState) {
+                      const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::RectangularFoot &foot,
+                      DynamicalPlanner::State &initialState) {
 
     iDynTree::KinDynComputations kinDyn;
 
@@ -108,8 +131,11 @@ void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::Sett
     gravity.zero();
     gravity(2) = -9.81;
 
+    iDynTree::Twist baseVelocity = iDynTree::Twist::Zero();
+    baseVelocity(0) = 0.3*0;
+
     ok = kinDyn.setRobotState(model.getFrameTransform(model.getFrameIndex(settings.leftFrameName)).inverse(), desiredJoints,
-                              iDynTree::Twist::Zero(), iDynTree::VectorDynSize(desiredJoints.size()), gravity);
+                              baseVelocity, iDynTree::VectorDynSize(desiredJoints.size()), gravity);
     ASSERT_IS_TRUE(ok);
 
     initialState.comPosition = kinDyn.getCenterOfMassPosition();
@@ -133,18 +159,37 @@ void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::Sett
         totalMass += model.getLink(static_cast<iDynTree::LinkIndex>(l))->getInertia().getMass();
     }
 
-    double pointForce = totalMass * 9.81 / (2 * settings.leftPointsPosition.size());
+    double normalForce = totalMass * 9.81;
 
     for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
         initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
         initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
-
-        initialState.leftContactPointsState[i].pointForce.zero();
-        initialState.leftContactPointsState[i].pointForce(2) = pointForce;
-
-        initialState.rightContactPointsState[i].pointForce.zero();
-        initialState.rightContactPointsState[i].pointForce(2) = pointForce;
     }
+
+    iDynTree::Wrench leftWrench, rightWrench;
+    leftWrench.zero();
+    rightWrench.zero();
+
+    leftWrench(2) = normalForce/(1 + std::fabs(initialState.comPosition(1) - leftTransform.getPosition()(1))/std::fabs(initialState.comPosition(1) - rightTransform.getPosition()(1)));
+
+    rightWrench(2) = normalForce - leftWrench(2);
+
+    leftWrench(4) = -leftWrench(2) * (initialState.comPosition(0) - leftTransform.getPosition()(0));
+    rightWrench(4) = -rightWrench(2) * (initialState.comPosition(0) - rightTransform.getPosition()(0));
+
+    std::vector<iDynTree::Force> leftPointForces, rightPointForces;
+
+    ok = foot.getForces(leftWrench, leftPointForces);
+    ASSERT_IS_TRUE(ok);
+
+    ok = foot.getForces(rightWrench, rightPointForces);
+    ASSERT_IS_TRUE(ok);
+
+    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
+        initialState.leftContactPointsState[i].pointForce = leftPointForces[i];
+        initialState.rightContactPointsState[i].pointForce =rightPointForces[i];
+    }
+
 }
 
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
@@ -232,6 +277,19 @@ int main() {
 
     DynamicalPlanner::SettingsStruct settingsStruct = DynamicalPlanner::Settings::Defaults(modelLoader.model());
 
+    DynamicalPlanner::RectangularFoot foot;
+
+    double d = 0.08;
+    double l = 0.188;
+
+    iDynTree::Position topLeftPosition(0.125,  0.04, 0.0);
+    ok = foot.setFoot(l, d, topLeftPosition);
+    ASSERT_IS_TRUE(ok);
+
+    ok = foot.getPoints(iDynTree::Transform::Identity(), settingsStruct.leftPointsPosition);
+    ASSERT_IS_TRUE(ok);
+
+    settingsStruct.rightPointsPosition = settingsStruct.leftPointsPosition;
 
     DynamicalPlanner::State initialState;
 
@@ -244,9 +302,9 @@ int main() {
 
     iDynTree::toEigen(desiredInitialJoints) *= iDynTree::deg2rad(1.0);
 
-    fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, initialState);
+    fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, foot, initialState);
 
-    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 1.0, 0.0);
+    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.0, 0.0);
 
     settingsStruct.desiredCoMTrajectory  = comReference;
 

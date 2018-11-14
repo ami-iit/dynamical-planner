@@ -21,24 +21,24 @@
 #include <ctime>
 #include <sstream>
 
-void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::SettingsStruct settings,
-                      const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::RectangularFoot &foot,
+void fillInitialState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings,
+                      const iDynTree::VectorDynSize& desiredJoints, DynamicalPlanner::RectangularFoot &foot,
                       DynamicalPlanner::State &initialState) {
 
-    iDynTree::KinDynComputations kinDyn;
+    const iDynTree::Model& model = kinDyn.model();
 
-    bool ok = kinDyn.loadRobotModel(model);
-    ASSERT_IS_TRUE(ok);
-
-    ok = kinDyn.setFloatingBase(model.getLinkName(model.getFrameLink(model.getFrameIndex(settings.leftFrameName))));
+    bool ok = kinDyn.setFloatingBase(model.getLinkName(model.getFrameLink(model.getFrameIndex(settings.leftFrameName))));
     ASSERT_IS_TRUE(ok);
 
     iDynTree::Vector3 gravity;
     gravity.zero();
     gravity(2) = -9.81;
 
+    iDynTree::Twist baseVelocity = iDynTree::Twist::Zero();
+    baseVelocity(0) = 0.3*0;
+
     ok = kinDyn.setRobotState(model.getFrameTransform(model.getFrameIndex(settings.leftFrameName)).inverse(), desiredJoints,
-                              iDynTree::Twist::Zero(), iDynTree::VectorDynSize(desiredJoints.size()), gravity);
+                              baseVelocity, iDynTree::VectorDynSize(desiredJoints.size()), gravity);
     ASSERT_IS_TRUE(ok);
 
     initialState.comPosition = kinDyn.getCenterOfMassPosition();
@@ -93,6 +93,33 @@ void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::Sett
         initialState.rightContactPointsState[i].pointForce =rightPointForces[i];
     }
 
+}
+
+void reconstructState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings, DynamicalPlanner::State &initialState) {
+
+    bool ok = kinDyn.setFloatingBase(settings.floatingBaseName);
+    ASSERT_IS_TRUE(ok);
+
+    iDynTree::Vector3 gravity;
+    gravity.zero();
+    gravity(2) = -9.81;
+
+    ok = kinDyn.setRobotState(initialState.worldToBaseTransform, initialState.jointsConfiguration,
+                                   iDynTree::Twist::Zero(), iDynTree::VectorDynSize(initialState.jointsConfiguration.size()), gravity);
+    ASSERT_IS_TRUE(ok);
+
+    initialState.comPosition = kinDyn.getCenterOfMassPosition();
+
+    initialState.time = 0.0;
+
+    iDynTree::Transform leftTransform = kinDyn.getWorldTransform(settings.leftFrameName);
+    iDynTree::Transform rightTransform = kinDyn.getWorldTransform(settings.rightFrameName);
+
+
+    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
+        initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
+        initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
+    }
 }
 
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
@@ -168,15 +195,15 @@ int main() {
     DynamicalPlanner::Solver solver;
     DynamicalPlanner::Settings settings;
 
-//    std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
-//                                         "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
-//                                         "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
-//                                         "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
-
     std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
-                                         "r_shoulder_pitch", "r_shoulder_roll", "l_hip_pitch", "l_hip_roll", "l_hip_yaw",
-                                         "l_knee", "l_ankle_pitch", "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw",
-                                         "r_knee", "r_ankle_pitch", "r_ankle_roll"});
+                                         "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
+                                         "r_elbow", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
+                                         "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
+
+//    std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
+//                                         "r_shoulder_pitch", "r_shoulder_roll", "l_hip_pitch", "l_hip_roll", "l_hip_yaw",
+//                                         "l_knee", "l_ankle_pitch", "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw",
+//                                         "r_knee", "r_ankle_pitch", "r_ankle_roll"});
 
 //    std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_hip_pitch", "l_hip_roll", "l_hip_yaw", "l_knee", "l_ankle_pitch",
 //                                         "l_ankle_roll", "r_hip_pitch", "r_hip_roll", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"});
@@ -213,49 +240,55 @@ int main() {
 
     iDynTree::VectorDynSize desiredInitialJoints(static_cast<unsigned int>(modelLoader.model().getNrOfDOFs()));
 
-//    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, -7, 22, 11, 30, -7, 22, 11, 30, 5.082, 0.406, -0.131,
-//                                              -45.249, -26.454, -0.351, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351;
+    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, -7, 22, 11, 30, -7, 22, 11, 30, 5.082, 0.406, -0.131,
+                                              -45.249, -26.454, -0.351, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351;
 
-    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, -7, 22, -7, 22, 5.082, 0.406, -0.131, -45.249,
-                                             -26.454, -0.351, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351;
+//    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, -7, 22, -7, 22, 5.082, 0.406, -0.131, -45.249,
+//                                             -26.454, -0.351, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351;
 
 //    iDynTree::toEigen(desiredInitialJoints) << 15, 0, 0, 5.082, 0.406, -0.131, -45.249, -26.454, -0.351, 5.082,
 //                                               0.406, -0.131, -45.249, -26.454, -0.351;
 
     iDynTree::toEigen(desiredInitialJoints) *= iDynTree::deg2rad(1.0);
 
+    iDynTree::KinDynComputations kinDyn;
 
-    fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, foot, initialState);
+    ok = kinDyn.loadRobotModel(modelLoader.model());
+    ASSERT_IS_TRUE(ok);
 
-//    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.2, 0.0, 0.0);
-    iDynTree::VectorDynSize comPointReference(3);
-    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.3, 0.1, 0.0));
-    auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
+    fillInitialState(kinDyn, settingsStruct, desiredInitialJoints, foot, initialState);
+    reconstructState(kinDyn, settingsStruct, initialState);
 
-    settingsStruct.desiredCoMTrajectory  = comReference;
 
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
+
+    for (auto& joint : settingsStruct.jointsVelocityLimits) {
+        joint.first = -10;
+        joint.second = 10;
+    }
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
     settingsStruct.forceMeanCostActive = false;
-    settingsStruct.comCostActive = false;
-    settingsStruct.forceDerivativeCostActive = true;
-    settingsStruct.pointAccelerationCostActive = true;
+    settingsStruct.comCostActive = true;
+    settingsStruct.forceDerivativeCostActive = false;
+    settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = true;
     settingsStruct.jointsVelocityCostActive = true;
-    settingsStruct.swingCostActive = true;
+    settingsStruct.swingCostActive = false;
     settingsStruct.phantomForcesCostActive = false;
+    settingsStruct.meanPointPositionCostActive = false;
 
     settingsStruct.frameCostOverallWeight = 10;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-2;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.forceMeanCostOverallWeight = 1.0;
+    settingsStruct.forceMeanCostOverallWeight = 1e-5;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-15;
     settingsStruct.pointAccelerationCostOverallWeight = 1e-15;
     settingsStruct.swingCostOverallWeight = 10;
     settingsStruct.phantomForcesCostOverallWeight = 1.0;
+    settingsStruct.meanPointPositionCostOverallWeight = 10000;
     settingsStruct.comCostOverallWeight = 100;
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
@@ -270,11 +303,24 @@ int main() {
     settingsStruct.maximumDt = 1.0;
     settingsStruct.horizon = 2.0;
     settingsStruct.activeControlPercentage = 1.0;
-    settingsStruct.comCostActiveRange.setTimeInterval(settingsStruct.horizon * settingsStruct.activeControlPercentage, settingsStruct.horizon);
 
-    settingsStruct.constrainTargetCoMPosition = true;
+    settingsStruct.comCostActiveRange.setTimeInterval(settingsStruct.horizon*0, settingsStruct.horizon);
+    //    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.2, 0.0, 0.0);
+    iDynTree::VectorDynSize comPointReference(3);
+    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
+    auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
+    settingsStruct.desiredCoMTrajectory  = comReference;
+
+    settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
+    iDynTree::Position meanPointReference;
+    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
+    meanPointReference(2) = 0.0;
+    auto meanPointReferencePointer = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(meanPointReference);
+    settingsStruct.desiredMeanPointPosition = meanPointReferencePointer;
+
+    settingsStruct.constrainTargetCoMPosition = false;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
-    settingsStruct.constrainTargetCoMPositionRange.setTimeInterval(settingsStruct.horizon * 0.8, settingsStruct.horizon);
+    settingsStruct.constrainTargetCoMPositionRange.setTimeInterval(settingsStruct.horizon * 0.6, settingsStruct.horizon);
 
     settingsStruct.comPositionConstraintTolerance = 1e-5;
     settingsStruct.centroidalMomentumConstraintTolerance = 1e-5;
@@ -283,12 +329,12 @@ int main() {
 
     iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
     settingsStruct.normalForceDissipationRatio = 200.0;
-    settingsStruct.normalForceHyperbolicSecantScaling = 150.0;
+    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
 
     //ContactFrictionConstraint
     settingsStruct.frictionCoefficient = 0.3;
 
-    settingsStruct.minimumFeetDistance = 0.05;
+    settingsStruct.minimumFeetDistance = 0.10;
 
     //ContactVelocityControlConstraints
     iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(10.0);
@@ -299,7 +345,7 @@ int main() {
 
     settingsStruct.complementarityDissipation = 10.0;
 
-    settingsStruct.minimumCoMHeight = 0.9 * initialState.comPosition(2);
+    settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 
     ok = settings.setFromStruct(settingsStruct);
     ASSERT_IS_TRUE(ok);
@@ -323,27 +369,45 @@ int main() {
 
 //    ok = ipoptSolver->setIpoptOption("check_derivatives_for_naninf", "yes");
 //    ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("tol", 1e-5);
+    ok = ipoptSolver->setIpoptOption("tol", 1e-6);
     ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("bound_relax_factor", 1e-5);
 //    ASSERT_IS_TRUE(ok);
-//    ok = ipoptSolver->setIpoptOption("honor_original_bounds", "no");
+//    ok = ipoptSolver->setIpoptOption("honor_original_bounds", "yes");
 //    ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("constr_viol_tol", 1e-3);
+    ok = ipoptSolver->setIpoptOption("constr_viol_tol", 1e-4);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e1);
+    ok = ipoptSolver->setIpoptOption("acceptable_tol", 1e0);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_iter", 2);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_compl_inf_tol", 1.0);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("alpha_for_y", "full");
+    ok = ipoptSolver->setIpoptOption("alpha_for_y", "primal");
     ASSERT_IS_TRUE(ok);
+//    ok = ipoptSolver->setIpoptOption("accept_every_trial_step", "yes");
+//    ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("max_iter", 4000);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("ma97_print_level", -10);
     ASSERT_IS_TRUE(ok);
+//    ok = ipoptSolver->setIpoptOption("mu_init", 1e3);
+//    ASSERT_IS_TRUE(ok);
 
+    ok = ipoptSolver->setIpoptOption("warm_start_bound_frac", 1e-6);
+    ASSERT_IS_TRUE(ok);
+
+    ok = ipoptSolver->setIpoptOption("warm_start_bound_push", 1e-6);
+    ASSERT_IS_TRUE(ok);
+
+    ok = ipoptSolver->setIpoptOption("warm_start_mult_bound_push", 1e-6);
+    ok = ipoptSolver->setIpoptOption("warm_start_slack_bound_frac", 1e-6);
+    ok = ipoptSolver->setIpoptOption("warm_start_slack_bound_push", 1e-6);
+    ok = ipoptSolver->setIpoptOption("warm_start_init_point", "yes");
+    ok = ipoptSolver->setIpoptOption("warm_start_same_structure", "no");
+    ok = ipoptSolver->setIpoptOption("expect_infeasible_problem", "yes");
+//    ok = ipoptSolver->setIpoptOption("limited_memory_aug_solver", "extended");
+//    ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("mu_strategy", "adaptive");
 //    ASSERT_IS_TRUE(ok);
 
@@ -408,20 +472,58 @@ int main() {
     //ok = ipoptSolver->setIpoptOption("print_level", 3);
     //ASSERT_IS_TRUE(ok);
 
-    begin = std::chrono::steady_clock::now();
-    ok = solver.solve(optimalStates, optimalControls);
-    ASSERT_IS_TRUE(ok);
-    end= std::chrono::steady_clock::now();
-    std::cout << "Elapsed time (2nd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+//    begin = std::chrono::steady_clock::now();
+//    ok = solver.solve(optimalStates, optimalControls);
+//    ASSERT_IS_TRUE(ok);
+//    end= std::chrono::steady_clock::now();
+//    std::cout << "Elapsed time (2nd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
+//    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
+//    ASSERT_IS_TRUE(ok);
+
+//    begin = std::chrono::steady_clock::now();
+//    ok = solver.solve(optimalStates, optimalControls);
+//    ASSERT_IS_TRUE(ok);
+//    end= std::chrono::steady_clock::now();
+//    std::cout << "Elapsed time (3rd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+
+//    auto timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+//    struct tm timeStruct;
+//    timeStruct = *std::localtime(&timeNow);
+//    std::ostringstream timeString;
+//    timeString << timeStruct.tm_year + 1900 << "-" << timeStruct.tm_mon << "-";
+//    timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
+//    timeString << "_" << timeStruct.tm_sec;
+
+//    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+//    ASSERT_IS_TRUE(ok);
+
+
+    ok = ipoptSolver->setIpoptOption("print_level", 0);
     ASSERT_IS_TRUE(ok);
 
-    begin = std::chrono::steady_clock::now();
-    ok = solver.solve(optimalStates, optimalControls);
-    ASSERT_IS_TRUE(ok);
-    end= std::chrono::steady_clock::now();
-    std::cout << "Elapsed time (3rd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+    std::vector<DynamicalPlanner::State> mpcStates;
+    mpcStates.push_back(initialState);
+
+    for (size_t i = 0; i < 20; ++i) {
+        double initialTime;
+        initialState = mpcStates.back();
+        initialTime = initialState.time;
+        reconstructState(kinDyn, settingsStruct, initialState);
+        ok = solver.setInitialState(initialState);
+        ASSERT_IS_TRUE(ok);
+        iDynTree::toEigen(comReference->get()) += iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
+        iDynTree::toEigen(meanPointReferencePointer->get()) += iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
+        begin = std::chrono::steady_clock::now();
+        ok = solver.solve(optimalStates, optimalControls);
+        if (!ok)
+            break;
+        end= std::chrono::steady_clock::now();
+        std::cout << "Elapsed time (" << i << "): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+        optimalStates.front().time += initialTime;
+        mpcStates.push_back(optimalStates.front());
+        visualizer.visualizeState(mpcStates.back());
+    }
 
     auto timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     struct tm timeStruct;
@@ -431,7 +533,7 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+//    ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     return EXIT_SUCCESS;
