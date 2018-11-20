@@ -32,7 +32,8 @@ public:
 
     std::vector<ContactPointControl> leftContactPointsControl;
     std::vector<ContactPointControl> rightContactPointsControl;
-    iDynTree::Vector6 baseVelocityInBaseFrame;
+    iDynTree::Vector3 baseLinearVelocity;
+    iDynTree::Vector4 baseQuaternionDerivative;
     iDynTree::VectorDynSize jointsVelocity;
     double time;
 

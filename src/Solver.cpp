@@ -62,7 +62,7 @@ typedef struct {
 typedef struct {
     FootRanges left, right;
     iDynTree::IndexRange momentum, comPosition, basePosition;
-    iDynTree::IndexRange baseQuaternion, jointsPosition, baseVelocity, jointsVelocity;
+    iDynTree::IndexRange baseQuaternion, jointsPosition, baseLinearVelocity, baseQuaternionDerivative, jointsVelocity;
 } VariablesRanges;
 
 class StateGuesses : public iDynTree::optimalcontrol::TimeVaryingVector {
@@ -140,7 +140,7 @@ public:
 
     ControlGuesses(std::shared_ptr<TimeVaryingControl> originalGuess, const VariablesRanges &ranges)
         : m_originalGuesses(originalGuess)
-        , m_buffer(static_cast<unsigned int>(ranges.left.positionPoints.size() * 12 + 6 + static_cast<size_t>(ranges.jointsPosition.size)))
+        , m_buffer(static_cast<unsigned int>(ranges.left.positionPoints.size() * 12 + 7 + static_cast<size_t>(ranges.jointsPosition.size)))
         , m_ranges(ranges)
     { }
 
@@ -175,7 +175,8 @@ public:
             setSegment(m_ranges.right.velocityControlPoints[i], desiredControl.rightContactPointsControl[i].pointVelocityControl);
         }
 
-        setSegment(m_ranges.baseVelocity, desiredControl.baseVelocityInBaseFrame);
+        setSegment(m_ranges.baseLinearVelocity, desiredControl.baseLinearVelocity);
+        setSegment(m_ranges.baseQuaternionDerivative, desiredControl.baseQuaternionDerivative);
         setSegment(m_ranges.jointsVelocity, desiredControl.jointsVelocity);
 
         return m_buffer;
@@ -327,8 +328,13 @@ public:
             return false;
         }
 
-        ranges.baseVelocity = controlStructure.addLabelAndGetIndexRange("BaseVelocity", 6);
-        if (!ranges.baseVelocity.isValid()) {
+        ranges.baseLinearVelocity = controlStructure.addLabelAndGetIndexRange("BaseLinearVelocity", 3);
+        if (!ranges.baseLinearVelocity.isValid()) {
+            return false;
+        }
+
+        ranges.baseQuaternionDerivative = controlStructure.addLabelAndGetIndexRange("BaseQuaternionDerivative", 4);
+        if (!ranges.baseQuaternionDerivative.isValid()) {
             return false;
         }
 
@@ -1019,7 +1025,8 @@ private:
             controlToFill.rightContactPointsControl[i].pointVelocityControl = segment(unstructured, ranges.right.velocityControlPoints[i]);
         }
 
-        controlToFill.baseVelocityInBaseFrame = segment(unstructured, ranges.baseVelocity);
+        controlToFill.baseLinearVelocity = segment(unstructured, ranges.baseLinearVelocity);
+        controlToFill.baseQuaternionDerivative = segment(unstructured, ranges.baseQuaternionDerivative);
         controlToFill.jointsVelocity = segment(unstructured, ranges.jointsVelocity);
         controlToFill.time = time;
     }

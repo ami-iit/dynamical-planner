@@ -76,7 +76,8 @@ void Control::zero()
         rightPoints.pointVelocityControl.zero();
     }
 
-    baseVelocityInBaseFrame.zero();
+    baseLinearVelocity.zero();
+    baseQuaternionDerivative.zero();
 
     jointsVelocity.zero();
 

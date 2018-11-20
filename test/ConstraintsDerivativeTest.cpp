@@ -70,7 +70,10 @@ void setVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlV
     ok = stateVariables.addLabel("JointsPosition", numberOfDofs);
     ASSERT_IS_TRUE(ok);
 
-    ok = controlVariables.addLabel("BaseVelocity", 6);
+    ok = controlVariables.addLabel("BaseLinearVelocity", 3);
+    ASSERT_IS_TRUE(ok);
+
+    ok = controlVariables.addLabel("BaseQuaternionDerivative", 4);
     ASSERT_IS_TRUE(ok);
 
     ok = controlVariables.addLabel("JointsVelocity", numberOfDofs);
