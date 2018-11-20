@@ -88,8 +88,8 @@ public:
             if (iDynTree::checkDoublesAreEqual(constraintsLB(i), constraintsUB(i))) {
                 ASSERT_EQUAL_DOUBLE_TOL(constraints(i), constraintsLB(i), 1e-3);
             } else {
-                ASSERT_IS_TRUE(constraints(i) >= constraintsLB(i));
-                ASSERT_IS_TRUE(constraints(i) <= constraintsUB(i));
+                ASSERT_IS_TRUE(constraints(i) >= (constraintsLB(i) - 1e-3));
+                ASSERT_IS_TRUE(constraints(i) <= (constraintsUB(i) + 1e-3));
             }
         }
 
@@ -333,12 +333,11 @@ int main() {
     auto stateGuesses = std::make_shared<StateGuess>(comReference, initialState);
     auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(DynamicalPlanner::Control(vectorList.size(), settingsStruct.leftPointsPosition.size()));
 
-    ok = solver.setGuesses(stateGuesses, controlGuesses);
-
     std::vector<DynamicalPlanner::State> optimalStates;
     std::vector<DynamicalPlanner::Control> optimalControls;
 
     for (size_t i = 0; i < 5; ++i) {
+        ok = solver.setGuesses(stateGuesses, controlGuesses);
         ok = solver.solve(optimalStates, optimalControls);
         ASSERT_IS_TRUE(ok);
     }
