@@ -120,6 +120,50 @@ void validateMapJacobian(const iDynTree::Rotation & R) {
 
 }
 
+void validateInverseMapJacobian(const iDynTree::Rotation & R) {
+    double perturbationValue = 1e-2;
+    iDynTree::Vector4 quaternion = R.asQuaternion();
+    iDynTree::Vector4 quaternionPerturbed, perturbation, quaternionDerivative;
+    iDynTree::Vector3 omega, omegaPerturbed, firstOrderTaylor;
+    iDynTree::getRandomVector(quaternionDerivative);
+
+    Eigen::Vector4d maxQuaternion;
+    maxQuaternion.setConstant(1.0);
+    Eigen::Vector4d minQuaternion;
+    minQuaternion.setConstant(-1);
+    minQuaternion(0) = 0;
+
+    toEigen(omega) = toEigen(DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverse(quaternion)) * toEigen(quaternionDerivative);
+
+
+    // Test separetly the derivative of quaternion
+    for (unsigned int i = 0; i < 4; i++)
+    {
+        quaternionPerturbed = quaternion;
+        quaternionPerturbed(i) = quaternionPerturbed(i) + perturbationValue;
+
+        //ensure validity of obtained quaternion even if the quaternion is no more a step different than
+        //the original
+        toEigen(quaternionPerturbed) = toEigen(quaternionPerturbed).array().min(maxQuaternion.array());
+        toEigen(quaternionPerturbed) = toEigen(quaternionPerturbed).array().max(minQuaternion.array());
+        toEigen(quaternionPerturbed).normalize();
+
+        toEigen(perturbation) = toEigen(quaternionPerturbed) - toEigen(quaternion);
+
+        toEigen(omegaPerturbed) = toEigen(DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverse(quaternionPerturbed)) *
+                toEigen(quaternionDerivative);
+
+        toEigen(firstOrderTaylor) =
+                toEigen(DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverseTimesQuaternionDerivativeJacobian(quaternionDerivative)) *
+                toEigen(perturbation);
+
+        toEigen(firstOrderTaylor) += toEigen(omega);
+
+        ASSERT_EQUAL_VECTOR_TOL(omegaPerturbed,firstOrderTaylor,perturbationValue/100);
+
+    }
+}
+
 void validateNormalizeQuaternionJacobian() {
     double perturbationValue = 1e-2;
     iDynTree::Vector4 quaternion;
@@ -257,6 +301,7 @@ void validateInverseQuaternion(const iDynTree::Rotation & R) {
 int main() {
     validateQuaternionLeftTrivializedDerivative(iDynTree::getRandomRotation());
     validateMapJacobian(iDynTree::getRandomRotation());
+    validateInverseMapJacobian(iDynTree::getRandomRotation());
     validateNormalizeQuaternionJacobian();
     validateRotatedVectorJacobian(iDynTree::getRandomRotation());
     return EXIT_SUCCESS;

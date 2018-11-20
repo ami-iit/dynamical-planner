@@ -22,6 +22,8 @@ namespace DynamicalPlanner {
 
         iDynTree::MatrixFixSize<4, 4> QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(const iDynTree::Vector3& omega);
 
+        iDynTree::MatrixFixSize<3, 4> QuaternionLeftTrivializedDerivativeInverseTimesQuaternionDerivativeJacobian(const iDynTree::Vector4& quatDerivative);
+
         iDynTree::Vector4 NormalizedQuaternion(const iDynTree::Vector4& quaternion);
 
         double QuaternionNorm(const iDynTree::Vector4 &quaternion);

@@ -151,3 +151,18 @@ iDynTree::Matrix4x4 DynamicalPlanner::Private::InverseQuaternionDerivative()
                                      0.0,  0.0,  0.0, -1.0;
     return inverseMap;
 }
+
+iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverseTimesQuaternionDerivativeJacobian(
+        const iDynTree::Vector4 &quatDerivative)
+{
+    iDynTree::MatrixFixSize<3, 4> jacobian;
+
+    iDynTree::toEigen(jacobian).leftCols<1>() = iDynTree::toEigen(quatDerivative).bottomRows<3>();
+    iDynTree::toEigen(jacobian).rightCols<3>().setIdentity();
+    iDynTree::toEigen(jacobian).rightCols<3>() *= -quatDerivative(0);
+    iDynTree::toEigen(jacobian).rightCols<3>() += iDynTree::skew(iDynTree::toEigen(quatDerivative).bottomRows<3>());
+
+    iDynTree::toEigen(jacobian) *= 2;
+
+    return jacobian;
+}
