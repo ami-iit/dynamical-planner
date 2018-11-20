@@ -173,7 +173,7 @@ bool ContactPositionConsistencyConstraint::evaluateConstraint(double time, const
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
-        m_pimpl->updateDoneOnceConstraint = true;
+//        m_pimpl->updateDoneOnceConstraint = true;
         m_pimpl->updateVariables();
 
         iDynTree::toEigen(m_pimpl->constraintValueBuffer) = iDynTree::toEigen(m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->footFrame) * m_pimpl->positionInFoot
@@ -192,7 +192,7 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double tim
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 
-        m_pimpl->updateDoneOnceStateJacobian = true;
+//        m_pimpl->updateDoneOnceStateJacobian = true;
         m_pimpl->updateVariables();
 
         bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->footFrame, m_pimpl->footJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);

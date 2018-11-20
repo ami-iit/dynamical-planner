@@ -137,7 +137,7 @@ bool FrameOrientationCost::costEvaluation(double time, const iDynTree::VectorDyn
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceCost, time, m_pimpl->lastUpdateTimeCost))) {
 
-        m_pimpl->updateDoneOnceCost = true;
+//        m_pimpl->updateDoneOnceCost = true;
         m_pimpl->lastUpdateTimeCost = time;
         m_pimpl->updateRobotState();
 
@@ -173,7 +173,7 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian, time, m_pimpl->lastUpdateTimeStateJacobian))) {
 
-        m_pimpl->updateDoneOnceStateJacobian = true;
+//        m_pimpl->updateDoneOnceStateJacobian = true;
         m_pimpl->lastUpdateTimeStateJacobian = time;
         m_pimpl->updateRobotState();
 

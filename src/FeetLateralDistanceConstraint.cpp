@@ -123,7 +123,7 @@ bool FeetLateralDistanceConstraint::evaluateConstraint(double time, const iDynTr
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
-        m_pimpl->updateDoneOnceConstraint = true;
+//        m_pimpl->updateDoneOnceConstraint = true;
         m_pimpl->updateRobotState();
 
         m_pimpl->feetDistance = m_pimpl->sharedKinDyn->getRelativeTransform(m_pimpl->robotState,
@@ -141,7 +141,7 @@ bool FeetLateralDistanceConstraint::constraintJacobianWRTState(double time, cons
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 
-        m_pimpl->updateDoneOnceStateJacobian = true;
+//        m_pimpl->updateDoneOnceStateJacobian = true;
         m_pimpl->updateRobotState();
 
         bool ok = m_pimpl->sharedKinDyn->getRelativeJacobian(m_pimpl->robotState, m_pimpl->referenceFootFrame,

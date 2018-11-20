@@ -148,7 +148,7 @@ bool CoMPositionConstraint::evaluateConstraint(double time, const iDynTree::Vect
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceConstraint))) {
 
-        m_pimpl->updateDoneOnceConstraint = true;
+//        m_pimpl->updateDoneOnceConstraint = true;
         m_pimpl->updateVariables();
 
         iDynTree::toEigen(m_pimpl->constraintValueBuffer) = iDynTree::toEigen(m_pimpl->sharedKinDyn->getCenterOfMassPosition(m_pimpl->robotState)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->comPositionRange));
@@ -167,7 +167,7 @@ bool CoMPositionConstraint::constraintJacobianWRTState(double time, const iDynTr
 
     if (!(m_pimpl->sameVariables(m_pimpl->updateDoneOnceStateJacobian))) {
 
-        m_pimpl->updateDoneOnceStateJacobian = true;
+//        m_pimpl->updateDoneOnceStateJacobian = true;
         m_pimpl->updateVariables();
 
         bool ok = m_pimpl->sharedKinDyn->getCenterOfMassJacobian(m_pimpl->robotState, m_pimpl->comJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
