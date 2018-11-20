@@ -275,9 +275,9 @@ int main() {
     settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = true;
     settingsStruct.jointsVelocityCostActive = true;
-    settingsStruct.swingCostActive = false;
+    settingsStruct.swingCostActive = true;
     settingsStruct.phantomForcesCostActive = false;
-    settingsStruct.meanPointPositionCostActive = false;
+    settingsStruct.meanPointPositionCostActive = true;
 
     settingsStruct.frameCostOverallWeight = 10;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-2;
@@ -288,7 +288,7 @@ int main() {
     settingsStruct.pointAccelerationCostOverallWeight = 1e-15;
     settingsStruct.swingCostOverallWeight = 10;
     settingsStruct.phantomForcesCostOverallWeight = 1.0;
-    settingsStruct.meanPointPositionCostOverallWeight = 10000;
+    settingsStruct.meanPointPositionCostOverallWeight = 100;
     settingsStruct.comCostOverallWeight = 100;
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
@@ -301,19 +301,19 @@ int main() {
     settingsStruct.minimumDt = 0.1;
     settingsStruct.controlPeriod = 0.1;
     settingsStruct.maximumDt = 1.0;
-    settingsStruct.horizon = 2.0;
+    settingsStruct.horizon = 1.5;
     settingsStruct.activeControlPercentage = 1.0;
 
     settingsStruct.comCostActiveRange.setTimeInterval(settingsStruct.horizon*0, settingsStruct.horizon);
     //    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.2, 0.0, 0.0);
     iDynTree::VectorDynSize comPointReference(3);
-    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
+    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.2, 0.1, 0.0));
     auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
     iDynTree::Position meanPointReference;
-    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
+    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.15, 0.08, 0.0));
     meanPointReference(2) = 0.0;
     auto meanPointReferencePointer = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(meanPointReference);
     settingsStruct.desiredMeanPointPosition = meanPointReferencePointer;
@@ -322,14 +322,14 @@ int main() {
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
     settingsStruct.constrainTargetCoMPositionRange.setTimeInterval(settingsStruct.horizon * 0.6, settingsStruct.horizon);
 
-    settingsStruct.comPositionConstraintTolerance = 1e-5;
-    settingsStruct.centroidalMomentumConstraintTolerance = 1e-5;
-    settingsStruct.quaternionModulusConstraintTolerance = 1e-2;
-    settingsStruct.pointPositionConstraintTolerance = 1e-4;
+    settingsStruct.comPositionConstraintTolerance = 1e-5*0;
+    settingsStruct.centroidalMomentumConstraintTolerance = 1e-5*0;
+    settingsStruct.quaternionModulusConstraintTolerance = 1e-2*0;
+    settingsStruct.pointPositionConstraintTolerance = 1e-4*0;
 
     iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
     settingsStruct.normalForceDissipationRatio = 200.0;
-    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
+//    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
 
     //ContactFrictionConstraint
     settingsStruct.frictionCoefficient = 0.3;
@@ -341,7 +341,7 @@ int main() {
     settingsStruct.velocityMaximumDerivative(0) = 10.0;
     settingsStruct.velocityMaximumDerivative(1) = 10.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
-    settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
+//    settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
 
     settingsStruct.complementarityDissipation = 10.0;
 
@@ -369,7 +369,7 @@ int main() {
 
 //    ok = ipoptSolver->setIpoptOption("check_derivatives_for_naninf", "yes");
 //    ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("tol", 1e-6);
+    ok = ipoptSolver->setIpoptOption("tol", 1e-3);
     ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("bound_relax_factor", 1e-5);
 //    ASSERT_IS_TRUE(ok);
@@ -383,7 +383,7 @@ int main() {
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("acceptable_compl_inf_tol", 1.0);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("alpha_for_y", "primal");
+    ok = ipoptSolver->setIpoptOption("alpha_for_y", "dual-and-full");
     ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("accept_every_trial_step", "yes");
 //    ASSERT_IS_TRUE(ok);
@@ -394,17 +394,17 @@ int main() {
 //    ok = ipoptSolver->setIpoptOption("mu_init", 1e3);
 //    ASSERT_IS_TRUE(ok);
 
-    ok = ipoptSolver->setIpoptOption("warm_start_bound_frac", 1e-6);
+    ok = ipoptSolver->setIpoptOption("warm_start_bound_frac", 1e-2);
     ASSERT_IS_TRUE(ok);
 
-    ok = ipoptSolver->setIpoptOption("warm_start_bound_push", 1e-6);
+    ok = ipoptSolver->setIpoptOption("warm_start_bound_push", 1e-2);
     ASSERT_IS_TRUE(ok);
 
-    ok = ipoptSolver->setIpoptOption("warm_start_mult_bound_push", 1e-6);
-    ok = ipoptSolver->setIpoptOption("warm_start_slack_bound_frac", 1e-6);
-    ok = ipoptSolver->setIpoptOption("warm_start_slack_bound_push", 1e-6);
+    ok = ipoptSolver->setIpoptOption("warm_start_mult_bound_push", 1e-2);
+    ok = ipoptSolver->setIpoptOption("warm_start_slack_bound_frac", 1e-2);
+    ok = ipoptSolver->setIpoptOption("warm_start_slack_bound_push", 1e-2);
     ok = ipoptSolver->setIpoptOption("warm_start_init_point", "yes");
-    ok = ipoptSolver->setIpoptOption("warm_start_same_structure", "no");
+//    ok = ipoptSolver->setIpoptOption("warm_start_same_structure", "no");
     ok = ipoptSolver->setIpoptOption("expect_infeasible_problem", "yes");
 //    ok = ipoptSolver->setIpoptOption("limited_memory_aug_solver", "extended");
 //    ASSERT_IS_TRUE(ok);
@@ -421,12 +421,12 @@ int main() {
     worhpSolver->setWorhpParam("TolOpti", 1e-4);
     worhpSolver->setWorhpParam("TolFeas", 1e-4);
     worhpSolver->setWorhpParam("TolComp", 1e-5);
-    worhpSolver->setWorhpParam("AcceptTolOpti", 1e-3);
+    worhpSolver->setWorhpParam("AcceptTolOpti", 1e-1);
     worhpSolver->setWorhpParam("AcceptTolFeas", 1e-3);
-    worhpSolver->setWorhpParam("Algorithm", 1);
-    worhpSolver->setWorhpParam("LineSearchMethod", 3);
-    worhpSolver->setWorhpParam("ArmijoMinAlpha", 5.0e-10);
-    worhpSolver->setWorhpParam("ArmijoMinAlphaRec", 1e-9);
+//    worhpSolver->setWorhpParam("Algorithm", 1);
+//    worhpSolver->setWorhpParam("LineSearchMethod", 3);
+//    worhpSolver->setWorhpParam("ArmijoMinAlpha", 5.0e-10);
+//    worhpSolver->setWorhpParam("ArmijoMinAlphaRec", 1e-9);
 
 //    worhpSolver->setWorhpParam("Crossover", 2);
 //    worhpSolver->setWorhpParam("FeasibleDual", true);
@@ -505,15 +505,15 @@ int main() {
     std::vector<DynamicalPlanner::State> mpcStates;
     mpcStates.push_back(initialState);
 
-    for (size_t i = 0; i < 20; ++i) {
+    for (size_t i = 0; i < 50; ++i) {
         double initialTime;
         initialState = mpcStates.back();
         initialTime = initialState.time;
         reconstructState(kinDyn, settingsStruct, initialState);
         ok = solver.setInitialState(initialState);
         ASSERT_IS_TRUE(ok);
-        iDynTree::toEigen(comReference->get()) += iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
-        iDynTree::toEigen(meanPointReferencePointer->get()) += iDynTree::toEigen(iDynTree::Position(0.0, 0.0, 0.0));
+        iDynTree::toEigen(comReference->get()) += iDynTree::toEigen(iDynTree::Position(0.005, 0.005, 0.0));
+        iDynTree::toEigen(meanPointReferencePointer->get()) += iDynTree::toEigen(iDynTree::Position(0.00, 0.00, 0.0));
         begin = std::chrono::steady_clock::now();
         ok = solver.solve(optimalStates, optimalControls);
         if (!ok)
@@ -533,7 +533,7 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-//    ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     return EXIT_SUCCESS;
