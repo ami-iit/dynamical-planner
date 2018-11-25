@@ -269,7 +269,7 @@ int main() {
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
-    settingsStruct.forceMeanCostActive = false;
+    settingsStruct.forceMeanCostActive = true;
     settingsStruct.comCostActive = true;
     settingsStruct.forceDerivativeCostActive = false;
     settingsStruct.pointAccelerationCostActive = false;
@@ -283,7 +283,7 @@ int main() {
     settingsStruct.jointsVelocityCostOverallWeight = 1e-2;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.forceMeanCostOverallWeight = 1e-5;
+    settingsStruct.forceMeanCostOverallWeight = 1e-3;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-15;
     settingsStruct.pointAccelerationCostOverallWeight = 1e-15;
     settingsStruct.swingCostOverallWeight = 10;
@@ -307,13 +307,13 @@ int main() {
     settingsStruct.comCostActiveRange.setTimeInterval(settingsStruct.horizon*0, settingsStruct.horizon);
     //    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.2, 0.0, 0.0);
     iDynTree::VectorDynSize comPointReference(3);
-    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.2, 0.1, 0.0));
+    iDynTree::toEigen(comPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.01, 0.0));
     auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
     iDynTree::Position meanPointReference;
-    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.15, 0.08, 0.0));
+    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.2, 0.0, 0.0));
     meanPointReference(2) = 0.0;
     auto meanPointReferencePointer = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(meanPointReference);
     settingsStruct.desiredMeanPointPosition = meanPointReferencePointer;
@@ -406,6 +406,8 @@ int main() {
     ok = ipoptSolver->setIpoptOption("warm_start_init_point", "yes");
 //    ok = ipoptSolver->setIpoptOption("warm_start_same_structure", "no");
     ok = ipoptSolver->setIpoptOption("expect_infeasible_problem", "yes");
+    ok = ipoptSolver->setIpoptOption("required_infeasibility_reduction", 0.8);
+
 //    ok = ipoptSolver->setIpoptOption("limited_memory_aug_solver", "extended");
 //    ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("mu_strategy", "adaptive");
@@ -466,8 +468,19 @@ int main() {
     std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
     std::cout << "Elapsed time (1st): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
 
-    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    auto timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm timeStruct;
+    timeStruct = *std::localtime(&timeNow);
+    std::ostringstream timeString;
+    timeString << timeStruct.tm_year + 1900 << "-" << timeStruct.tm_mon << "-";
+    timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
+    timeString << "_" << timeStruct.tm_sec;
+
+    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-1stIteration-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
+
+//    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
+//    ASSERT_IS_TRUE(ok);
 
     //ok = ipoptSolver->setIpoptOption("print_level", 3);
     //ASSERT_IS_TRUE(ok);
@@ -525,10 +538,8 @@ int main() {
         visualizer.visualizeState(mpcStates.back());
     }
 
-    auto timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    struct tm timeStruct;
+    timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     timeStruct = *std::localtime(&timeNow);
-    std::ostringstream timeString;
     timeString << timeStruct.tm_year + 1900 << "-" << timeStruct.tm_mon << "-";
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
