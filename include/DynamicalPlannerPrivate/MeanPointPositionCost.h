@@ -11,6 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <iDynTree/TimeVaryingObject.h>
+#include <iDynTree/TimeRange.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <memory>
 
@@ -32,6 +33,8 @@ public:
     ~MeanPointPositionCost() override;
 
     bool setDesiredPositionTrajectory(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> desiredPosition);
+
+    bool setTimePenalty(const iDynTree::optimalcontrol::TimeRange& horizon, double increaseFactor);
 
     virtual bool costEvaluation(double time,
                                 const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&,

@@ -268,9 +268,9 @@ int main() {
     }
 
     settingsStruct.frameCostActive = true;
-    settingsStruct.staticTorquesCostActive = false;
+    settingsStruct.staticTorquesCostActive = true;
     settingsStruct.forceMeanCostActive = true;
-    settingsStruct.comCostActive = true;
+    settingsStruct.comCostActive = false;
     settingsStruct.forceDerivativeCostActive = false;
     settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = true;

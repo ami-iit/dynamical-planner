@@ -132,6 +132,7 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
     if (inputSettings.meanPointPositionCostActive) {
         errors += checkError(!inputSettings.meanPointPositionCostActiveRange.isValid(), "The active range of the MeanPositionCost is not valid.");
         errors += checkError(!inputSettings.desiredMeanPointPosition, "The desiredMeanPointPosition pointer is empty.");
+        errors += checkError(inputSettings.meanPointPositionCostTimePenalty < 0, "The meanPointPositionCostTimePenalty is supposed to be non-negative.");
     }
 
     checkError(errors > 0, "The were errors when importing the settings struct. The settings will not be updated.");
@@ -316,6 +317,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //Mean Position of the contact points
     defaults.meanPointPositionCostActive = true;
     defaults.meanPointPositionCostOverallWeight = 1.0;
+    defaults.meanPointPositionCostTimePenalty = 15;
     defaults.meanPointPositionCostActiveRange = iDynTree::optimalcontrol::TimeRange::AnyTime();
     defaults.desiredMeanPointPosition = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(iDynTree::Position::Zero());
 

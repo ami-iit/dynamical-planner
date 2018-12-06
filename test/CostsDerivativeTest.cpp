@@ -145,6 +145,7 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     ASSERT_IS_TRUE(ok);
 
     std::shared_ptr<MeanPointPositionCost> meanPositionCost = std::make_shared<MeanPointPositionCost>(stateVariables, controlVariables);
+    ASSERT_IS_TRUE(meanPositionCost->setTimePenalty(iDynTree::optimalcontrol::TimeRange(0.0, 1.0), 15));
     ok = ocProblem.addLagrangeTerm(0.5, meanPositionCost);
     ASSERT_IS_TRUE(ok);
 
@@ -172,7 +173,7 @@ void checkCostsDerivative(double time, const iDynTree::VectorDynSize& originalSt
         perturbedState = originalStateVector;
         perturbedState(i) = perturbedState(i) + perturbation;
 
-        ok = ocProblem.costsEvaluation(0.0, perturbedState, originalControlVector, perturbedCost);
+        ok = ocProblem.costsEvaluation(time, perturbedState, originalControlVector, perturbedCost);
         ASSERT_IS_TRUE(ok);
 
         firstOrderTaylor = originalCost + iDynTree::toEigen(stateJacobian).transpose() * (iDynTree::toEigen(perturbedState) - iDynTree::toEigen(originalStateVector));
@@ -183,7 +184,7 @@ void checkCostsDerivative(double time, const iDynTree::VectorDynSize& originalSt
         perturbedControl = originalControlVector;
         perturbedControl(i) = perturbedControl(i) + perturbation;
 
-        ok = ocProblem.costsEvaluation(0.0, originalStateVector, perturbedControl, perturbedCost);
+        ok = ocProblem.costsEvaluation(time, originalStateVector, perturbedControl, perturbedCost);
         ASSERT_IS_TRUE(ok);
 
         firstOrderTaylor = originalCost + iDynTree::toEigen(controlJacobian).transpose() * (iDynTree::toEigen(perturbedControl) - iDynTree::toEigen(originalControlVector));
