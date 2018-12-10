@@ -86,6 +86,12 @@ namespace DynamicalPlanner {
         iDynTree::VectorDynSize comWeights;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredCoMTrajectory;
 
+        //CoM Velocity cost
+        bool comVelocityCostActive;
+        double comVelocityCostOverallWeight;
+        iDynTree::VectorDynSize comVelocityWeights;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredCoMVelocityTrajectory;
+
         //Frame orientation
         bool frameCostActive;
         double frameCostOverallWeight;

@@ -122,6 +122,43 @@ void reconstructState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlann
     }
 }
 
+iDynTree::Vector3 meanPointPosition(const DynamicalPlanner::State &state) {
+    iDynTree::Vector3 meanPosition;
+    meanPosition.zero();
+
+    for (size_t i = 0; i < state.leftContactPointsState.size(); ++i) {
+        iDynTree::toEigen(meanPosition) += iDynTree::toEigen(state.leftContactPointsState[i].pointPosition);
+    }
+
+    for (size_t i = 0; i < state.rightContactPointsState.size(); ++i) {
+        iDynTree::toEigen(meanPosition) += iDynTree::toEigen(state.rightContactPointsState[i].pointPosition);
+    }
+
+    iDynTree::toEigen(meanPosition) /= state.leftContactPointsState.size() + state.rightContactPointsState.size();
+
+    return meanPosition;
+}
+
+double minimumPointForce(const DynamicalPlanner::State &state) {
+
+    double minForceNorm = iDynTree::toEigen(state.leftContactPointsState.begin()->pointForce).norm();
+    double forceNorm;
+
+    for (size_t i = 1; i < state.leftContactPointsState.size(); ++i) {
+        forceNorm = iDynTree::toEigen(state.leftContactPointsState[i].pointForce).norm();
+        if (forceNorm < minForceNorm)
+            minForceNorm = forceNorm;
+    }
+
+    for (size_t i = 0; i < state.rightContactPointsState.size(); ++i) {
+        forceNorm = iDynTree::toEigen(state.rightContactPointsState[i].pointForce).norm();
+        if (forceNorm < minForceNorm)
+            minForceNorm = forceNorm;
+    }
+
+    return minForceNorm;
+}
+
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
     iDynTree::VectorDynSize desiredCoM;
     double xVelocity, yVelocity, zVelocity;
@@ -271,6 +308,7 @@ int main() {
     settingsStruct.staticTorquesCostActive = true;
     settingsStruct.forceMeanCostActive = true;
     settingsStruct.comCostActive = false;
+    settingsStruct.comVelocityCostActive = true;
     settingsStruct.forceDerivativeCostActive = false;
     settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = true;
@@ -293,6 +331,11 @@ int main() {
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
+    settingsStruct.comVelocityCostOverallWeight = 0.1;
+    settingsStruct.comVelocityWeights(0) = 1.0;
+    settingsStruct.comVelocityWeights(1) = 0.0;
+    settingsStruct.comVelocityWeights(2) = 0.0;
+
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -311,9 +354,14 @@ int main() {
     auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
     settingsStruct.desiredCoMTrajectory  = comReference;
 
+    iDynTree::VectorDynSize comVelocityReference(3);
+    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
+    auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
+    settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
+
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
     iDynTree::Position meanPointReference;
-    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.2, 0.0, 0.0));
+    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
     meanPointReference(2) = 0.0;
     auto meanPointReferencePointer = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(meanPointReference);
     settingsStruct.desiredMeanPointPosition = meanPointReferencePointer;
@@ -518,6 +566,8 @@ int main() {
     std::vector<DynamicalPlanner::State> mpcStates;
     mpcStates.push_back(initialState);
 
+    double meanPositionError, minimumForce;
+
     for (size_t i = 0; i < 50; ++i) {
         double initialTime;
         initialState = mpcStates.back();
@@ -526,7 +576,6 @@ int main() {
         ok = solver.setInitialState(initialState);
         ASSERT_IS_TRUE(ok);
         iDynTree::toEigen(comReference->get()) += iDynTree::toEigen(iDynTree::Position(0.005, 0.005, 0.0));
-        iDynTree::toEigen(meanPointReferencePointer->get()) += iDynTree::toEigen(iDynTree::Position(0.00, 0.00, 0.0));
         begin = std::chrono::steady_clock::now();
         ok = solver.solve(optimalStates, optimalControls);
         if (!ok)
@@ -536,6 +585,18 @@ int main() {
         optimalStates.front().time += initialTime;
         mpcStates.push_back(optimalStates.front());
         visualizer.visualizeState(mpcStates.back());
+
+        meanPositionError = (iDynTree::toEigen(meanPointPosition(optimalStates.front())) - iDynTree::toEigen(meanPointReferencePointer->get())).norm();
+        std::cerr << "Mean point error: " << meanPositionError << std::endl;
+
+        minimumForce = minimumPointForce(optimalStates.front());
+        std::cerr << "Mean point velocity: " << minimumForce << std::endl;
+
+
+        if ((meanPositionError < 5e-3) && (minimumForce > 20)) {
+            iDynTree::toEigen(meanPointReferencePointer->get()) += iDynTree::toEigen(iDynTree::Position(0.20, 0.00, 0.0));
+            std::cerr << "New reference: " << meanPointReferencePointer->get().toString() << std::endl;
+        }
     }
 
     timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

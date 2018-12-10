@@ -13,6 +13,7 @@
 #include <DynamicalPlannerPrivate/SwingCost.h>
 #include <DynamicalPlannerPrivate/PhantomForcesCost.h>
 #include <DynamicalPlannerPrivate/MeanPointPositionCost.h>
+#include <DynamicalPlannerPrivate/CoMVelocityCost.h>
 #include <iDynTree/L2NormCost.h>
 
 #endif // DPLANNER_COSTS_H

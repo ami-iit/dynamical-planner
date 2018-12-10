@@ -98,6 +98,11 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.desiredCoMTrajectory, "The desiredCoMTrajectory is empty.");
     }
 
+    if (inputSettings.comVelocityCostActive) {
+        errors += checkError(inputSettings.comVelocityWeights.size() != 3, "The comVelocityWeights vector is expected to be three dimensional.");
+        errors += checkError(!inputSettings.desiredCoMVelocityTrajectory, "The desiredCoMVelocityTrajectory is empty.");
+    }
+
     if (inputSettings.frameCostActive) {
         errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.frameForOrientationCost)),
                              "The frameForOrientationCost does not appear in the model.");
@@ -254,6 +259,15 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     desiredCoM.zero();
     desiredCoM(2) = 0.5;
     defaults.desiredCoMTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredCoM);
+
+    //CoM velocity
+    defaults.comVelocityCostActive = true;
+    defaults.comVelocityCostOverallWeight = 1.0;
+    defaults.comVelocityWeights.resize(3);
+    iDynTree::toEigen(defaults.comVelocityWeights).setConstant(1.0);
+    iDynTree::VectorDynSize desiredCoMVelocity(3);
+    desiredCoM.zero();
+    defaults.desiredCoMVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredCoMVelocity);
 
     //Frame orientation
     defaults.frameCostActive = true;

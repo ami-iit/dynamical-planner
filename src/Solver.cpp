@@ -43,6 +43,7 @@ typedef struct {
 
 typedef struct {
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> comPosition;
+    std::shared_ptr<CoMVelocityCost> comVelocity;
     std::shared_ptr<FrameOrientationCost> frameOrientation;
     std::vector<std::shared_ptr<ForceMeanCost>> leftForceMeans, rightForceMeans;
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> jointsRegularization;
@@ -367,6 +368,24 @@ public:
             if (!ok) {
                 return false;
             }
+        }
+
+        if (st.comVelocityCostActive) {
+            costs.comVelocity = std::make_shared<CoMVelocityCost>(stateStructure, controlStructure, stateStructure.getIndexRange("Momentum").offset,
+                                                                  timelySharedKinDyn);
+            ok = costs.comVelocity->setStateWeight(st.comVelocityWeights);
+            if (!ok) {
+                return false;
+            }
+
+           costs.comVelocity->setLinearVelocityReference(st.desiredCoMVelocityTrajectory);
+
+            ok = ocp->addLagrangeTerm(st.comVelocityCostOverallWeight,
+                                      static_cast<std::shared_ptr<iDynTree::optimalcontrol::L2NormCost>>(costs.comVelocity));
+            if (!ok) {
+                return false;
+            }
+
         }
 
         if (st.frameCostActive) {
