@@ -24,8 +24,7 @@ public:
     iDynTree::Vector3 distanceFromTarget;
     iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
 
-    iDynTree::optimalcontrol::TimeRange horizon;
-    double increaseFactor;
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight;
 };
 
 
@@ -50,8 +49,7 @@ MeanPointPositionCost::MeanPointPositionCost(const VariablesLabeller &stateVaria
     m_pimpl->controlGradientBuffer.resize(static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlGradientBuffer.zero();
 
-    m_pimpl->increaseFactor = 0.0;
-    m_pimpl->horizon.setTimeInterval(0.0, 1.0);
+    m_pimpl->timeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(1.0);
 
 }
 
@@ -69,22 +67,11 @@ bool MeanPointPositionCost::setDesiredPositionTrajectory(std::shared_ptr<iDynTre
     return true;
 }
 
-bool MeanPointPositionCost::setTimePenalty(const iDynTree::optimalcontrol::TimeRange &horizon, double increaseFactor)
+void MeanPointPositionCost::setTimeVaryingWeight(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight)
 {
-    if (!horizon.isValid() || horizon.isInstant()) {
-        std::cerr << "[ERROR][MeanPointPositionCost::setTimePenalty] The horizon is " << (horizon.isInstant() ? "a single instant." : "not valid.") << std::endl;
-        return false;
-    }
+    assert(timeVaryingWeight);
 
-    if (increaseFactor < 0) {
-        std::cerr << "[ERROR][MeanPointPositionCost::setTimePenalty] The increase factor is supposed to be non-negative." << std::endl;
-        return false;
-    }
-
-    m_pimpl->horizon = horizon;
-    m_pimpl->increaseFactor = increaseFactor;
-
-    return true;
+    m_pimpl->timeVaryingWeight = timeVaryingWeight;
 }
 
 bool MeanPointPositionCost::costEvaluation(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &,
@@ -107,13 +94,17 @@ bool MeanPointPositionCost::costEvaluation(double time, const iDynTree::VectorDy
         return false;
     }
 
+    const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][MeanPointPositionCost::costEvaluation] Unable to retrieve a valid timeVaryingWeight at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
     iDynTree::toEigen(m_pimpl->distanceFromTarget) -= iDynTree::toEigen(desiredPosition);
 
-    double timeRatio = (time - m_pimpl->horizon.initTime()) / (m_pimpl->horizon.endTime() - m_pimpl->horizon.initTime());
-    double timeWeight = m_pimpl->increaseFactor * std::fabs(timeRatio) + 1.0;
-    double timeWeightSquared = timeWeight * timeWeight;
-
-    costValue = 0.5 * timeWeightSquared * iDynTree::toEigen(m_pimpl->distanceFromTarget).squaredNorm();
+    costValue = 0.5 * timeWeight * iDynTree::toEigen(m_pimpl->distanceFromTarget).squaredNorm();
     return true;
 }
 
@@ -139,16 +130,20 @@ bool MeanPointPositionCost::costFirstPartialDerivativeWRTState(double time, cons
         return false;
     }
 
+    const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][MeanPointPositionCost::costEvaluation] Unable to retrieve a valid timeVaryingWeight at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
     iDynTree::toEigen(m_pimpl->distanceFromTarget) -= iDynTree::toEigen(desiredPosition);
 
     iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
 
-    double timeRatio = (time - m_pimpl->horizon.initTime()) / (m_pimpl->horizon.endTime() - m_pimpl->horizon.initTime());
-    double timeWeight = m_pimpl->increaseFactor * std::fabs(timeRatio) + 1.0;
-    double timeWeightSquared = timeWeight * timeWeight;
-
     for (auto& point : m_pimpl->pointRanges) {
-        gradientMap.segment<3>(point.offset) = timeWeightSquared *  numberOfPointsInverse * iDynTree::toEigen(m_pimpl->distanceFromTarget);
+        gradientMap.segment<3>(point.offset) = timeWeight *  numberOfPointsInverse * iDynTree::toEigen(m_pimpl->distanceFromTarget);
     }
 
     partialDerivative = m_pimpl->stateGradientBuffer;

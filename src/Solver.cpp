@@ -628,6 +628,7 @@ public:
         if (st.meanPointPositionCostActive) {
             costs.meanPositionCost = std::make_shared<MeanPointPositionCost>(stateStructure, controlStructure);
             costs.meanPositionCost->setDesiredPositionTrajectory(st.desiredMeanPointPosition);
+            costs.meanPositionCost->setTimeVaryingWeight(st.meanPointPositionCostTimeVaryingWeight);
             ok = ocProblem->addLagrangeTerm(st.meanPointPositionCostOverallWeight, st.meanPointPositionCostActiveRange, costs.meanPositionCost);
             if (!ok) {
                 return false;
@@ -1344,16 +1345,6 @@ bool Solver::solve(std::vector<State> &optimalStates, std::vector<Control> &opti
     if (!ok) {
         std::cerr << "[ERROR][Solver::solve] Failed to set the time horizon." << std::endl;
         return false;
-    }
-
-    if (m_pimpl->costs.meanPositionCost) {
-        ok = m_pimpl->costs.meanPositionCost->setTimePenalty(iDynTree::optimalcontrol::TimeRange(m_pimpl->initialState.time,
-                                                                                                 m_pimpl->initialState.time + m_pimpl->settings.horizon),
-                                                             m_pimpl->settings.meanPointPositionCostTimePenalty);
-        if (!ok) {
-            std::cerr << "[ERROR][Solver::solve] Failed to set the time penalty of the MeanPointPositionCost." << std::endl;
-            return false;
-        }
     }
 
     if (m_pimpl->stateGuess && m_pimpl->controlGuess) {

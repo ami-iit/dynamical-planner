@@ -227,6 +227,149 @@ public:
 };
 StateGuess::~StateGuess() {}
 
+
+typedef struct {
+    iDynTree::Position desiredPosition;
+    iDynTree::optimalcontrol::TimeRange activeRange;
+} PositionWithTimeRange;
+
+class MeanPointReferenceGenerator;
+
+class MeanPointReferenceGeneratorData {
+
+    friend class MeanPointReferenceGenerator;
+
+    MeanPointReferenceGeneratorData(size_t desiredPoints) {
+
+        desiredPositions.resize(desiredPoints);
+
+        for (auto& el : desiredPositions) {
+            el.desiredPosition.zero();
+        }
+
+    }
+
+public:
+
+    ~MeanPointReferenceGeneratorData() {}
+
+    std::vector<PositionWithTimeRange> desiredPositions;
+
+};
+
+class TimeVaryingWeight : public iDynTree::optimalcontrol::TimeVaryingDouble {
+
+    friend class MeanPointReferenceGenerator;
+
+    std::shared_ptr<MeanPointReferenceGeneratorData> m_data;
+    double m_increaseFactor;
+    double m_outputWeight;
+
+    TimeVaryingWeight(std::shared_ptr<MeanPointReferenceGeneratorData> data, double increaseFactor) {
+        m_data = data;
+        m_increaseFactor = increaseFactor;
+    }
+
+public:
+
+    ~TimeVaryingWeight() override;
+
+
+    const double& get(double time, bool& isValid) override {
+
+        isValid = true;
+        std::vector<PositionWithTimeRange>::reverse_iterator activeElement;
+        activeElement = std::find_if(m_data->desiredPositions.rbegin(),
+                            m_data->desiredPositions.rend(),
+                            [time](const PositionWithTimeRange& a) -> bool { return a.activeRange.isInRange(time); }); //find the last element in the vector with init time lower than the specified time
+
+        if (activeElement == m_data->desiredPositions.rend()) {
+            m_outputWeight = 0.0;
+            return m_outputWeight;
+        }
+
+        double timeWeight = m_increaseFactor * (time - activeElement->activeRange.initTime())/(activeElement->activeRange.endTime() - activeElement->activeRange.initTime()) + 1.0;
+        m_outputWeight = timeWeight*timeWeight;
+        return m_outputWeight;
+    }
+};
+TimeVaryingWeight::~TimeVaryingWeight(){}
+
+class MeanPointReferencePosition : public iDynTree::optimalcontrol::TimeVaryingPosition {
+
+    friend class MeanPointReferenceGenerator;
+    std::shared_ptr<MeanPointReferenceGeneratorData> m_data;
+    iDynTree::Position m_zeroPosition;
+
+    MeanPointReferencePosition(std::shared_ptr<MeanPointReferenceGeneratorData> data) {
+        m_data = data;
+    }
+
+public:
+
+    ~MeanPointReferencePosition() override;
+
+    const iDynTree::Position& get(double time, bool& isValid) override {
+
+        isValid = true;
+        if (!m_data->desiredPositions.size()) {
+            return m_zeroPosition;
+        }
+
+        std::vector<PositionWithTimeRange>::reverse_iterator activeElement;
+        activeElement = std::find_if(m_data->desiredPositions.rbegin(),
+                            m_data->desiredPositions.rend(),
+                            [time](const PositionWithTimeRange& a) -> bool { return a.activeRange.isInRange(time); }); //find the last element in the vector with init time lower than the specified time
+
+        if (activeElement == m_data->desiredPositions.rend()) {
+            return m_zeroPosition;
+        }
+
+        return activeElement->desiredPosition;
+    }
+};
+MeanPointReferencePosition::~MeanPointReferencePosition(){}
+
+class MeanPointReferenceGenerator {
+
+    std::shared_ptr<TimeVaryingWeight> m_weightPointer;
+    std::shared_ptr<MeanPointReferencePosition> m_positionPointer;
+    std::shared_ptr<MeanPointReferenceGeneratorData> m_data;
+
+public:
+
+    MeanPointReferenceGenerator(unsigned int desiredPoints, double increaseFactor) {
+        m_data.reset(new MeanPointReferenceGeneratorData(desiredPoints));
+        m_weightPointer.reset(new TimeVaryingWeight(m_data, increaseFactor));
+        m_positionPointer.reset(new MeanPointReferencePosition(m_data));
+    }
+
+    ~MeanPointReferenceGenerator() {}
+
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight() {
+        return m_weightPointer;
+    }
+
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> timeVaryingReference() {
+        return m_positionPointer;
+    }
+
+    PositionWithTimeRange& operator[](size_t index) {
+        return m_data->desiredPositions[index];
+    }
+
+    const PositionWithTimeRange& operator[](size_t index) const {
+        return m_data->desiredPositions[index];
+    }
+
+
+    void resize(size_t newSize) {
+        PositionWithTimeRange zeroElement;
+        zeroElement.desiredPosition.zero();
+        m_data->desiredPositions.resize(newSize, zeroElement);
+    }
+};
+
 int main() {
 
     DynamicalPlanner::Solver solver;
@@ -331,7 +474,7 @@ int main() {
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
-    settingsStruct.comVelocityCostOverallWeight = 0.1;
+    settingsStruct.comVelocityCostOverallWeight = 1.0;
     settingsStruct.comVelocityWeights(0) = 1.0;
     settingsStruct.comVelocityWeights(1) = 0.0;
     settingsStruct.comVelocityWeights(2) = 0.0;
@@ -360,11 +503,16 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    iDynTree::Position meanPointReference;
-    iDynTree::toEigen(meanPointReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
-    meanPointReference(2) = 0.0;
-    auto meanPointReferencePointer = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(meanPointReference);
-    settingsStruct.desiredMeanPointPosition = meanPointReferencePointer;
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 15.0);
+    settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
+    settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
+    iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
+    meanPointReferenceGenerator[0].desiredPosition(2) = 0.0;
+    meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, settingsStruct.horizon);
+    meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
+    meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
+
+
 
     settingsStruct.constrainTargetCoMPosition = false;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
@@ -566,37 +714,76 @@ int main() {
     std::vector<DynamicalPlanner::State> mpcStates;
     mpcStates.push_back(initialState);
 
-    double meanPositionError, minimumForce;
+    double meanPositionError, minimumForce, futureMeanPositionError;
 
-    for (size_t i = 0; i < 50; ++i) {
+    double stepStart = -mpcStates.back().time;
+    meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
+
+    visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
+    for (size_t i = 0; i < 100; ++i) {
         double initialTime;
         initialState = mpcStates.back();
         initialTime = initialState.time;
         reconstructState(kinDyn, settingsStruct, initialState);
         ok = solver.setInitialState(initialState);
         ASSERT_IS_TRUE(ok);
-        iDynTree::toEigen(comReference->get()) += iDynTree::toEigen(iDynTree::Position(0.005, 0.005, 0.0));
+//        iDynTree::toEigen(comReference->get()) += iDynTree::toEigen(iDynTree::Position(0.005, 0.005, 0.0));
         begin = std::chrono::steady_clock::now();
         ok = solver.solve(optimalStates, optimalControls);
         if (!ok)
             break;
         end= std::chrono::steady_clock::now();
         std::cout << "Elapsed time (" << i << "): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
-        optimalStates.front().time += initialTime;
         mpcStates.push_back(optimalStates.front());
+        mpcStates.back().time += initialTime;
         visualizer.visualizeState(mpcStates.back());
 
-        meanPositionError = (iDynTree::toEigen(meanPointPosition(optimalStates.front())) - iDynTree::toEigen(meanPointReferencePointer->get())).norm();
+        size_t middlePoint = static_cast<size_t>(std::round(optimalStates.size() * 0.6));
+        futureMeanPositionError = (iDynTree::toEigen(meanPointPosition(optimalStates[middlePoint])) - iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition)).norm();
+        std::cerr << "Future mean point error: " << futureMeanPositionError << std::endl;
+
+        meanPositionError = (iDynTree::toEigen(meanPointPosition(optimalStates.front())) - iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition)).norm();
         std::cerr << "Mean point error: " << meanPositionError << std::endl;
 
         minimumForce = minimumPointForce(optimalStates.front());
         std::cerr << "Mean point velocity: " << minimumForce << std::endl;
 
-
-        if ((meanPositionError < 5e-3) && (minimumForce > 20)) {
-            iDynTree::toEigen(meanPointReferencePointer->get()) += iDynTree::toEigen(iDynTree::Position(0.20, 0.00, 0.0));
-            std::cerr << "New reference: " << meanPointReferencePointer->get().toString() << std::endl;
+        if ((futureMeanPositionError < 5e-3) && (meanPointReferenceGenerator[1].activeRange.initTime() > settingsStruct.horizon) && (meanPointReferenceGenerator[0].activeRange.endTime() < (0.6 * settingsStruct.horizon))) {
+            meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, 2 * settingsStruct.horizon);
+            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.15, 0.00, 0.0);
+            std::cerr << "Setting new position (" << meanPointReferenceGenerator[1].desiredPosition.toString() << ") at the end of the horizon." << std::endl;
         }
+
+
+
+        if (meanPointReferenceGenerator[1].activeRange.initTime() <= settingsStruct.horizon) {
+
+            stepStart = meanPointReferenceGenerator[0].activeRange.initTime() - optimalStates.front().time;
+
+            if ((stepStart < 0.3*settingsStruct.horizon) && (minimumForce < 20)) {
+
+                meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, meanPointReferenceGenerator[0].activeRange.endTime());
+                std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
+                std::cerr << "Second step is kept constant: [" << meanPointReferenceGenerator[1].activeRange.initTime() << ", " << meanPointReferenceGenerator[1].activeRange.endTime() << "]." << std::endl;
+
+            } else if ((stepStart +  settingsStruct.horizon) < settingsStruct.minimumDt) {
+                meanPointReferenceGenerator[0].desiredPosition = meanPointReferenceGenerator[1].desiredPosition;
+                meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, settingsStruct.horizon);
+                meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
+                std::cerr << "Second step is now first step." << std::endl;
+            } else {
+                meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
+                std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
+                stepStart = meanPointReferenceGenerator[1].activeRange.initTime() - optimalStates.front().time;
+                meanPointReferenceGenerator[1].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
+                std::cerr << "New second step interval: [" << meanPointReferenceGenerator[1].activeRange.initTime() << ", " << meanPointReferenceGenerator[1].activeRange.endTime() << "]." << std::endl;
+            }
+        } else {
+            stepStart = meanPointReferenceGenerator[0].activeRange.initTime() - optimalStates.front().time;
+            meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, std::max(stepStart + settingsStruct.horizon, 0.3 * settingsStruct.horizon));
+            std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
+        }
+
     }
 
     timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());

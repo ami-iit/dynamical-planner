@@ -34,7 +34,7 @@ public:
 
     bool setDesiredPositionTrajectory(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> desiredPosition);
 
-    bool setTimePenalty(const iDynTree::optimalcontrol::TimeRange& horizon, double increaseFactor);
+    void setTimeVaryingWeight(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight);
 
     virtual bool costEvaluation(double time,
                                 const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&,
