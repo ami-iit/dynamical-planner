@@ -135,7 +135,6 @@ public:
 
         stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
         stateSparsity.addIdentityBlock(0, static_cast<size_t>(momentumRange.offset) + 3, 3);
-        stateSparsity.addDenseBlock(fullRange, basePositionRange);
         stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
 
         controlSparsity.addDenseBlock(fullRange, baseQuaternionDerivativeRange);
@@ -267,9 +266,6 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTState(double time, const
         jacobianMap.block<6,6>(0, m_pimpl->momentumRange.offset) *= -1;
 
 //        jacobianMap.block<3,3>(3, m_pimpl->comPositionRange.offset) = iDynTree::skew(iDynTree::toEigen(momentumInCoM).topRows<3>());
-
-        jacobianMap.block<3,3>(3, m_pimpl->basePositionRange.offset) = -1 * iDynTree::skew(iDynTree::toEigen(momentumInCoM).topRows<3>()) +
-                skewMomentum * comJacobianMap.leftCols<3>();
 
         iDynTree::Matrix4x4 normalizedQuaternionDerivative = NormalizedQuaternionDerivative(m_pimpl->baseQuaternion);
 
