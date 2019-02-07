@@ -151,7 +151,7 @@ private:
     void getFootRanges(const std::string& footName, FootVariables& foot) {
 
         size_t forcePoints = 0;
-        for (auto label : stateVariables.listOfLabels()) {
+        for (auto& label : stateVariables.listOfLabels()) {
             if (label.find(footName + "ForcePoint") != std::string::npos) {
                 ++forcePoints;
             }
@@ -172,7 +172,7 @@ private:
         assert(pointsLocalPositions.size() == foot.forcePointsRanges.size());
 
         foot.tranformsInFoot.clear();
-        for (auto position : pointsLocalPositions) {
+        for (auto& position : pointsLocalPositions) {
             foot.tranformsInFoot.push_back(iDynTree::Transform(iDynTree::Rotation::Identity(), position));
         }
 

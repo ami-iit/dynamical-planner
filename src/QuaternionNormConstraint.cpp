@@ -56,7 +56,7 @@ QuaternionNormConstraint::~QuaternionNormConstraint()
 
 void QuaternionNormConstraint::setEqualityTolerance(double tolerance)
 {
-    assert(tolerance > 0);
+    assert(tolerance >= 0);
 
     iDynTree::toEigen(m_lowerBound).setConstant(-tolerance/2.0);
     iDynTree::toEigen(m_upperBound).setConstant(tolerance/2.0);

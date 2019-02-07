@@ -187,7 +187,7 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
 
 void CentroidalMomentumConstraint::setEqualityTolerance(double tolerance)
 {
-    assert(tolerance > 0);
+    assert(tolerance >= 0);
 
     iDynTree::toEigen(m_lowerBound).setConstant(-tolerance/2.0);
     iDynTree::toEigen(m_upperBound).setConstant(tolerance/2.0);
@@ -276,12 +276,13 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTState(double time, const
 
         jacobianMap.block<3,4>(0, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(linearPartDerivative);
 
-        iDynTree::Position baseCoMDistance = m_pimpl->robotState.world_T_base.getPosition() - m_pimpl->comPosition;
+        iDynTree::Position comPositionInBase = m_pimpl->robotState.world_T_base.inverse() * m_pimpl->comPosition;
+        iDynTree::Vector3 comCrossMomentum;
 
-        jacobianMap.block<3,4>(3, m_pimpl->baseQuaternionRange.offset) = iDynTree::skew(iDynTree::toEigen(baseCoMDistance)) * iDynTree::toEigen(linearPartDerivative) +
-                iDynTree::toEigen(RotatedVectorQuaternionJacobian(momentumInBase.getAngularVec3(), m_pimpl->baseQuaternionNormalized)) *
-                iDynTree::toEigen(normalizedQuaternionDerivative) +
-                skewMomentum * comJacobianMap.block<3,3>(0,3) * iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+        iDynTree::toEigen(comCrossMomentum) = (- iDynTree::toEigen(comPositionInBase)).cross(iDynTree::toEigen(momentumInBase.getLinearVec3()));
+
+        jacobianMap.block<3,4>(3, m_pimpl->baseQuaternionRange.offset) = (iDynTree::toEigen(RotatedVectorQuaternionJacobian(momentumInBase.getAngularVec3(), m_pimpl->baseQuaternionNormalized))
+                                                                           + iDynTree::toEigen(RotatedVectorQuaternionJacobian(comCrossMomentum, m_pimpl->baseQuaternionNormalized))) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
 
          ok = m_pimpl->sharedKinDyn->getLinearAngularMomentumJacobian(m_pimpl->robotState, m_pimpl->cmmMatrixInBaseBuffer, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
