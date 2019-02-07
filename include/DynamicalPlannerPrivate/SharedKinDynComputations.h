@@ -47,25 +47,8 @@ namespace DynamicalPlanner {
 
 class DynamicalPlanner::Private::SharedKinDynComputations {
 
-    iDynTree::KinDynComputations m_kinDyn;
-    std::mutex m_mutex;
-    RobotState m_state;
-    iDynTree::Vector3 m_gravity;
-    std::vector<JointInfos> m_jointsInfos;
-    iDynTree::LinkWrenches m_linkStaticWrenches;
-    iDynTree::Traversal m_traversal;
-    iDynTree::FreeFloatingAcc m_invDynGeneralizedProperAccs;
-    iDynTree::Vector3 m_gravityAccInBaseLinkFrame;
-    iDynTree::FreeFloatingPos m_pos;
-    iDynTree::FreeFloatingVel m_invDynZeroVel;
-    iDynTree::LinkVelArray m_invDynZeroLinkVel;
-    iDynTree::LinkProperAccArray m_invDynLinkProperAccs;
-    iDynTree::FreeFloatingGeneralizedTorques m_generalizedStaticTorques;
-    std::vector<std::vector<iDynTree::SpatialForceVector>> m_childrenForceDerivatives;
-    std::vector<iDynTree::SpatialForceVector> m_zeroDerivatives;
-
-    bool m_updateNecessary;
-    double m_tol;
+    class Data;
+    std::unique_ptr<Data> m_data;
 
     bool sameState(const RobotState& other);
 
@@ -87,6 +70,8 @@ public:
     SharedKinDynComputations(const SharedKinDynComputations& other);
 
     SharedKinDynComputations(const SharedKinDynComputations&& other) = delete;
+
+    ~SharedKinDynComputations();
 
     //Setup
 
