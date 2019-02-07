@@ -71,8 +71,8 @@ public:
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
 
-        robotState.world_T_base.setRotation(baseRotation);
-        robotState.world_T_base.setPosition(basePosition);
+        robotState.base_quaternion = baseQuaternion;
+        robotState.base_position = basePosition;
 
         robotState.s = stateVariables(jointsPositionRange);
     }
@@ -225,7 +225,7 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double tim
 //        jacobianMap.block<3,3>(0, m_pimpl->positionPointRange.offset) *= -1;
 
 
-        iDynTree::Transform footTransformInBase = m_pimpl->robotState.world_T_base.inverse() * footTransform;
+        iDynTree::Transform footTransformInBase = m_pimpl->sharedKinDyn->getBaseTransform(m_pimpl->robotState).inverse() * footTransform;
         iDynTree::Position expectedPointPositionInBase = footTransformInBase * m_pimpl->positionInFoot;
         iDynTree::Vector4 footQuaternion = footTransform.getRotation().asQuaternion();
 

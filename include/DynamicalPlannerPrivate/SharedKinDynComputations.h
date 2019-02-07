@@ -27,7 +27,8 @@ namespace DynamicalPlanner {
         typedef std::shared_ptr<SharedKinDynComputations> SharedKinDynComputationsPointer;
 
         typedef struct {
-            iDynTree::Transform world_T_base;
+            iDynTree::Vector3 base_position;
+            iDynTree::Vector4 base_quaternion;
             iDynTree::VectorDynSize s;
             iDynTree::Twist base_velocity;
             iDynTree::VectorDynSize s_dot;
@@ -109,6 +110,12 @@ public:
     iDynTree::Transform getWorldTransform(const RobotState &currentState, std::string frameName);
 
     iDynTree::Transform getWorldTransform(const RobotState &currentState, const iDynTree::FrameIndex frameIndex);
+
+    const iDynTree::Transform& getBaseTransform(const RobotState &currentState);
+
+    levi::Expression baseRotation(const RobotState &currentState);
+
+    const levi::Variable baseQuaternion(const RobotState &currentState); //not normalized
 
     bool getFrameFreeFloatingJacobian(const RobotState &currentState,
                                       const std::string & frameName,

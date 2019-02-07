@@ -33,6 +33,13 @@ public:
     iDynTree::FreeFloatingGeneralizedTorques generalizedStaticTorques;
     std::vector<std::vector<iDynTree::SpatialForceVector>> childrenForceDerivatives;
     std::vector<iDynTree::SpatialForceVector> zeroDerivatives;
+    iDynTree::Transform baseTransform;
+    iDynTree::Rotation baseRotation_iDyn;
+    iDynTree::Position basePosition;
+
+    levi::Variable quaternion = levi::Variable(4, "q");
+    levi::Expression quaternionNormalized;
+    levi::Expression baseRotation;
 
     bool updateNecessary;
     double tol;
@@ -40,8 +47,8 @@ public:
 
 bool SharedKinDynComputations::sameState(const RobotState &other)
 {
-    if (VectorsAreEqual(other.world_T_base.getPosition(), m_data->state.world_T_base.getPosition(), m_data->tol)
-            && VectorsAreEqual(other.world_T_base.getRotation().asQuaternion(), m_data->state.world_T_base.getRotation().asQuaternion(), m_data->tol)
+    if (VectorsAreEqual(other.base_position, m_data->state.base_position, m_data->tol)
+            && VectorsAreEqual(other.base_quaternion, m_data->state.base_quaternion, m_data->tol)
             && VectorsAreEqual(other.s, m_data->state.s, m_data->tol)
             && VectorsAreEqual(other.base_velocity, m_data->state.base_velocity, m_data->tol)
             && VectorsAreEqual(other.s_dot, m_data->state.s_dot, m_data->tol)) {
@@ -53,8 +60,15 @@ bool SharedKinDynComputations::sameState(const RobotState &other)
 bool SharedKinDynComputations::updateRobotState(const RobotState &currentState)
 {
     if (m_data->updateNecessary || !sameState(currentState)) {
+
+        m_data->quaternion = iDynTree::toEigen(currentState.base_quaternion);
+        iDynTree::toEigen(m_data->baseRotation_iDyn) = m_data->baseRotation.evaluate();
+        iDynTree::toEigen(m_data->basePosition) = iDynTree::toEigen(currentState.base_position);
+        m_data->baseTransform.setRotation(m_data->baseRotation_iDyn);
+        m_data->baseTransform.setPosition(m_data->basePosition);
+
         m_data->kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION); //The base_velocity saved in the robot state is supposed to be in body frame
-        bool ok = m_data->kinDyn.setRobotState(currentState.world_T_base, currentState.s, currentState.base_velocity, currentState.s_dot, m_data->gravity);
+        bool ok = m_data->kinDyn.setRobotState(m_data->baseTransform, currentState.s, currentState.base_velocity, currentState.s_dot, m_data->gravity);
         if (!ok) {
             return false;
         }
@@ -127,15 +141,26 @@ void SharedKinDynComputations::computeChildStaticForceDerivative(const iDynTree:
 
 bool SharedKinDynComputations::computeStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces)
 {
+    iDynTree::Transform baseTransform;
+    iDynTree::Vector4 inputQuaternion;
+    iDynTree::Rotation baseRotation;
+    iDynTree::Position basePosition;
+
+    iDynTree::toEigen(inputQuaternion) = iDynTree::toEigen(currentState.base_quaternion).normalized();
+    baseRotation.fromQuaternion(inputQuaternion);
+    iDynTree::toEigen(basePosition) = iDynTree::toEigen(currentState.base_position);
+    baseTransform.setPosition(basePosition);
+    baseTransform.setRotation(baseRotation);
+
     iDynTree::toEigen(m_data->gravityAccInBaseLinkFrame) =
-            iDynTree::toEigen(currentState.world_T_base.getRotation().inverse())*iDynTree::toEigen(m_data->gravity);
+            iDynTree::toEigen(baseRotation.inverse())*iDynTree::toEigen(m_data->gravity);
 
     // Clear input buffers that need to be cleared
     m_data->invDynGeneralizedProperAccs.baseAcc().zero();
     iDynTree::toEigen(m_data->invDynGeneralizedProperAccs.baseAcc().getLinearVec3()) = - iDynTree::toEigen(m_data->gravityAccInBaseLinkFrame);
     m_data->invDynGeneralizedProperAccs.jointAcc().zero();
 
-    m_data->pos.worldBasePos() = currentState.world_T_base;
+    m_data->pos.worldBasePos() = baseTransform;
     iDynTree::toEigen(m_data->pos.jointPos()) = iDynTree::toEigen(currentState.s);
 
     // Run inverse dynamics
@@ -161,13 +186,20 @@ bool SharedKinDynComputations::computeStaticForces(const RobotState &currentStat
 SharedKinDynComputations::SharedKinDynComputations()
     : m_data(std::make_unique<Data>())
 {
-    m_data->state.world_T_base.setRotation(iDynTree::Rotation::Identity());
-    m_data->state.world_T_base.setPosition(iDynTree::Position::Zero());
+    m_data->state.base_quaternion.zero();
+    m_data->state.base_quaternion(0) = 1.0;
+    m_data->state.base_position.zero();
     m_data->state.base_velocity.zero();
     m_data->gravity.zero();
     m_data->gravity(2) = -9.81;
     m_data->updateNecessary = true;
     m_data->tol = iDynTree::DEFAULT_TOL;
+
+    m_data->quaternionNormalized = m_data->quaternion/(m_data->quaternion.transpose() * m_data->quaternion).pow(0.5);
+    levi::Expression skewQuaternion = m_data->quaternionNormalized.block(1,0,3,1).skew();
+    levi::Expression twoSkewQuaternion = 2.0 * skewQuaternion;
+    m_data->baseRotation = levi::Identity(3,3) + m_data->quaternionNormalized(0,0) * twoSkewQuaternion + twoSkewQuaternion * skewQuaternion;
+
 }
 
 SharedKinDynComputations::SharedKinDynComputations(const DynamicalPlanner::Private::SharedKinDynComputations &other)
@@ -175,8 +207,9 @@ SharedKinDynComputations::SharedKinDynComputations(const DynamicalPlanner::Priva
 {
     assert(other.isValid());
 
-    m_data->state.world_T_base.setRotation(iDynTree::Rotation::Identity());
-    m_data->state.world_T_base.setPosition(iDynTree::Position::Zero());
+    m_data->state.base_quaternion.zero();
+    m_data->state.base_quaternion(0) = 1.0;
+    m_data->state.base_position.zero();
     m_data->state.base_velocity.zero();
     m_data->gravity = other.gravity();
     m_data->updateNecessary = true;
@@ -188,6 +221,11 @@ SharedKinDynComputations::SharedKinDynComputations(const DynamicalPlanner::Priva
     setFloatingBase(other.getFloatingBase());
 
     assert(isValid());
+
+    m_data->quaternionNormalized = m_data->quaternion/(m_data->quaternion.transpose() * m_data->quaternion).pow(0.5);
+    levi::Expression skewQuaternion = m_data->quaternionNormalized.block(1,0,3,1).skew();
+    levi::Expression twoSkewQuaternion = 2.0 * skewQuaternion;
+    m_data->baseRotation = levi::Identity(3,3) + m_data->quaternionNormalized(0,0) * twoSkewQuaternion + twoSkewQuaternion * skewQuaternion;
 }
 
 SharedKinDynComputations::~SharedKinDynComputations()
@@ -347,6 +385,36 @@ iDynTree::Transform SharedKinDynComputations::getWorldTransform(const RobotState
     assert(ok);
 
     return m_data->kinDyn.getWorldTransform(frameIndex);
+}
+
+const iDynTree::Transform &SharedKinDynComputations::getBaseTransform(const RobotState &currentState)
+{
+    std::lock_guard<std::mutex> guard(m_data->mutex);
+
+    bool ok = updateRobotState(currentState);
+    assert(ok);
+
+    return m_data->baseTransform;
+}
+
+levi::Expression SharedKinDynComputations::baseRotation(const RobotState &currentState)
+{
+    std::lock_guard<std::mutex> guard(m_data->mutex);
+
+    bool ok = updateRobotState(currentState);
+    assert(ok);
+
+    return m_data->baseRotation;
+}
+
+const levi::Variable SharedKinDynComputations::baseQuaternion(const RobotState &currentState)
+{
+    std::lock_guard<std::mutex> guard(m_data->mutex);
+
+    bool ok = updateRobotState(currentState);
+    assert(ok);
+
+    return m_data->quaternion;
 }
 
 bool SharedKinDynComputations::getFrameFreeFloatingJacobian(const RobotState &currentState, const std::string &frameName, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)

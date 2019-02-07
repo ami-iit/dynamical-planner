@@ -84,7 +84,9 @@ int main() {
     iDynTree::getRandomVector(robotState.s);
     robotState.s_dot.resize(static_cast<unsigned int>(sharedKinDyn->model().getNrOfDOFs()));
     iDynTree::getRandomVector(robotState.s_dot);
-    robotState.world_T_base = iDynTree::getRandomTransform();
+    iDynTree::Transform randomTransform = iDynTree::getRandomTransform();
+    robotState.base_position = randomTransform.getPosition();
+    robotState.base_quaternion = randomTransform.getRotation().asQuaternion();
     iDynTree::LinkIndex leftLink = sharedKinDyn->model().getFrameLink(sharedKinDyn->model().getFrameIndex("l_sole"));
     ASSERT_IS_TRUE(sharedKinDyn->model().isValidLinkIndex(leftLink));
 

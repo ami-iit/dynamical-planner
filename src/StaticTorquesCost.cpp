@@ -90,7 +90,7 @@ public:
             fullJacobianMap.block(0, foot.forcePointsRanges[p].offset, n, 3) = -(frameJacobianMap.rightCols(n)).transpose() * pointToLeftJacMap;
         }
 
-        iDynTree::Transform f_T_b = f_T_a * robotState.world_T_base;
+        iDynTree::Transform f_T_b = f_T_a * sharedKinDyn->getBaseTransform(robotState);
 
         pointToLeftJacMap.topRows<3>() = iDynTree::toEigen(f_T_b.getRotation());
 
@@ -132,8 +132,8 @@ private:
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
 
-        robotState.world_T_base.setRotation(baseRotation);
-        robotState.world_T_base.setPosition(basePosition);
+        robotState.base_quaternion = baseQuaternion;
+        robotState.base_position = basePosition;
 
         robotState.s = stateVariables(jointsPositionRange);
 

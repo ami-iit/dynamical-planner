@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/FrameOrientationCost.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
@@ -52,8 +53,8 @@ public:
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
 
-        robotState.world_T_base.setRotation(baseRotation);
-        robotState.world_T_base.setPosition(basePosition);
+        robotState.base_quaternion = baseQuaternion;
+        robotState.base_position = basePosition;
 
         robotState.s = stateVariables(jointsPositionRange);
 

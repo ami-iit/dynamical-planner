@@ -232,8 +232,8 @@ void checkFrameOrientationDerivative(const iDynTree::Rotation& desiredRotation, 
     assert(QuaternionBoundsRespected(baseQuaternionNormalized));
     baseRotation.fromQuaternion(baseQuaternionNormalized);
 
-    robotState.world_T_base.setRotation(baseRotation);
-    robotState.world_T_base.setPosition(basePosition);
+    robotState.base_quaternion = baseQuaternion;
+    robotState.base_position = basePosition;
 
     robotState.s = stateVariables(jointsPositionRange);
 
@@ -292,8 +292,8 @@ void checkFrameOrientationDerivative(const iDynTree::Rotation& desiredRotation, 
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
 
-        robotState.world_T_base.setRotation(baseRotation);
-        robotState.world_T_base.setPosition(basePosition);
+        robotState.base_quaternion = baseQuaternion;
+        robotState.base_position = basePosition;
 
         robotState.s = perturbedState(jointsPositionRange);
 
