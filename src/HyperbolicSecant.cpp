@@ -25,3 +25,9 @@ double HyperbolicSecant::evalDerivative(double x) const
 {
     return -eval(x) * std::tanh(m_K * x) * m_K;
 }
+
+double HyperbolicSecant::evalDoubleDerivative(double x) const
+{
+    double tanhKx = std::tanh(m_K * x);
+    return -evalDerivative(x) * tanhKx * m_K - eval(x) * (1 - tanhKx * tanhKx) * m_K * m_K;
+}

@@ -26,6 +26,8 @@ public:
     virtual double eval(double x) const = 0;
 
     virtual double evalDerivative(double x) const = 0;
+
+    virtual double evalDoubleDerivative(double x) const = 0;
 };
 
 

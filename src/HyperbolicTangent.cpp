@@ -26,3 +26,9 @@ double HyperbolicTangent::evalDerivative(double x) const
     double sechKx = 1.0/std::cosh(m_K * x);
     return m_K * sechKx * sechKx;
 }
+
+double HyperbolicTangent::evalDoubleDerivative(double x) const
+{
+    double sechKx = 1.0/std::cosh(m_K * x);
+    return -2.0 * m_K * m_K * eval(x) * sechKx * sechKx;
+}

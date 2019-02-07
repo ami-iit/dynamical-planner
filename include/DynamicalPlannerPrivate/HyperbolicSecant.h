@@ -24,6 +24,8 @@ public:
     virtual double eval(double x) const final;
 
     virtual double evalDerivative(double x) const final;
+
+    virtual double evalDoubleDerivative(double x) const final;
 };
 
 #endif // DPLANNER_HYPERBOLICSECANT_H
