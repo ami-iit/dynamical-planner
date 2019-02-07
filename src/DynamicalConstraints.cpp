@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/DynamicalConstraints.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>

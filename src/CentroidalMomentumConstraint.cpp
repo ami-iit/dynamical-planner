@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/CentroidalMomentumConstraint.h>
 #include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>

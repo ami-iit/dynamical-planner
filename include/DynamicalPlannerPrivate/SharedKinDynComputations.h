@@ -16,6 +16,7 @@
 #include <iDynTree/Model/Traversal.h>
 #include <iDynTree/Model/LinkState.h>
 #include <iDynTree/Model/FreeFloatingState.h>
+#include <levi/ForwardDeclarations.h>
 #include <mutex>
 #include <vector>
 #include <memory>

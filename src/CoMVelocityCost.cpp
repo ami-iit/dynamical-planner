@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/CoMVelocityCost.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iostream>

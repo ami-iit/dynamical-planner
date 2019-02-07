@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
 #include <iDynTree/Model/ForwardKinematics.h>
 #include <iDynTree/Model/Dynamics.h>

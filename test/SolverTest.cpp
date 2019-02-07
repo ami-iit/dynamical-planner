@@ -604,6 +604,8 @@ int main() {
     ok = ipoptSolver->setIpoptOption("expect_infeasible_problem", "yes");
     ok = ipoptSolver->setIpoptOption("required_infeasibility_reduction", 0.8);
 
+    ipoptSolver->useApproximatedHessians(true);
+
 //    ok = ipoptSolver->setIpoptOption("limited_memory_aug_solver", "extended");
 //    ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("mu_strategy", "adaptive");

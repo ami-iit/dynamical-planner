@@ -46,8 +46,9 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 
-find_package(iDynTree 0.11.2 REQUIRED)
+find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(levi REQUIRED)
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
 
@@ -122,7 +123,8 @@ set(DPLANNER_SOURCES src/VariablesLabeller.cpp
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(DynamicalPlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(DynamicalPlanner ${iDynTree_LIBRARIES})
+target_link_libraries(DynamicalPlanner PUBLIC ${iDynTree_LIBRARIES})
+target_link_libraries(DynamicalPlanner PUBLIC levi::levi)
 
 
 include(AddUninstallTarget)

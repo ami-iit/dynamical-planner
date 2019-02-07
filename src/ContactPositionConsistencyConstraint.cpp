@@ -4,6 +4,7 @@
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/ContactPositionConsistencyConstraint.h>
 #include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>

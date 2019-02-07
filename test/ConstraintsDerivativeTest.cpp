@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Constraints.h>

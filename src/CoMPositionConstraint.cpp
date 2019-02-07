@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/CoMPositionConstraint.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <DynamicalPlannerPrivate/CheckEqualVector.h>

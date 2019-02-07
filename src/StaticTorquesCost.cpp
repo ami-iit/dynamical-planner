@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/StaticTorquesCost.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 

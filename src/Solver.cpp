@@ -6,6 +6,7 @@
  */
 
 
+#include <levi/levi.h>
 #include <DynamicalPlanner/Solver.h>
 #include <DynamicalPlannerPrivate/Costs.h>
 #include <DynamicalPlannerPrivate/Constraints.h>

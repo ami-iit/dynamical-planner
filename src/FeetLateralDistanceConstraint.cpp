@@ -5,6 +5,7 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/FeetLateralDistanceConstraint.h>
 #include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
