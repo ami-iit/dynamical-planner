@@ -115,7 +115,7 @@ public:
 
     levi::Expression &baseRotation(const RobotState &currentState);
 
-    const levi::Variable baseQuaternion(const RobotState &currentState); //not normalized
+    levi::Variable &baseQuaternion(const RobotState &currentState); //not normalized
 
     bool getFrameFreeFloatingJacobian(const RobotState &currentState,
                                       const std::string & frameName,

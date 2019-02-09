@@ -10,7 +10,7 @@
 #include <DynamicalPlanner/Solver.h>
 #include <DynamicalPlannerPrivate/Costs.h>
 #include <DynamicalPlannerPrivate/Constraints.h>
-#include <DynamicalPlannerPrivate/DynamicalConstraints.h>
+#include <DynamicalPlannerPrivate/Constraints/DynamicalConstraints.h>
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>

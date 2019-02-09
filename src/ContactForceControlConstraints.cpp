@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/ContactForceControlConstraints.h>
+#include <DynamicalPlannerPrivate/Constraints/ContactForceControlConstraints.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/MatrixFixSize.h>
 #include <cassert>

@@ -5,7 +5,7 @@
  *
  */
 #include <levi/levi.h>
-#include <DynamicalPlannerPrivate/ContactPositionConsistencyConstraint.h>
+#include <DynamicalPlannerPrivate/Constraints/ContactPositionConsistencyConstraint.h>
 #include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>

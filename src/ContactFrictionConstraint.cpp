@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/ContactFrictionConstraint.h>
+#include <DynamicalPlannerPrivate/Constraints/ContactFrictionConstraint.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 
 using namespace DynamicalPlanner::Private;

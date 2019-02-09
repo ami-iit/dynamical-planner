@@ -407,7 +407,7 @@ levi::Expression& SharedKinDynComputations::baseRotation(const RobotState &curre
     return m_data->baseRotation;
 }
 
-const levi::Variable SharedKinDynComputations::baseQuaternion(const RobotState &currentState)
+levi::Variable &SharedKinDynComputations::baseQuaternion(const RobotState &currentState)
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 

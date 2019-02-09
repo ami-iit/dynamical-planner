@@ -9,7 +9,7 @@
 #include <DynamicalPlannerPrivate/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Constraints.h>
-#include <DynamicalPlannerPrivate/DynamicalConstraints.h>
+#include <DynamicalPlannerPrivate/Constraints/DynamicalConstraints.h>
 #include <DynamicalPlannerPrivate/HyperbolicSecant.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>

@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/DynamicalComplementarityConstraint.h>
+#include <DynamicalPlannerPrivate/Constraints/DynamicalComplementarityConstraint.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 

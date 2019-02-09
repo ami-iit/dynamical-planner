@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/PlanarVelocityControlConstraints.h>
+#include <DynamicalPlannerPrivate/Constraints/PlanarVelocityControlConstraints.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/MatrixFixSize.h>
 #include <cassert>

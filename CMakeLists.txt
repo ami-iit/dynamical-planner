@@ -59,34 +59,37 @@ set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
                      include/DynamicalPlanner/Visualizer.h
                      include/DynamicalPlanner/RectangularFoot.h)
 
-set(DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
-                             include/DynamicalPlannerPrivate/DynamicalConstraints.h
-                             include/DynamicalPlannerPrivate/QuaternionUtils.h
-                             include/DynamicalPlannerPrivate/CoMPositionConstraint.h
-                             include/DynamicalPlannerPrivate/QuaternionNormConstraint.h
-                             include/DynamicalPlannerPrivate/ContactPositionConsistencyConstraint.h
-                             include/DynamicalPlannerPrivate/SharedKinDynComputations.h
-                             include/DynamicalPlannerPrivate/CheckEqualVector.h
-                             include/DynamicalPlannerPrivate/FeetLateralDistanceConstraint.h
-                             include/DynamicalPlannerPrivate/ContactFrictionConstraint.h
-                             include/DynamicalPlannerPrivate/CentroidalMomentumConstraint.h
-                             include/DynamicalPlannerPrivate/HyperbolicSecant.h
-                             include/DynamicalPlannerPrivate/ContactForceControlConstraints.h
-                             include/DynamicalPlannerPrivate/NormalVelocityControlConstraints.h
-                             include/DynamicalPlannerPrivate/PlanarVelocityControlConstraints.h
-                             include/DynamicalPlannerPrivate/Constraints.h
-                             include/DynamicalPlannerPrivate/FrameOrientationCost.h
-                             include/DynamicalPlannerPrivate/ForceMeanCost.h
-                             include/DynamicalPlannerPrivate/StaticTorquesCost.h
-                             include/DynamicalPlannerPrivate/Costs.h
-                             include/DynamicalPlannerPrivate/SmoothingFunction.h
-                             include/DynamicalPlannerPrivate/HyperbolicTangent.h
-                             include/DynamicalPlannerPrivate/DynamicalComplementarityConstraint.h
-                             include/DynamicalPlannerPrivate/TimelySharedKinDynComputations.h
-                             include/DynamicalPlannerPrivate/SwingCost.h
-                             include/DynamicalPlannerPrivate/PhantomForcesCost.h
-                             include/DynamicalPlannerPrivate/MeanPointPositionCost.h
-                             include/DynamicalPlannerPrivate/CoMVelocityCost.h)
+set(CONSTRAINTS_HEADERS include/DynamicalPlannerPrivate/Constraints)
+
+list(APPEND DPLANNER_PRIVATE_HEADERS ${CONSTRAINTS_HEADERS}/DynamicalConstraints.h
+                                     ${CONSTRAINTS_HEADERS}/CoMPositionConstraint.h
+                                     ${CONSTRAINTS_HEADERS}/QuaternionNormConstraint.h
+                                     ${CONSTRAINTS_HEADERS}/ContactPositionConsistencyConstraint.h
+                                     ${CONSTRAINTS_HEADERS}/FeetLateralDistanceConstraint.h
+                                     ${CONSTRAINTS_HEADERS}/ContactFrictionConstraint.h
+                                     ${CONSTRAINTS_HEADERS}/CentroidalMomentumConstraint.h
+                                     ${CONSTRAINTS_HEADERS}/ContactForceControlConstraints.h
+                                     ${CONSTRAINTS_HEADERS}/NormalVelocityControlConstraints.h
+                                     ${CONSTRAINTS_HEADERS}/PlanarVelocityControlConstraints.h
+                                     ${CONSTRAINTS_HEADERS}/DynamicalComplementarityConstraint.h)
+
+set(APPEND DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
+                                    include/DynamicalPlannerPrivate/QuaternionUtils.h
+                                    include/DynamicalPlannerPrivate/SharedKinDynComputations.h
+                                    include/DynamicalPlannerPrivate/CheckEqualVector.h
+                                    include/DynamicalPlannerPrivate/HyperbolicSecant.h
+                                    include/DynamicalPlannerPrivate/Constraints.h
+                                    include/DynamicalPlannerPrivate/FrameOrientationCost.h
+                                    include/DynamicalPlannerPrivate/ForceMeanCost.h
+                                    include/DynamicalPlannerPrivate/StaticTorquesCost.h
+                                    include/DynamicalPlannerPrivate/Costs.h
+                                    include/DynamicalPlannerPrivate/SmoothingFunction.h
+                                    include/DynamicalPlannerPrivate/HyperbolicTangent.h
+                                    include/DynamicalPlannerPrivate/TimelySharedKinDynComputations.h
+                                    include/DynamicalPlannerPrivate/SwingCost.h
+                                    include/DynamicalPlannerPrivate/PhantomForcesCost.h
+                                    include/DynamicalPlannerPrivate/MeanPointPositionCost.h
+                                    include/DynamicalPlannerPrivate/CoMVelocityCost.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp
