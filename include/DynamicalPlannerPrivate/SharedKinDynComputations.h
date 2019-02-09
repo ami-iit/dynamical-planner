@@ -113,7 +113,7 @@ public:
 
     const iDynTree::Transform& getBaseTransform(const RobotState &currentState);
 
-    levi::Expression baseRotation(const RobotState &currentState);
+    levi::Expression &baseRotation(const RobotState &currentState);
 
     const levi::Variable baseQuaternion(const RobotState &currentState); //not normalized
 

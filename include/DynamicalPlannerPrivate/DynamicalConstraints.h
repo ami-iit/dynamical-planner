@@ -46,6 +46,21 @@ public:
 
     virtual bool dynamicsControlFirstDerivativeSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 
+    virtual bool dynamicsSecondPartialDerivativeWRTState(double time,
+                                                         const iDynTree::VectorDynSize& state,
+                                                         const iDynTree::VectorDynSize& lambda,
+                                                         iDynTree::MatrixDynSize& partialDerivative) override;
+
+    virtual bool dynamicsSecondPartialDerivativeWRTControl(double time,
+                                                           const iDynTree::VectorDynSize& state,
+                                                           const iDynTree::VectorDynSize& lambda,
+                                                           iDynTree::MatrixDynSize& partialDerivative) override;
+
+    virtual bool dynamicsSecondPartialDerivativeWRTStateControl(double time,
+                                                                const iDynTree::VectorDynSize& state,
+                                                                const iDynTree::VectorDynSize& lambda,
+                                                                iDynTree::MatrixDynSize& partialDerivative) override;
+
 };
 
 #endif // DPLANNER_DYNAMICALCONSTRAINTS_H

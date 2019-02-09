@@ -120,7 +120,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     HyperbolicSecant forceActivation, velocityActivationZ;
     HyperbolicTangent velocityActivationXY;
     forceActivation.setScaling(1.0);
-    velocityActivationXY.setScaling(1.0);
+    velocityActivationXY.setScaling(0.1);
     velocityActivationZ.setScaling(1.0);
 
     iDynTree::FrameIndex leftFrame = timelySharedKinDyn->model().getFrameIndex("l_sole"),
@@ -289,6 +289,118 @@ void checkDynamicalConstraintDerivative(double time, const iDynTree::VectorDynSi
     }
 }
 
+void checkDynamicalConstraintHessian(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
+                                     double perturbation, ConstraintSet& constraints) {
+    iDynTree::VectorDynSize perturbedState, perturbedControl, firstOrderTaylor, lambda, perturbedRow;
+    iDynTree::MatrixDynSize originalStateJacobian(originalStateVector.size(), originalStateVector.size()),
+        originalControlJacobian(originalStateVector.size(), originalControlVector.size());
+    originalStateJacobian.zero();
+    originalControlJacobian.zero();
+    lambda.resize(originalStateVector.size());
+
+    iDynTree::MatrixDynSize perturbedStateJacobian, perturbedControlJacobian;
+    perturbedStateJacobian = originalStateJacobian;
+    perturbedControlJacobian = originalControlJacobian;
+
+    iDynTree::MatrixDynSize stateHessian(originalStateVector.size(), originalStateVector.size()),
+        controlHessian(originalControlVector.size(), originalControlVector.size()),
+        mixedHessian(originalStateVector.size(), originalControlVector.size());
+
+    stateHessian.zero();
+    controlHessian.zero();
+    mixedHessian.zero();
+
+    bool ok = constraints.dynamical->setControlInput(originalControlVector);
+    ASSERT_IS_TRUE(ok);
+
+
+    ok = constraints.dynamical->dynamicsStateFirstDerivative(originalStateVector, time, originalStateJacobian);
+    ASSERT_IS_TRUE(ok);
+
+    ok = constraints.dynamical->dynamicsControlFirstDerivative(originalStateVector, time, originalControlJacobian);
+    ASSERT_IS_TRUE(ok);
+
+    for (unsigned int row = 0; row < originalStateJacobian.rows(); ++row) {
+        lambda.zero();
+        lambda(row) = 1.0;
+
+//        std::cerr << "Row: " << row << std::endl;
+
+        ok = constraints.dynamical->setControlInput(originalControlVector);
+        ASSERT_IS_TRUE(ok);
+
+        ok = constraints.dynamical->dynamicsSecondPartialDerivativeWRTState(time, originalStateVector, lambda, stateHessian);
+        ASSERT_IS_TRUE(ok);
+
+        perturbedRow.resize(originalStateJacobian.cols());
+        firstOrderTaylor = perturbedRow;
+
+        for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
+//            std::cerr << "Variable: " << i << std::endl;
+
+            perturbedState = originalStateVector;
+            perturbedState(i) = perturbedState(i) + perturbation;
+
+            ok = constraints.dynamical->dynamicsStateFirstDerivative(perturbedState, time, perturbedStateJacobian);
+            ASSERT_IS_TRUE(ok);
+
+            iDynTree::toEigen(perturbedRow) = iDynTree::toEigen(perturbedStateJacobian).row(row).transpose();
+
+            iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalStateJacobian).row(row).transpose() +
+                iDynTree::toEigen(stateHessian) * (iDynTree::toEigen(perturbedState) - iDynTree::toEigen(originalStateVector));
+            ASSERT_EQUAL_VECTOR_TOL(perturbedRow, firstOrderTaylor, perturbation/10);
+        }
+
+        ok = constraints.dynamical->setControlInput(originalControlVector);
+        ASSERT_IS_TRUE(ok);
+
+        ok = constraints.dynamical->dynamicsSecondPartialDerivativeWRTStateControl(time, originalStateVector, lambda, mixedHessian);
+        ASSERT_IS_TRUE(ok);
+
+        for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
+            perturbedControl = originalControlVector;
+            perturbedControl(i) = perturbedControl(i) + perturbation;
+
+            ok = constraints.dynamical->setControlInput(perturbedControl);
+            ASSERT_IS_TRUE(ok);
+            ok = constraints.dynamical->dynamicsStateFirstDerivative(originalStateVector, time, perturbedStateJacobian);
+            ASSERT_IS_TRUE(ok);
+
+            iDynTree::toEigen(perturbedRow) = iDynTree::toEigen(perturbedStateJacobian).row(row).transpose();
+
+            iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalStateJacobian).row(row).transpose() +
+                iDynTree::toEigen(mixedHessian) * (iDynTree::toEigen(perturbedControl) - iDynTree::toEigen(originalControlVector));
+            ASSERT_EQUAL_VECTOR_TOL(perturbedRow, firstOrderTaylor, perturbation/10);
+        }
+
+        ok = constraints.dynamical->setControlInput(originalControlVector);
+        ASSERT_IS_TRUE(ok);
+
+        ok = constraints.dynamical->dynamicsSecondPartialDerivativeWRTControl(time, originalStateVector, lambda, controlHessian);
+        ASSERT_IS_TRUE(ok);
+
+        perturbedRow.resize(originalControlJacobian.cols());
+        firstOrderTaylor = perturbedRow;
+
+        for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
+            perturbedControl = originalControlVector;
+            perturbedControl(i) = perturbedControl(i) + perturbation;
+
+            ok = constraints.dynamical->setControlInput(perturbedControl);
+            ASSERT_IS_TRUE(ok);
+            ok = constraints.dynamical->dynamicsControlFirstDerivative(originalStateVector, time, perturbedControlJacobian);
+            ASSERT_IS_TRUE(ok);
+
+            iDynTree::toEigen(perturbedRow) = iDynTree::toEigen(perturbedControlJacobian).row(row).transpose();
+
+            iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalControlJacobian).row(row).transpose() +
+                iDynTree::toEigen(controlHessian) * (iDynTree::toEigen(perturbedControl) - iDynTree::toEigen(originalControlVector));
+            ASSERT_EQUAL_VECTOR_TOL(perturbedRow, firstOrderTaylor, perturbation/10);
+        }
+
+    }
+}
+
 void checkConstraintsDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
                                 double perturbation, iDynTree::optimalcontrol::OptimalControlProblem &ocProblem) {
 
@@ -373,9 +485,13 @@ int main() {
 
     checkConstraintsDerivative(0.0, stateVector, controlVector, 0.001, ocProblem);
 
+    checkDynamicalConstraintHessian(0.0, stateVector, controlVector, 0.001, constraints);
+
     checkDynamicalConstraintDerivative(1.0, stateVector, controlVector, 0.01, constraints);
 
     checkConstraintsDerivative(1.0, stateVector, controlVector, 0.001, ocProblem);
+
+    checkDynamicalConstraintHessian(1.0, stateVector, controlVector, 0.001, constraints);
 
     return EXIT_SUCCESS;
 }

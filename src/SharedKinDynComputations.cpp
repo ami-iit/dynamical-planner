@@ -397,7 +397,7 @@ const iDynTree::Transform &SharedKinDynComputations::getBaseTransform(const Robo
     return m_data->baseTransform;
 }
 
-levi::Expression SharedKinDynComputations::baseRotation(const RobotState &currentState)
+levi::Expression& SharedKinDynComputations::baseRotation(const RobotState &currentState)
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
