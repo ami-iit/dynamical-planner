@@ -61,7 +61,8 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${CONSTRAINTS_HEADERS_DIR}/DynamicalConstra
                                      ${CONSTRAINTS_HEADERS_DIR}/ContactForceControlConstraints.h
                                      ${CONSTRAINTS_HEADERS_DIR}/NormalVelocityControlConstraints.h
                                      ${CONSTRAINTS_HEADERS_DIR}/PlanarVelocityControlConstraints.h
-                                     ${CONSTRAINTS_HEADERS_DIR}/DynamicalComplementarityConstraint.h)
+                                     ${CONSTRAINTS_HEADERS_DIR}/DynamicalComplementarityConstraint.h
+                                     include/DynamicalPlannerPrivate/Constraints.h)
 
 set(COSTS_HEADERS_DIR include/DynamicalPlannerPrivate/Costs)
 
@@ -71,7 +72,8 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${COSTS_HEADERS_DIR}/FrameOrientationCost.h
                                      ${COSTS_HEADERS_DIR}/SwingCost.h
                                      ${COSTS_HEADERS_DIR}/PhantomForcesCost.h
                                      ${COSTS_HEADERS_DIR}/MeanPointPositionCost.h
-                                     ${COSTS_HEADERS_DIR}/CoMVelocityCost.h)
+                                     ${COSTS_HEADERS_DIR}/CoMVelocityCost.h
+                                     include/DynamicalPlannerPrivate/Costs.h)
 
 set(UTILITIES_DIR include/DynamicalPlannerPrivate/Utilities)
 
@@ -84,8 +86,9 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${UTILITIES_DIR}/VariablesLabeller.h
                                      ${UTILITIES_DIR}/HyperbolicTangent.h
                                      ${UTILITIES_DIR}/TimelySharedKinDynComputations.h)
 
-set(APPEND DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/Constraints.h
-                                    include/DynamicalPlannerPrivate/Costs.h)
+set(LEVI_UTILITIES_DIR include/DynamicalPlannerPrivate/Utilities/levi)
+
+list(APPEND DPLANNER_PRIVATE_HEADERS ${LEVI_UTILITIES_DIR}/QuaternionExpressions.h)
 
 set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/DynamicalConstraints.cpp
@@ -111,7 +114,8 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/SwingCost.cpp
                              src/private/PhantomForcesCost.cpp
                              src/private/MeanPointPositionCost.cpp
-                             src/private/CoMVelocityCost.cpp)
+                             src/private/CoMVelocityCost.cpp
+                             src/private/QuaternionExpressions.cpp)
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})
 target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)

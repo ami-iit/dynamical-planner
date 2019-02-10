@@ -5,7 +5,9 @@
  *
  */
 
+#include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/QuaternionExpressions.h>
 
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/TestUtils.h>
@@ -298,12 +300,30 @@ void validateInverseQuaternion(const iDynTree::Rotation & R) {
 
 }
 
+void validateExpressions(const iDynTree::Rotation & R) {
+
+    levi::Variable q(4, "q");
+    DynamicalPlanner::Private::E_Expression E_levi(q);
+    DynamicalPlanner::Private::G_Expression G_levi(q);
+
+
+    iDynTree::Vector4 quaternion = R.asQuaternion();
+    q = iDynTree::toEigen(quaternion);
+    ASSERT_EQUAL_MATRIX(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(quaternion),
+                        (2.0 * (*E_levi)).evaluate());
+
+    ASSERT_EQUAL_MATRIX(DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverse(quaternion),
+                        (2.0 * (*G_levi)).evaluate());
+}
+
 int main() {
     validateQuaternionLeftTrivializedDerivative(iDynTree::getRandomRotation());
     validateMapJacobian(iDynTree::getRandomRotation());
     validateInverseMapJacobian(iDynTree::getRandomRotation());
     validateNormalizeQuaternionJacobian();
     validateRotatedVectorJacobian(iDynTree::getRandomRotation());
+    validateExpressions(iDynTree::getRandomRotation());
+
     return EXIT_SUCCESS;
 }
 
