@@ -6,7 +6,7 @@
  */
 
 #include <levi/levi.h>
-#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <iDynTree/Core/Utils.h>
 #include <cmath>
 #include <cassert>

@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/HyperbolicTangent.h>
+#include <DynamicalPlannerPrivate/Utilities/HyperbolicTangent.h>
 #include <cmath>
 
 using namespace DynamicalPlanner::Private;

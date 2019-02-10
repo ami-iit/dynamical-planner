@@ -6,7 +6,7 @@
  */
 
 #include <levi/levi.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/SharedKinDynComputations.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>

@@ -6,11 +6,11 @@
  */
 
 #include <levi/levi.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/SharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Constraints.h>
 #include <DynamicalPlannerPrivate/Constraints/DynamicalConstraints.h>
-#include <DynamicalPlannerPrivate/HyperbolicSecant.h>
+#include <DynamicalPlannerPrivate/Utilities/HyperbolicSecant.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>

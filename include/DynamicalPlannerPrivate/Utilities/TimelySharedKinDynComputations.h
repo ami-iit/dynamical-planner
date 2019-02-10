@@ -7,7 +7,7 @@
 #ifndef DPLANNER_TIMELYSHAREDKINDYNCOMPUTATIONS_H
 #define DPLANNER_TIMELYSHAREDKINDYNCOMPUTATIONS_H
 
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/SharedKinDynComputations.h>
 #include <memory>
 #include <vector>
 

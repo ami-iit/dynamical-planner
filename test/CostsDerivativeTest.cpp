@@ -6,10 +6,10 @@
  */
 
 #include <levi/levi.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Costs.h>
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>

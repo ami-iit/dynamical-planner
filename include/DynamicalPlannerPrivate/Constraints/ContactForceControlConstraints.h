@@ -12,8 +12,8 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/HyperbolicSecant.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/HyperbolicSecant.h>
 #include <memory>
 #include <string>
 

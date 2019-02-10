@@ -11,8 +11,8 @@
 #include <iDynTree/SparsityStructure.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <iDynTree/Core/Position.h>
 #include <memory>
 #include <string>

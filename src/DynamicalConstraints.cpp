@@ -7,7 +7,7 @@
 
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Constraints/DynamicalConstraints.h>
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/Utils.h>
 #include <cassert>

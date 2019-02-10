@@ -12,7 +12,7 @@
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <iDynTree/TimeVaryingObject.h>
 #include <iDynTree/TimeRange.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <memory>
 
 namespace DynamicalPlanner {

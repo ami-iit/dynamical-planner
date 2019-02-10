@@ -12,8 +12,8 @@
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <iDynTree/Core/Rotation.h>
 #include <iDynTree/TimeVaryingObject.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <memory>
 
 namespace DynamicalPlanner {

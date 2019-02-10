@@ -6,10 +6,10 @@
  */
 
 #include <levi/levi.h>
-#include <DynamicalPlannerPrivate/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/SharedKinDynComputations.h>
 #include <iDynTree/Model/ForwardKinematics.h>
 #include <iDynTree/Model/Dynamics.h>
-#include <DynamicalPlannerPrivate/CheckEqualVector.h>
+#include <DynamicalPlannerPrivate/Utilities/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
 

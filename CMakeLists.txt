@@ -59,40 +59,43 @@ set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
                      include/DynamicalPlanner/Visualizer.h
                      include/DynamicalPlanner/RectangularFoot.h)
 
-set(CONSTRAINTS_HEADERS include/DynamicalPlannerPrivate/Constraints)
+set(CONSTRAINTS_HEADERS_DIR include/DynamicalPlannerPrivate/Constraints)
 
-list(APPEND DPLANNER_PRIVATE_HEADERS ${CONSTRAINTS_HEADERS}/DynamicalConstraints.h
-                                     ${CONSTRAINTS_HEADERS}/CoMPositionConstraint.h
-                                     ${CONSTRAINTS_HEADERS}/QuaternionNormConstraint.h
-                                     ${CONSTRAINTS_HEADERS}/ContactPositionConsistencyConstraint.h
-                                     ${CONSTRAINTS_HEADERS}/FeetLateralDistanceConstraint.h
-                                     ${CONSTRAINTS_HEADERS}/ContactFrictionConstraint.h
-                                     ${CONSTRAINTS_HEADERS}/CentroidalMomentumConstraint.h
-                                     ${CONSTRAINTS_HEADERS}/ContactForceControlConstraints.h
-                                     ${CONSTRAINTS_HEADERS}/NormalVelocityControlConstraints.h
-                                     ${CONSTRAINTS_HEADERS}/PlanarVelocityControlConstraints.h
-                                     ${CONSTRAINTS_HEADERS}/DynamicalComplementarityConstraint.h)
+list(APPEND DPLANNER_PRIVATE_HEADERS ${CONSTRAINTS_HEADERS_DIR}/DynamicalConstraints.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/CoMPositionConstraint.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/QuaternionNormConstraint.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/ContactPositionConsistencyConstraint.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/FeetLateralDistanceConstraint.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/ContactFrictionConstraint.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/CentroidalMomentumConstraint.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/ContactForceControlConstraints.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/NormalVelocityControlConstraints.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/PlanarVelocityControlConstraints.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/DynamicalComplementarityConstraint.h)
 
-set(COSTS_HEADERS include/DynamicalPlannerPrivate/Costs)
+set(COSTS_HEADERS_DIR include/DynamicalPlannerPrivate/Costs)
 
-list(APPEND DPLANNER_PRIVATE_HEADERS ${COSTS_HEADERS}/FrameOrientationCost.h
-                                     ${COSTS_HEADERS}/ForceMeanCost.h
-                                     ${COSTS_HEADERS}/StaticTorquesCost.h
-                                     ${COSTS_HEADERS}/SwingCost.h
-                                     ${COSTS_HEADERS}/PhantomForcesCost.h
-                                     ${COSTS_HEADERS}/MeanPointPositionCost.h
-                                     ${COSTS_HEADERS}/CoMVelocityCost.h)
+list(APPEND DPLANNER_PRIVATE_HEADERS ${COSTS_HEADERS_DIR}/FrameOrientationCost.h
+                                     ${COSTS_HEADERS_DIR}/ForceMeanCost.h
+                                     ${COSTS_HEADERS_DIR}/StaticTorquesCost.h
+                                     ${COSTS_HEADERS_DIR}/SwingCost.h
+                                     ${COSTS_HEADERS_DIR}/PhantomForcesCost.h
+                                     ${COSTS_HEADERS_DIR}/MeanPointPositionCost.h
+                                     ${COSTS_HEADERS_DIR}/CoMVelocityCost.h)
 
-set(APPEND DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
-                                    include/DynamicalPlannerPrivate/QuaternionUtils.h
-                                    include/DynamicalPlannerPrivate/SharedKinDynComputations.h
-                                    include/DynamicalPlannerPrivate/CheckEqualVector.h
-                                    include/DynamicalPlannerPrivate/HyperbolicSecant.h
-                                    include/DynamicalPlannerPrivate/Constraints.h
-                                    include/DynamicalPlannerPrivate/Costs.h
-                                    include/DynamicalPlannerPrivate/SmoothingFunction.h
-                                    include/DynamicalPlannerPrivate/HyperbolicTangent.h
-                                    include/DynamicalPlannerPrivate/TimelySharedKinDynComputations.h)
+set(UTILITIES_DIR include/DynamicalPlannerPrivate/Utilities)
+
+list(APPEND DPLANNER_PRIVATE_HEADERS ${UTILITIES_DIR}/VariablesLabeller.h
+                                     ${UTILITIES_DIR}/QuaternionUtils.h
+                                     ${UTILITIES_DIR}/SharedKinDynComputations.h
+                                     ${UTILITIES_DIR}/CheckEqualVector.h
+                                     ${UTILITIES_DIR}/HyperbolicSecant.h
+                                     ${UTILITIES_DIR}/SmoothingFunction.h
+                                     ${UTILITIES_DIR}/HyperbolicTangent.h
+                                     ${UTILITIES_DIR}/TimelySharedKinDynComputations.h)
+
+set(APPEND DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/Constraints.h
+                                    include/DynamicalPlannerPrivate/Costs.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp

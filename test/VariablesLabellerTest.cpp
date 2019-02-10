@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/EigenHelpers.h>

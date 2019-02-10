@@ -10,9 +10,9 @@
 #include <iDynTree/DynamicalSystem.h>
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/Position.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
-#include <DynamicalPlannerPrivate/HyperbolicTangent.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/HyperbolicTangent.h>
 #include <iDynTree/SparsityStructure.h>
 #include <memory>
 

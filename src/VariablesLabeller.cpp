@@ -6,7 +6,7 @@
  */
 
 #include <iostream>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <iDynTree/Core/EigenHelpers.h>
 
 using namespace DynamicalPlanner::Private;

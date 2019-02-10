@@ -8,8 +8,8 @@
 #define DPLANNER_COMVELOCITYCOST_H
 
 #include <iDynTree/L2NormCost.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <memory>
 
 namespace DynamicalPlanner {

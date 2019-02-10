@@ -7,8 +7,8 @@
 
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Constraints/FeetLateralDistanceConstraint.h>
-#include <DynamicalPlannerPrivate/CheckEqualVector.h>
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/CheckEqualVector.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
 

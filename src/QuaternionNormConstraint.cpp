@@ -6,7 +6,7 @@
  */
 
 #include <DynamicalPlannerPrivate/Constraints/QuaternionNormConstraint.h>
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <iDynTree/Core/EigenHelpers.h>

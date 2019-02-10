@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/TestUtils.h>

@@ -7,7 +7,7 @@
 
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Costs/StaticTorquesCost.h>
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>

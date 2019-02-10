@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/SmoothingFunction.h>
+#include <DynamicalPlannerPrivate/Utilities/SmoothingFunction.h>
 #include <cmath>
 
 using namespace DynamicalPlanner::Private;

@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/HyperbolicSecant.h>
+#include <DynamicalPlannerPrivate/Utilities/HyperbolicSecant.h>
 #include <cmath>
 
 using namespace DynamicalPlanner::Private;

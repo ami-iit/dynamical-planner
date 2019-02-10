@@ -9,7 +9,7 @@
 
 #include <iDynTree/Constraint.h>
 #include <iDynTree/SparsityStructure.h>
-#include <DynamicalPlannerPrivate/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <iDynTree/Core/Position.h>
 #include <memory>
 #include <string>

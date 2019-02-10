@@ -8,8 +8,8 @@
 #include <levi/levi.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/Costs/FrameOrientationCost.h>
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
-#include <DynamicalPlannerPrivate/CheckEqualVector.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/CheckEqualVector.h>
 #include <cassert>
 #include <iostream>
 

@@ -7,9 +7,9 @@
 
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Constraints/CentroidalMomentumConstraint.h>
-#include <DynamicalPlannerPrivate/CheckEqualVector.h>
+#include <DynamicalPlannerPrivate/Utilities/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>
-#include <DynamicalPlannerPrivate/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <cassert>
 
 using namespace DynamicalPlanner::Private;
