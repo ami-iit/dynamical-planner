@@ -7,13 +7,13 @@
 #ifndef DPLANNER_COSTS_H
 #define DPLANNER_COSTS_H
 
-#include <DynamicalPlannerPrivate/ForceMeanCost.h>
-#include <DynamicalPlannerPrivate/FrameOrientationCost.h>
-#include <DynamicalPlannerPrivate/StaticTorquesCost.h>
-#include <DynamicalPlannerPrivate/SwingCost.h>
-#include <DynamicalPlannerPrivate/PhantomForcesCost.h>
-#include <DynamicalPlannerPrivate/MeanPointPositionCost.h>
-#include <DynamicalPlannerPrivate/CoMVelocityCost.h>
+#include <DynamicalPlannerPrivate/Costs/ForceMeanCost.h>
+#include <DynamicalPlannerPrivate/Costs/FrameOrientationCost.h>
+#include <DynamicalPlannerPrivate/Costs/StaticTorquesCost.h>
+#include <DynamicalPlannerPrivate/Costs/SwingCost.h>
+#include <DynamicalPlannerPrivate/Costs/PhantomForcesCost.h>
+#include <DynamicalPlannerPrivate/Costs/MeanPointPositionCost.h>
+#include <DynamicalPlannerPrivate/Costs/CoMVelocityCost.h>
 #include <iDynTree/L2NormCost.h>
 
 #endif // DPLANNER_COSTS_H

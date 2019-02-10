@@ -7,7 +7,7 @@
 
 #include <levi/levi.h>
 #include <iDynTree/Core/EigenHelpers.h>
-#include <DynamicalPlannerPrivate/FrameOrientationCost.h>
+#include <DynamicalPlannerPrivate/Costs/FrameOrientationCost.h>
 #include <DynamicalPlannerPrivate/QuaternionUtils.h>
 #include <DynamicalPlannerPrivate/CheckEqualVector.h>
 #include <cassert>

@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/MeanPointPositionCost.h>
+#include <DynamicalPlannerPrivate/Costs/MeanPointPositionCost.h>
 #include <iDynTree/Core/Utils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <vector>

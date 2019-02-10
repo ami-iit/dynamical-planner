@@ -73,23 +73,26 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${CONSTRAINTS_HEADERS}/DynamicalConstraints
                                      ${CONSTRAINTS_HEADERS}/PlanarVelocityControlConstraints.h
                                      ${CONSTRAINTS_HEADERS}/DynamicalComplementarityConstraint.h)
 
+set(COSTS_HEADERS include/DynamicalPlannerPrivate/Costs)
+
+list(APPEND DPLANNER_PRIVATE_HEADERS ${COSTS_HEADERS}/FrameOrientationCost.h
+                                     ${COSTS_HEADERS}/ForceMeanCost.h
+                                     ${COSTS_HEADERS}/StaticTorquesCost.h
+                                     ${COSTS_HEADERS}/SwingCost.h
+                                     ${COSTS_HEADERS}/PhantomForcesCost.h
+                                     ${COSTS_HEADERS}/MeanPointPositionCost.h
+                                     ${COSTS_HEADERS}/CoMVelocityCost.h)
+
 set(APPEND DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/VariablesLabeller.h
                                     include/DynamicalPlannerPrivate/QuaternionUtils.h
                                     include/DynamicalPlannerPrivate/SharedKinDynComputations.h
                                     include/DynamicalPlannerPrivate/CheckEqualVector.h
                                     include/DynamicalPlannerPrivate/HyperbolicSecant.h
                                     include/DynamicalPlannerPrivate/Constraints.h
-                                    include/DynamicalPlannerPrivate/FrameOrientationCost.h
-                                    include/DynamicalPlannerPrivate/ForceMeanCost.h
-                                    include/DynamicalPlannerPrivate/StaticTorquesCost.h
                                     include/DynamicalPlannerPrivate/Costs.h
                                     include/DynamicalPlannerPrivate/SmoothingFunction.h
                                     include/DynamicalPlannerPrivate/HyperbolicTangent.h
-                                    include/DynamicalPlannerPrivate/TimelySharedKinDynComputations.h
-                                    include/DynamicalPlannerPrivate/SwingCost.h
-                                    include/DynamicalPlannerPrivate/PhantomForcesCost.h
-                                    include/DynamicalPlannerPrivate/MeanPointPositionCost.h
-                                    include/DynamicalPlannerPrivate/CoMVelocityCost.h)
+                                    include/DynamicalPlannerPrivate/TimelySharedKinDynComputations.h)
 
 set(DPLANNER_SOURCES src/VariablesLabeller.cpp
                      src/DynamicalConstraints.cpp

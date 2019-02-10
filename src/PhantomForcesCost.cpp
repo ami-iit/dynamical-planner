@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/PhantomForcesCost.h>
+#include <DynamicalPlannerPrivate/Costs/PhantomForcesCost.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>

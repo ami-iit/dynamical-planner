@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/ForceMeanCost.h>
+#include <DynamicalPlannerPrivate/Costs/ForceMeanCost.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <vector>
 #include <cassert>

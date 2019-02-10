@@ -5,7 +5,7 @@
  *
  */
 
-#include <DynamicalPlannerPrivate/SwingCost.h>
+#include <DynamicalPlannerPrivate/Costs/SwingCost.h>
 
 using namespace DynamicalPlanner::Private;
 
