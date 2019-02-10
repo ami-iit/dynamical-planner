@@ -45,19 +45,9 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
     endif()
 endif()
 
-
 find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(levi REQUIRED)
-include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
-
-
-set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
-                     include/DynamicalPlanner/Solver.h
-                     include/DynamicalPlanner/State.h
-                     include/DynamicalPlanner/Control.h
-                     include/DynamicalPlanner/Visualizer.h
-                     include/DynamicalPlanner/RectangularFoot.h)
 
 set(CONSTRAINTS_HEADERS_DIR include/DynamicalPlannerPrivate/Constraints)
 
@@ -97,44 +87,58 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${UTILITIES_DIR}/VariablesLabeller.h
 set(APPEND DPLANNER_PRIVATE_HEADERS include/DynamicalPlannerPrivate/Constraints.h
                                     include/DynamicalPlannerPrivate/Costs.h)
 
-set(DPLANNER_SOURCES src/VariablesLabeller.cpp
-                     src/DynamicalConstraints.cpp
-                     src/QuaternionUtils.cpp
-                     src/CoMPositionConstraint.cpp
-                     src/QuaternionNormConstraint.cpp
-                     src/ContactPositionConsistencyConstraint.cpp
-                     src/SharedKinDynComputations.cpp
-                     src/FeetLateralDistanceConstraint.cpp
-                     src/ContactFrictionConstraint.cpp
-                     src/CentroidalMomentumConstraint.cpp
-                     src/HyperbolicSecant.cpp
-                     src/ContactForceControlConstraints.cpp
-                     src/NormalVelocityControlConstraints.cpp
-                     src/PlanarVelocityControlConstraints.cpp
-                     src/FrameOrientationCost.cpp
-                     src/ForceMeanCost.cpp
-                     src/StaticTorquesCost.cpp
-                     src/Settings.cpp
+set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
+                             src/private/DynamicalConstraints.cpp
+                             src/private/QuaternionUtils.cpp
+                             src/private/CoMPositionConstraint.cpp
+                             src/private/QuaternionNormConstraint.cpp
+                             src/private/ContactPositionConsistencyConstraint.cpp
+                             src/private/SharedKinDynComputations.cpp
+                             src/private/FeetLateralDistanceConstraint.cpp
+                             src/private/ContactFrictionConstraint.cpp
+                             src/private/CentroidalMomentumConstraint.cpp
+                             src/private/HyperbolicSecant.cpp
+                             src/private/ContactForceControlConstraints.cpp
+                             src/private/NormalVelocityControlConstraints.cpp
+                             src/private/PlanarVelocityControlConstraints.cpp
+                             src/private/FrameOrientationCost.cpp
+                             src/private/ForceMeanCost.cpp
+                             src/private/StaticTorquesCost.cpp
+                             src/private/SmoothingFunction.cpp
+                             src/private/HyperbolicTangent.cpp
+                             src/private/DynamicalComplementarityConstraint.cpp
+                             src/private/TimelySharedKinDynComputations.cpp
+                             src/private/SwingCost.cpp
+                             src/private/PhantomForcesCost.cpp
+                             src/private/MeanPointPositionCost.cpp
+                             src/private/CoMVelocityCost.cpp)
+
+add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})
+target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)
+target_include_directories(DynamicalPlannerPrivate PUBLIC ${EIGEN3_INCLUDE_DIR})
+target_link_libraries(DynamicalPlannerPrivate PUBLIC ${iDynTree_LIBRARIES})
+target_link_libraries(DynamicalPlannerPrivate PUBLIC levi::levi)
+
+set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
+                     include/DynamicalPlanner/Solver.h
+                     include/DynamicalPlanner/State.h
+                     include/DynamicalPlanner/Control.h
+                     include/DynamicalPlanner/Visualizer.h
+                     include/DynamicalPlanner/RectangularFoot.h)
+
+set(DPLANNER_SOURCES src/Settings.cpp
                      src/Solver.cpp
                      src/State.cpp
                      src/Control.cpp
-                     src/SmoothingFunction.cpp
-                     src/HyperbolicTangent.cpp
-                     src/DynamicalComplementarityConstraint.cpp
-                     src/TimelySharedKinDynComputations.cpp
-                     src/Visualizer.cpp
-                     src/SwingCost.cpp
                      src/RectangularFoot.cpp
-                     src/PhantomForcesCost.cpp
-                     src/MeanPointPositionCost.cpp
-                     src/CoMVelocityCost.cpp)
+                     src/Visualizer.cpp)
 
-add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_SOURCES})
+add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(DynamicalPlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_include_directories(DynamicalPlannerPrivate PUBLIC ${EIGEN3_INCLUDE_DIR})
+target_link_libraries(DynamicalPlanner PRIVATE DynamicalPlannerPrivate)
 target_link_libraries(DynamicalPlanner PUBLIC ${iDynTree_LIBRARIES})
-target_link_libraries(DynamicalPlanner PUBLIC levi::levi)
-
 
 include(AddUninstallTarget)
 
@@ -145,24 +149,6 @@ mark_as_advanced(RUN_VALGRIND_TESTS)
 if(BUILD_TESTING)
    include( CTest )
    enable_testing()
-
-   # adding support for checking the tests with valgrind
-   if(RUN_VALGRIND_TESTS)
-        find_package(Valgrind REQUIRED)
-        if(VALGRIND_FOUND)
-            set(CTEST_MEMORYCHECK_COMMAND ${VALGRIND_PROGRAM})
-            set(MEMORYCHECK_COMMAND ${VALGRIND_PROGRAM})
-            if (APPLE)
-                set(MEMORYCHECK_SUPPRESSIONS "--suppressions=${PROJECT_SOURCE_DIR}/cmake/valgrind-macos.supp")
-            else ()
-                set(MEMORYCHECK_SUPPRESSIONS "")
-            endif ()
-            set(MEMORYCHECK_COMMAND_OPTIONS "--leak-check=full --error-exitcode=1 ${MEMORYCHECK_SUPPRESSIONS}"  CACHE STRING "Options to pass to the memory checker")
-            mark_as_advanced(MEMORYCHECK_COMMAND_OPTIONS)
-            set(MEMCHECK_COMMAND_COMPLETE "${MEMORYCHECK_COMMAND} ${MEMORYCHECK_COMMAND_OPTIONS}")
-            separate_arguments(MEMCHECK_COMMAND_COMPLETE)
-        endif()
-   endif()
 endif()
 
 
