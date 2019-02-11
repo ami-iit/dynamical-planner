@@ -474,7 +474,6 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTState(double time, 
 
         hessianMap.block<1,4>(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionRange.offset) = quaternionHessian;
 
-        hessianMap.block<4,1>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseQuaternionRange.offset + i) = quaternionHessian.transpose();
     }
 
     m_pimpl->computeFootRelatedStateHessian(m_pimpl->leftRanges, hessianMap);
