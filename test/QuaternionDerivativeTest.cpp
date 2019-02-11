@@ -303,17 +303,14 @@ void validateInverseQuaternion(const iDynTree::Rotation & R) {
 void validateExpressions(const iDynTree::Rotation & R) {
 
     levi::Variable q(4, "q");
-    DynamicalPlanner::Private::E_Expression E_levi(q);
-    DynamicalPlanner::Private::G_Expression G_levi(q);
-
 
     iDynTree::Vector4 quaternion = R.asQuaternion();
     q = iDynTree::toEigen(quaternion);
     ASSERT_EQUAL_MATRIX(iDynTree::Rotation::QuaternionRightTrivializedDerivativeInverse(quaternion),
-                        (2.0 * (*E_levi)).evaluate());
+                        (2.0 * (DynamicalPlanner::Private::E_Expression(q))).evaluate());
 
     ASSERT_EQUAL_MATRIX(DynamicalPlanner::Private::QuaternionLeftTrivializedDerivativeInverse(quaternion),
-                        (2.0 * (*G_levi)).evaluate());
+                        (2.0 * (DynamicalPlanner::Private::G_Expression(q))).evaluate());
 }
 
 int main() {

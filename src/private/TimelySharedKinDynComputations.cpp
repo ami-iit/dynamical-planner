@@ -127,6 +127,11 @@ bool TimelySharedKinDynComputations::setFloatingBase(const std::string &floating
     return m_sharedTemplate->setFloatingBase(floatingBaseName);
 }
 
+std::string TimelySharedKinDynComputations::getFloatingBase() const
+{
+    return m_sharedTemplate->getFloatingBase();
+}
+
 bool TimelySharedKinDynComputations::setTimings(const std::vector<double> &timings)
 {
     if (!isValid()) {

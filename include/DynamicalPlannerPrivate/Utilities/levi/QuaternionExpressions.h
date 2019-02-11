@@ -13,59 +13,13 @@
 
 namespace DynamicalPlanner {
     namespace Private {
-        class RotationExpression;
 
-        class E_Expression;
+        levi::Expression RotationExpression(const levi::Variable& quaternionVariable);
 
-        class G_Expression;
+        levi::Expression E_Expression(const levi::Variable& quaternionVariable);
+
+        levi::Expression G_Expression(const levi::Variable& quaternionVariable);
     }
 }
-
-class DynamicalPlanner::Private::RotationExpression {
-    class Implementation;
-    std::unique_ptr<Implementation> m_pimpl;
-
-public:
-
-    RotationExpression(const levi::Variable& quaternionVariable);
-
-    ~RotationExpression();
-
-    levi::Expression& operator->();
-
-    levi::Expression& operator*();
-};
-
-class DynamicalPlanner::Private::E_Expression {
-
-    class Implementation;
-    std::unique_ptr<Implementation> m_pimpl;
-
-public:
-
-    E_Expression(const levi::Variable& quaternionVariable);
-
-    ~E_Expression();
-
-    levi::Expression& operator->();
-
-    levi::Expression& operator*();
-};
-
-class DynamicalPlanner::Private::G_Expression {
-
-    class Implementation;
-    std::unique_ptr<Implementation> m_pimpl;
-
-public:
-
-    G_Expression(const levi::Variable& quaternionVariable);
-
-    ~G_Expression();
-
-    levi::Expression& operator->();
-
-    levi::Expression& operator*();
-};
 
 #endif // DPLANNER_QUATERNIONEXPRESSIONS_H

@@ -52,6 +52,8 @@ public:
 
     bool setFloatingBase(const std::string & floatingBaseName);
 
+    std::string getFloatingBase() const;
+
     bool setTimings(const std::vector<double> &timings);
 
     SharedKinDynComputationsPointer get(double time);
