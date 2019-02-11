@@ -56,5 +56,6 @@ add_dp_test(BoundsAndSparsity)
 add_dp_test(RectangularFoot)
 add_dp_test(Solver)
 add_dp_test(Performance)
+add_dp_test(leviExpressions)
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/meshes" DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
