@@ -90,7 +90,10 @@ set(LEVI_UTILITIES_DIR include/DynamicalPlannerPrivate/Utilities/levi)
 
 list(APPEND DPLANNER_PRIVATE_HEADERS ${LEVI_UTILITIES_DIR}/QuaternionExpressions.h
                                      ${LEVI_UTILITIES_DIR}/AdjointTransformExpression.h
-                                     ${LEVI_UTILITIES_DIR}/RelativeJacobianExpression.h)
+                                     ${LEVI_UTILITIES_DIR}/RelativeJacobianExpression.h
+                                     ${LEVI_UTILITIES_DIR}/RelativeQuaternionExpression.h
+                                     ${LEVI_UTILITIES_DIR}/RelativePositionExpression.h
+                                     ${LEVI_UTILITIES_DIR}/TransformExpression.h)
 
 set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/DynamicalConstraints.cpp
@@ -119,7 +122,10 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/CoMVelocityCost.cpp
                              src/private/QuaternionExpressions.cpp
                              src/private/AdjointTransformExpression.cpp
-                             src/private/RelativeJacobianExpression.cpp)
+                             src/private/RelativeJacobianExpression.cpp
+                             src/private/RelativeQuaternionExpression.cpp
+                             src/private/RelativePositionExpression.cpp
+                             src/private/TransformExpression.cpp)
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})
 target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)
