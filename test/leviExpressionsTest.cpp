@@ -130,7 +130,7 @@ void validateJacobian(std::shared_ptr<TimelySharedKinDynComputations> timelyShar
     t = time;
     q = iDynTree::toEigen(robotState.s);
 
-    levi::Expression jacobian = RelativeJacobianExpression(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
+    levi::Expression jacobian = RelativeLeftJacobianExpression(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
     ASSERT_IS_TRUE(jacobian.isValidExpression());
 
     SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);

@@ -14,9 +14,9 @@
 namespace DynamicalPlanner {
     namespace Private {
 
-        levi::Expression RotationExpression(const levi::Variable& quaternionVariable);
+        levi::Expression RotationExpression(const levi::Variable& normalizedQuaternion);
 
-        levi::Expression E_Expression(const levi::Variable& quaternionVariable);
+        levi::Expression E_Expression(const levi::Variable& normalizedQuaternion);
 
         levi::Expression G_Expression(const levi::Variable& quaternionVariable);
     }

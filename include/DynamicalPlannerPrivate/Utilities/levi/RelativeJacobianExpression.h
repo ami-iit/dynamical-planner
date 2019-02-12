@@ -15,12 +15,12 @@
 namespace DynamicalPlanner {
     namespace Private {
 
-        levi::Expression RelativeJacobianExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                    RobotState *robotState,
-                                                    const std::string& baseFrame,
-                                                    const std::string &targetFrame,
-                                                    levi::Variable jointsVariable,
-                                                    levi::ScalarVariable timeVariable);
+        levi::Expression RelativeLeftJacobianExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
+                                                        RobotState *robotState,
+                                                        const std::string& baseFrame,
+                                                        const std::string &targetFrame,
+                                                        levi::Variable jointsVariable,
+                                                        levi::ScalarVariable timeVariable);
 
     }
 }

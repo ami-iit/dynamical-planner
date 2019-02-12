@@ -16,13 +16,13 @@
 
 namespace DynamicalPlanner {
     namespace Private {
-        class RelativeJacobianEvaluable;
+        class RelativeLeftJacobianEvaluable;
     }
 }
 
 using namespace DynamicalPlanner::Private;
 
-class DynamicalPlanner::Private::RelativeJacobianEvaluable :
+class DynamicalPlanner::Private::RelativeLeftJacobianEvaluable :
     public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
 
     std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
@@ -35,11 +35,11 @@ class DynamicalPlanner::Private::RelativeJacobianEvaluable :
 
 public:
 
-    RelativeJacobianEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
+    RelativeLeftJacobianEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
                               RobotState *robotState, const std::string &baseFrame, const std::string &targetFrame,
                               levi::Variable jointsVariable, levi::ScalarVariable timeVariable)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (jointsVariable, 6, jointsVariable.rows(), sharedKinDyn->getFloatingBase() + "_X_" + targetFrame)
+          (jointsVariable, 6, jointsVariable.rows(), baseFrame + "_J_" + targetFrame)
           , m_timelySharedKinDyn(sharedKinDyn)
           , m_robotState(robotState)
           , m_timeVariable(timeVariable)
@@ -101,7 +101,7 @@ public:
 };
 
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
-RelativeJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
+RelativeLeftJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
     if (variable->variableName() == m_expression.name()) { //m_expression contains the jointsVariable specified in the constructor
 
@@ -114,12 +114,12 @@ RelativeJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shar
 }
 
 
-levi::Expression DynamicalPlanner::Private::RelativeJacobianExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
+levi::Expression DynamicalPlanner::Private::RelativeLeftJacobianExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
                                                                        RobotState *robotState, const std::string &baseFrame,
                                                                        const std::string &targetFrame, levi::Variable jointsVariable,
                                                                        levi::ScalarVariable timeVariable)
 {
-    return levi::ExpressionComponent<RelativeJacobianEvaluable>(sharedKinDyn, robotState, baseFrame,
+    return levi::ExpressionComponent<RelativeLeftJacobianEvaluable>(sharedKinDyn, robotState, baseFrame,
                                                                 targetFrame, jointsVariable, timeVariable);
 }
 
