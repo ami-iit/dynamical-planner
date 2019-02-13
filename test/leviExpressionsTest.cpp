@@ -10,6 +10,8 @@
 #include <DynamicalPlannerPrivate/Utilities/levi/QuaternionExpressions.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/TransformExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/CoMPositionExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 
 #include <URDFdir.h>
@@ -179,6 +181,134 @@ void validateJacobian(std::shared_ptr<TimelySharedKinDynComputations> timelyShar
 
 }
 
+void validateTransform(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
+    RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
+    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
+    levi::ScalarVariable t("t");
+
+    t = time;
+    q = iDynTree::toEigen(robotState.s);
+
+    TransformExpression newTransform = TransformExpression::RelativeTransform(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
+
+    iDynTree::Position testPosition = iDynTree::getRandomPosition();
+
+    levi::Constant testExpr(3,1,"pos");
+    testExpr = iDynTree::toEigen(testPosition);
+
+    levi::Expression transformedPos = newTransform * testExpr;
+
+    ASSERT_IS_TRUE(transformedPos.isValidExpression());
+
+    SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
+
+    iDynTree::Position testTransformedPos = kinDyn->getRelativeTransform(robotState, "root_link", "l_sole") * testPosition;
+
+    iDynTree::Position positionFromExpression;
+
+    iDynTree::toEigen(positionFromExpression) = transformedPos.evaluate();
+
+    ASSERT_EQUAL_VECTOR(testTransformedPos, positionFromExpression);
+
+    double perturbation = 1e-3;
+    Eigen::VectorXd originalJoints, jointsPerturbation, firstOrderTaylor(3);
+    iDynTree::Position perturbedPosition;
+
+    Eigen::MatrixXd jacobian(3, robotState.s.size());
+
+    jacobian = transformedPos.getColumnDerivative(0, q).evaluate();
+
+    originalJoints = iDynTree::toEigen(robotState.s);
+
+    for (unsigned int joint = 0; joint < robotState.s.size(); ++joint) {
+
+        iDynTree::toEigen(robotState.s) = originalJoints;
+        robotState.s(joint) += perturbation;
+
+        perturbedPosition = kinDyn->getRelativeTransform(robotState, "root_link", "l_sole") * testPosition;
+
+        firstOrderTaylor = iDynTree::toEigen(testTransformedPos) + jacobian * (iDynTree::toEigen(robotState.s) - originalJoints);
+
+        ASSERT_EQUAL_VECTOR_TOL(perturbedPosition, firstOrderTaylor, perturbation/10.0);
+
+    }
+
+
+}
+
+void validateComJacobian(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
+    RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
+    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
+    levi::ScalarVariable t("t");
+
+    t = time;
+    q = iDynTree::toEigen(robotState.s);
+
+    levi::Variable p_base(3, "p_b");
+
+    p_base = iDynTree::toEigen(robotState.base_position);
+
+    levi::Variable base_quat(4, "qb");
+
+    base_quat = iDynTree::toEigen(robotState.base_quaternion);
+
+    levi::Expression baseRotation = RotationExpression(NormalizedQuaternion(base_quat).asVariable());
+
+    TransformExpression baseTransform(p_base, baseRotation);
+
+    levi::Expression comJacobian = CoMMixedJacobianExpression(timelySharedKinDyn, &robotState, baseTransform, q, t);
+
+    ASSERT_IS_TRUE(comJacobian.isValidExpression());
+
+    iDynTree::MatrixDynSize jacobian;
+
+    SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
+
+    bool ok = kinDyn->getCenterOfMassJacobian(robotState, jacobian);
+    ASSERT_IS_TRUE(ok);
+
+    iDynTree::MatrixDynSize exprJacobian = jacobian;
+    exprJacobian.zero();
+
+    iDynTree::toEigen(exprJacobian) = comJacobian.evaluate();
+
+    ASSERT_EQUAL_MATRIX(jacobian, exprJacobian);
+
+    double perturbation = 1e-3;
+    Eigen::VectorXd originalJoints, jointsPerturbation, firstOrderTaylor(3);
+    iDynTree::VectorDynSize perturbedCol(3);
+    Eigen::MatrixXd originalJacobian = iDynTree::toEigen(jacobian);
+
+    originalJoints = iDynTree::toEigen(robotState.s);
+
+    for (unsigned int col = 0; col < robotState.s.size(); ++col) {
+        Eigen::MatrixXd jacobianDerivative(3, robotState.s.size());
+
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        jacobianDerivative = comJacobian.getColumnDerivative(col, q).evaluate();
+        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+        std::cout << "Elapsed time ms (Com jacobian col " << col << "): " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+
+        for (unsigned int joint = 0; joint < robotState.s.size(); ++joint) {
+
+            iDynTree::toEigen(robotState.s) = originalJoints;
+            robotState.s(joint) += perturbation;
+
+            ok = kinDyn->getCenterOfMassJacobian(robotState, jacobian);
+            ASSERT_IS_TRUE(ok);
+
+            iDynTree::toEigen(perturbedCol) = iDynTree::toEigen(jacobian).col(col);
+
+            firstOrderTaylor = originalJacobian.col(col) + jacobianDerivative * (iDynTree::toEigen(robotState.s) - originalJoints);
+
+            ASSERT_EQUAL_VECTOR_TOL(perturbedCol, firstOrderTaylor, perturbation/10.0);
+
+        }
+    }
+
+
+}
+
 
 int main() {
 
@@ -194,6 +324,14 @@ int main() {
     validateJacobian(timelySharedKinDyn, 0.0);
 
     validateJacobian(timelySharedKinDyn, 1.0);
+
+    validateTransform(timelySharedKinDyn, 0.0);
+
+    validateTransform(timelySharedKinDyn, 1.0);
+
+    validateComJacobian(timelySharedKinDyn, 0.0);
+
+    validateComJacobian(timelySharedKinDyn, 1.0);
 
     return 0;
 }

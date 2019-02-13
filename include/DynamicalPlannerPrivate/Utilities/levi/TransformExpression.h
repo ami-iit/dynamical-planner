@@ -41,10 +41,10 @@ namespace DynamicalPlanner {
                                                          levi::Variable jointsVariable,
                                                          levi::ScalarVariable timeVariable);
         };
-
-        TransformExpression operator*(const TransformExpression& lhs, const TransformExpression& rhs);
-
     }
 }
+
+DynamicalPlanner::Private::TransformExpression operator*(const DynamicalPlanner::Private::TransformExpression& lhs, const DynamicalPlanner::Private::TransformExpression& rhs);
+
 
 #endif // DPLANNER_TRANSFORMEXPRESSION_H

@@ -41,3 +41,9 @@ levi::Expression DynamicalPlanner::Private::G_Expression(const levi::Variable &n
                                             otherColumns.col(1),
                                             otherColumns.col(2)}, "G");
 }
+
+levi::Expression DynamicalPlanner::Private::NormalizedQuaternion(const levi::Variable &notNormalizedQuaternion)
+{
+    levi::Expression inputQuaternion = notNormalizedQuaternion;
+    return inputQuaternion/(inputQuaternion.transpose() * inputQuaternion).pow(0.5);
+}
