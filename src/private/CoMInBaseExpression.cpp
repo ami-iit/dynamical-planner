@@ -8,18 +8,18 @@
 #include <levi/levi.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/CoMPositionExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/CoMInBaseExpression.h>
 
 namespace DynamicalPlanner {
     namespace Private {
-        class CoMJacobianEvaluable;
+        class CoMInBaseJacobianEvaluable;
+        class CoMInBasePositionEvaluable;
     }
 }
 
 using namespace DynamicalPlanner::Private;
 
-
-class DynamicalPlanner::Private::CoMJacobianEvaluable :
+class DynamicalPlanner::Private::CoMInBaseJacobianEvaluable :
     public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
 
     std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
@@ -27,23 +27,20 @@ class DynamicalPlanner::Private::CoMJacobianEvaluable :
     levi::ScalarVariable m_timeVariable;
     iDynTree::MatrixDynSize m_jacobian;
 
-    TransformExpression m_baseTransform;
 
     std::vector<levi::Expression> m_columns;
 
 public:
 
-    CoMJacobianEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
+    CoMInBaseJacobianEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
                          RobotState *robotState,
-                         const TransformExpression& baseTransform,
                          levi::Variable jointsVariable,
                          levi::ScalarVariable timeVariable)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (jointsVariable, 3, jointsVariable.rows(), "A_J_CoM")
+          (jointsVariable, 3, jointsVariable.rows(), "B_J_[B, CoM]")
           , m_timelySharedKinDyn(sharedKinDyn)
           , m_robotState(robotState)
           , m_timeVariable(timeVariable)
-          , m_baseTransform(baseTransform)
     {
         const iDynTree::Model& model = sharedKinDyn->model();
 
@@ -106,10 +103,16 @@ public:
 
         SharedKinDynComputationsPointer kinDyn = m_timelySharedKinDyn->get(m_timeVariable.evaluate());
 
+
+        iDynTree::Vector4 normalizedQuaternion;
+        iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_robotState->base_quaternion).normalized();
+        iDynTree::Rotation baseRotation;
+        baseRotation.fromQuaternion(normalizedQuaternion);
+
         bool ok = kinDyn->getCenterOfMassJacobian(*m_robotState, m_jacobian);
         assert(ok);
 
-        m_evaluationBuffer = iDynTree::toEigen(m_jacobian);
+        m_evaluationBuffer = iDynTree::toEigen(baseRotation.inverse()) * iDynTree::toEigen(m_jacobian).rightCols(m_robotState->s.size());
 
         return m_evaluationBuffer;
     }
@@ -119,11 +122,11 @@ public:
 };
 
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
-CoMJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
+CoMInBaseJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
     if (variable->variableName() == m_expression.name()) { //m_expression contains the jointsVariable specified in the constructor
 
-        return (m_baseTransform.rotation() * m_columns[static_cast<size_t>(column)]).getColumnDerivative(0, variable);
+        return (m_columns[static_cast<size_t>(column)]).getColumnDerivative(0, variable);
 
     } else {
         return levi::Null(6, variable->dimension());
@@ -131,9 +134,77 @@ CoMJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_pt
 
 }
 
-levi::Expression DynamicalPlanner::Private::CoMMixedJacobianExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn, RobotState *robotState,
-                                                                       const TransformExpression &baseTransform, levi::Variable jointsVariable,
-                                                                       levi::ScalarVariable timeVariable)
+class DynamicalPlanner::Private::CoMInBasePositionEvaluable :
+    public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
+
+    std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
+    RobotState* m_robotState;
+    levi::ScalarVariable m_timeVariable;
+
+    levi::Expression m_derivative;
+
+public:
+
+    CoMInBasePositionEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
+                              RobotState *robotState,
+                              levi::Variable jointsVariable,
+                              levi::ScalarVariable timeVariable)
+        : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
+          (jointsVariable, 3, 1, "b_p_CoM")
+          , m_timelySharedKinDyn(sharedKinDyn)
+          , m_robotState(robotState)
+          , m_timeVariable(timeVariable)
+    {
+
+        m_derivative = levi::ExpressionComponent<CoMInBaseJacobianEvaluable>(sharedKinDyn, robotState, jointsVariable, timeVariable);
+    }
+
+    const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
+
+        SharedKinDynComputationsPointer kinDyn = m_timelySharedKinDyn->get(m_timeVariable.evaluate());
+
+
+        iDynTree::Vector4 normalizedQuaternion;
+        iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_robotState->base_quaternion).normalized();
+        iDynTree::Rotation baseRotation;
+        baseRotation.fromQuaternion(normalizedQuaternion);
+
+        iDynTree::Transform baseTransform;
+        baseTransform.setRotation(baseRotation);
+        iDynTree::Position basePosition;
+        iDynTree::toEigen(basePosition) = iDynTree::toEigen(m_robotState->base_position);
+        baseTransform.setPosition(basePosition);
+
+        iDynTree::Position comPosition = kinDyn->getCenterOfMassPosition(*m_robotState);
+
+        m_evaluationBuffer = iDynTree::toEigen(baseTransform.inverse() * comPosition);
+
+        return m_evaluationBuffer;
+    }
+
+    virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
+    getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
+};
+
+levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
+CoMInBasePositionEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    return levi::ExpressionComponent<CoMJacobianEvaluable>(sharedKinDyn, robotState, baseTransform, jointsVariable, timeVariable);
+    if (variable->variableName() == m_expression.name()) { //m_expression contains the jointsVariable specified in the constructor
+
+        assert(column == 0);
+
+        levi::unused(column);
+
+        return m_derivative;
+    } else {
+        return levi::Null(3, variable->dimension());
+    }
+
 }
+
+levi::Expression DynamicalPlanner::Private::CoMInBaseExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn, RobotState *robotState,
+                                                                levi::Variable jointsVariable, levi::ScalarVariable timeVariable)
+{
+    return levi::ExpressionComponent<CoMInBasePositionEvaluable>(sharedKinDyn, robotState, jointsVariable, timeVariable);
+}
+
