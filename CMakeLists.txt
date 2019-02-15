@@ -94,7 +94,8 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${LEVI_UTILITIES_DIR}/QuaternionExpressions
                                      ${LEVI_UTILITIES_DIR}/RelativeQuaternionExpression.h
                                      ${LEVI_UTILITIES_DIR}/RelativePositionExpression.h
                                      ${LEVI_UTILITIES_DIR}/TransformExpression.h
-                                     ${LEVI_UTILITIES_DIR}/CoMInBaseExpression.h)
+                                     ${LEVI_UTILITIES_DIR}/CoMInBaseExpression.h
+                                     ${LEVI_UTILITIES_DIR}/RelativeVelocityExpression.h)
 
 set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/DynamicalConstraints.cpp
@@ -127,11 +128,12 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/RelativeQuaternionExpression.cpp
                              src/private/RelativePositionExpression.cpp
                              src/private/TransformExpression.cpp
-                             src/private/CoMInBaseExpression.cpp)
+                             src/private/CoMInBaseExpression.cpp
+                             src/private/RelativeVelocityExpression.cpp)
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})
 target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)
-target_include_directories(DynamicalPlannerPrivate PUBLIC ${EIGEN3_INCLUDE_DIR})
+target_include_directories(DynamicalPlannerPrivate PRIVATE ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(DynamicalPlannerPrivate PUBLIC ${iDynTree_LIBRARIES})
 target_link_libraries(DynamicalPlannerPrivate PUBLIC levi::levi)
 
@@ -152,7 +154,7 @@ set(DPLANNER_SOURCES src/Settings.cpp
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(DynamicalPlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_include_directories(DynamicalPlannerPrivate PUBLIC ${EIGEN3_INCLUDE_DIR})
+target_include_directories(DynamicalPlannerPrivate PRIVATE ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(DynamicalPlanner PRIVATE DynamicalPlannerPrivate)
 target_link_libraries(DynamicalPlanner PUBLIC ${iDynTree_LIBRARIES})
 

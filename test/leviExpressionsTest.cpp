@@ -12,6 +12,7 @@
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/TransformExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/CoMInBaseExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 
 #include <URDFdir.h>
@@ -277,8 +278,6 @@ void validateTransform(std::shared_ptr<TimelySharedKinDynComputations> timelySha
         ASSERT_EQUAL_VECTOR_TOL(perturbedPosition, firstOrderTaylor, perturbation/10.0);
 
     }
-
-
 }
 
 void validateCom(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
@@ -356,10 +355,36 @@ void validateCom(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKin
 
         }
     }
+}
+
+void validateRelativeVelocityExpression(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
+    RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
+    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
+    levi::Variable q_dot(timelySharedKinDyn->model().getNrOfJoints(), "q_dot");
+    levi::ScalarVariable t("t");
+
+    t = time;
+    q = iDynTree::toEigen(robotState.s);
+    q_dot = iDynTree::toEigen(robotState.s_dot);
+
+    levi::Expression relativeVelocityExpression = RelativeLeftVelocityExpression(timelySharedKinDyn, &robotState, "root_link", "r_sole", q, q_dot, t);
+
+    ASSERT_IS_TRUE(relativeVelocityExpression.isValidExpression());
+
+    SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
+
+    iDynTree::Twist checkRelativeVelocity = kinDyn->getFrameVel(robotState, "r_sole", iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION) -
+        kinDyn->getRelativeTransform(robotState, "r_sole", "root_link") * robotState.base_velocity;
+
+    iDynTree::Vector6 relVelocityEval;
+    iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.evaluate();
+    ASSERT_EQUAL_VECTOR(relVelocityEval, checkRelativeVelocity);
+
+    iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.getColumnDerivative(0, q_dot).evaluate() * q_dot.evaluate();
+    ASSERT_EQUAL_VECTOR(relVelocityEval, checkRelativeVelocity);
 
 
 }
-
 
 int main() {
 
@@ -387,6 +412,10 @@ int main() {
     validateCom(timelySharedKinDyn, 0.0);
 
     validateCom(timelySharedKinDyn, 1.0);
+
+    validateRelativeVelocityExpression(timelySharedKinDyn, 0.0);
+
+    validateRelativeVelocityExpression(timelySharedKinDyn, 1.0);
 
     return 0;
 }
