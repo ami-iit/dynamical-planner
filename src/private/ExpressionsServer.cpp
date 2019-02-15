@@ -7,6 +7,10 @@
 
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/QuaternionExpressions.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/CoMInBaseExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
 #include <unordered_map>
@@ -26,9 +30,12 @@ public:
     levi::Variable basePositionExpr = levi::Variable(3, "aPb");
     levi::Variable baseLinearVelocity = levi::Variable(3, "baseLinVel");
     levi::Variable baseQuaternionVelocity = levi::Variable(4, "baseQuatVel");
-
     levi::Variable q, q_dot;
-    ExpressionMap adjointMap, adjointWrenchMap;
+
+    levi::Expression baseTwist;
+    TransformExpression worldToBase;
+    levi::Expression comInBase;
+    ExpressionMap adjointMap, adjointWrenchMap, velocitiesMap;
     RobotState robotState;
 
     bool first;
@@ -50,6 +57,11 @@ ExpressionsServer::ExpressionsServer(std::shared_ptr<TimelySharedKinDynComputati
 
     m_pimpl->q = levi::Variable(timelySharedKinDyn->model().getNrOfDOFs(), "q");
     m_pimpl->q_dot = levi::Variable(timelySharedKinDyn->model().getNrOfDOFs(), "q_dot");
+
+    m_pimpl->baseTwist = BodyTwistFromQuaternionVelocity(m_pimpl->baseLinearVelocity, m_pimpl->baseQuaternionVelocity,
+                                                         m_pimpl->quaternionNormalized.asVariable(), "baseTwist");
+    m_pimpl->worldToBase = TransformExpression(m_pimpl->basePositionExpr, m_pimpl->baseRotation);
+    m_pimpl->comInBase = CoMInBaseExpression(m_pimpl->timelySharedKinDyn, &(m_pimpl->robotState), m_pimpl->q, m_pimpl->time);
 
     m_pimpl->first = true;
 
@@ -105,9 +117,14 @@ levi::Variable *ExpressionsServer::baseLinearVelocity()
     return &(m_pimpl->baseLinearVelocity);
 }
 
-levi::Variable *ExpressionsServer::baseAngularVelocity()
+levi::Variable *ExpressionsServer::baseQuaternionVelocity()
 {
     return &(m_pimpl->baseQuaternionVelocity);
+}
+
+levi::Expression *ExpressionsServer::baseTwist()
+{
+    return &(m_pimpl->baseTwist);
 }
 
 levi::Variable *ExpressionsServer::jointsPosition()
@@ -118,6 +135,16 @@ levi::Variable *ExpressionsServer::jointsPosition()
 levi::Variable *ExpressionsServer::jointsVelocity()
 {
     return &(m_pimpl->q_dot);
+}
+
+TransformExpression *ExpressionsServer::worldToBase()
+{
+    return &(m_pimpl->worldToBase);
+}
+
+levi::Expression *ExpressionsServer::comInBase()
+{
+    return &(m_pimpl->comInBase);
 }
 
 levi::Expression *ExpressionsServer::adjointTransform(const std::string &baseFrame, const std::string &targetFrame)
@@ -157,6 +184,28 @@ levi::Expression *ExpressionsServer::adjointTransformWrench(const std::string &b
                                                              m_pimpl->q,
                                                              m_pimpl->time);
         auto result = m_pimpl->adjointWrenchMap.insert(newElement);
+        assert(result.second);
+        return &(result.first->second);
+    }
+}
+
+levi::Expression *ExpressionsServer::relativeVelocity(const std::string &baseFrame, const std::string &targetFrame)
+{
+    ExpressionMap::iterator element = m_pimpl->velocitiesMap.find(baseFrame+targetFrame);
+
+    if (element != m_pimpl->velocitiesMap.end()) {
+        return &(element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = baseFrame + targetFrame;
+        newElement.second = RelativeLeftVelocityExpression(m_pimpl->timelySharedKinDyn,
+                                                           &(m_pimpl->robotState),
+                                                           baseFrame,
+                                                           targetFrame,
+                                                           m_pimpl->q,
+                                                           m_pimpl->q_dot,
+                                                           m_pimpl->time);
+        auto result = m_pimpl->velocitiesMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);
     }

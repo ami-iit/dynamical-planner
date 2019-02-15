@@ -20,6 +20,10 @@ public:
     levi::Expression rotation;
 };
 
+TransformExpression::TransformExpression()
+    : m_pimpl(std::make_unique<Implementation>())
+{ }
+
 TransformExpression::TransformExpression(const levi::Expression &position, const levi::Expression &rotation)
     : m_pimpl(std::make_unique<Implementation>())
 {
@@ -50,6 +54,12 @@ levi::Expression TransformExpression::rotation() const {
 levi::Expression TransformExpression::operator*(const levi::Expression &position) const
 {
     return m_pimpl->position + m_pimpl->rotation * position;
+}
+
+void TransformExpression::operator=(const TransformExpression &other)
+{
+    m_pimpl->position = other.position();
+    m_pimpl->rotation = other.rotation();
 }
 
 TransformExpression TransformExpression::RelativeTransform(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn, RobotState *robotState, const std::string &baseFrame, const std::string &targetFrame, levi::Variable jointsVariable, levi::ScalarVariable timeVariable)

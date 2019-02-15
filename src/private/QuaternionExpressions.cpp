@@ -42,7 +42,8 @@ levi::Expression DynamicalPlanner::Private::NormalizedQuaternion(const levi::Var
     return inputQuaternion/(inputQuaternion.transpose() * inputQuaternion).pow(0.5);
 }
 
-levi::Expression DynamicalPlanner::Private::BodyTwistFromQuaternionVelocity(const levi::Variable &linearVelocity, const levi::Variable &quaternionVelocity,
+levi::Expression DynamicalPlanner::Private::BodyTwistFromQuaternionVelocity(const levi::Variable &linearVelocity,
+                                                                            const levi::Variable &quaternionVelocity,
                                                                             const levi::Variable &normalizedQuaternion, const std::string& name)
 {
     return levi::Expression::Vertcat(linearVelocity, 2.0 * G_Expression(normalizedQuaternion) * quaternionVelocity, name);

@@ -22,6 +22,8 @@ namespace DynamicalPlanner {
 
         public:
 
+            TransformExpression();
+
             TransformExpression(const levi::Expression& position, const levi::Expression& rotation);
 
             TransformExpression(const TransformExpression& other);
@@ -33,6 +35,8 @@ namespace DynamicalPlanner {
             levi::Expression rotation() const;
 
             levi::Expression operator*(const levi::Expression& position) const;
+
+            void operator=(const TransformExpression& other);
 
             static TransformExpression RelativeTransform(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
                                                          RobotState *robotState,

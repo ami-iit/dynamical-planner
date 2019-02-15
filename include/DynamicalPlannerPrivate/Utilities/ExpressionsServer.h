@@ -9,7 +9,7 @@
 
 #include <levi/ForwardDeclarations.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/TransformExpression.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -38,17 +38,26 @@ public:
 
     levi::Variable* baseLinearVelocity();
 
-    levi::Variable* baseAngularVelocity();
+    levi::Variable* baseQuaternionVelocity();
+
+    levi::Expression* baseTwist();
 
     levi::Variable* jointsPosition();
 
     levi::Variable* jointsVelocity();
+
+    TransformExpression* worldToBase();
+
+    levi::Expression* comInBase();
 
     levi::Expression* adjointTransform(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
     levi::Expression* adjointTransformWrench(const std::string& baseFrame,
                                              const std::string &targetFrame);
+
+    levi::Expression* relativeVelocity(const std::string& baseFrame,
+                                       const std::string &targetFrame);
 
 };
 
