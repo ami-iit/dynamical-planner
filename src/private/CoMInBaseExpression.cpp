@@ -208,3 +208,11 @@ levi::Expression DynamicalPlanner::Private::CoMInBaseExpression(std::shared_ptr<
     return levi::ExpressionComponent<CoMInBasePositionEvaluable>(sharedKinDyn, robotState, jointsVariable, timeVariable);
 }
 
+
+levi::Expression DynamicalPlanner::Private::CoMAdjointTransformWrench(const levi::Expression &worldToBaseRotation, const levi::Expression &comInBasePosition)
+{
+    levi::Null topRightBlock(3,3);
+    levi::Expression leftCols = levi::Expression::Vertcat(worldToBaseRotation, worldToBaseRotation * (-1.0 * comInBasePosition).skew(), "leftCols");
+    levi::Expression rightCols = levi::Expression::Vertcat(topRightBlock, worldToBaseRotation, "rightCols");
+    return levi::Expression::Horzcat(leftCols, rightCols, "Gbar_X*_B");
+}

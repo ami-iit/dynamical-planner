@@ -22,6 +22,13 @@ namespace DynamicalPlanner {
                                                     levi::Variable jointsVariable,
                                                     levi::ScalarVariable timeVariable);
 
+        levi::Expression AdjointTransformWrenchExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
+                                                          RobotState *robotState,
+                                                          const std::string& baseFrame,
+                                                          const std::string &targetFrame,
+                                                          levi::Variable jointsVariable,
+                                                          levi::ScalarVariable timeVariable);
+
     }
 }
 

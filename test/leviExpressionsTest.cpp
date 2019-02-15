@@ -124,6 +124,51 @@ void validateAdjoint(std::shared_ptr<TimelySharedKinDynComputations> timelyShare
     }
 }
 
+void validateAdjointWrench(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
+    RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
+    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
+    levi::ScalarVariable t("t");
+
+    t = time;
+    q = iDynTree::toEigen(robotState.s);
+
+    levi::Expression adjoint = AdjointTransformWrenchExpression(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
+    ASSERT_IS_TRUE(adjoint.isValidExpression());
+
+    SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
+
+    iDynTree::Transform originalTransform = kinDyn->getRelativeTransform(robotState,"root_link", "l_sole");
+    ASSERT_IS_TRUE(adjoint.evaluate() == iDynTree::toEigen(originalTransform.asAdjointTransformWrench()));
+
+    double perturbation = 1e-3;
+    Eigen::VectorXd originalJoints, jointsPerturbation;
+    iDynTree::Vector6 perturbedCol, firstOrderTaylor;
+    Eigen::MatrixXd derivative;
+
+    originalJoints = iDynTree::toEigen(robotState.s);
+
+    for (Eigen::Index col = 0; col < 6; ++col) {
+
+        iDynTree::toEigen(robotState.s) = originalJoints;
+        q = originalJoints;
+
+        derivative = adjoint.getColumnDerivative(col, q).evaluate();
+
+        for (unsigned int joint = 0; joint < robotState.s.size(); ++joint) {
+
+            iDynTree::toEigen(robotState.s) = originalJoints;
+            robotState.s(joint) += perturbation;
+
+            iDynTree::toEigen(perturbedCol) = iDynTree::toEigen(kinDyn->getRelativeTransform(robotState,"root_link", "l_sole").asAdjointTransformWrench()).col(col);
+
+            iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalTransform.asAdjointTransformWrench()).col(col) + derivative * (iDynTree::toEigen(robotState.s) - originalJoints);
+
+            ASSERT_EQUAL_VECTOR_TOL(perturbedCol, firstOrderTaylor, perturbation/10.0);
+
+        }
+    }
+}
+
 void validateJacobian(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
     RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
     levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
@@ -326,6 +371,10 @@ int main() {
     validateAdjoint(timelySharedKinDyn, 0.0);
 
     validateAdjoint(timelySharedKinDyn, 1.0);
+
+    validateAdjointWrench(timelySharedKinDyn, 0.0);
+
+    validateAdjointWrench(timelySharedKinDyn, 1.0);
 
     validateJacobian(timelySharedKinDyn, 0.0);
 

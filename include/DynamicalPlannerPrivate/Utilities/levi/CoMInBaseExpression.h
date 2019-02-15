@@ -17,9 +17,11 @@ namespace DynamicalPlanner {
     namespace Private {
 
         levi::Expression CoMInBaseExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                               RobotState *robotState,
-                                               levi::Variable jointsVariable,
-                                               levi::ScalarVariable timeVariable);
+                                             RobotState *robotState,
+                                             levi::Variable jointsVariable,
+                                             levi::ScalarVariable timeVariable);
+
+        levi::Expression CoMAdjointTransformWrench(const levi::Expression& worldToBaseRotation, const levi::Expression& comInBasePosition);
     }
 }
 

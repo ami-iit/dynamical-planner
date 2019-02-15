@@ -21,6 +21,9 @@ namespace DynamicalPlanner {
         levi::Expression E_Expression(const levi::Variable& normalizedQuaternion);
 
         levi::Expression G_Expression(const levi::Variable& quaternionVariable);
+
+        levi::Expression BodyTwistFromQuaternionVelocity(const levi::Variable& linearVelocity, const levi::Variable& quaternionVelocity,
+                                                         const levi::Variable &normalizedQuaternion, const std::string &name);
     }
 }
 

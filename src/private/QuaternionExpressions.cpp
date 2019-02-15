@@ -23,10 +23,7 @@ levi::Expression DynamicalPlanner::Private::E_Expression(const levi::Variable &n
     quaternionImaginaryPart = normalizedQuaternion.block(1,0,3,1);
     skewQuaternion = quaternionImaginaryPart.skew();
     levi::Expression otherColumns = levi::Identity(3,3) * normalizedQuaternion(0,0) + skewQuaternion;
-    return levi::Expression::ComposeByCols({-quaternionImaginaryPart.col(0),
-                                            otherColumns.col(0),
-                                            otherColumns.col(1),
-                                            otherColumns.col(2)}, "E");
+    return levi::Expression::Horzcat(-quaternionImaginaryPart, otherColumns, "E");
 }
 
 levi::Expression DynamicalPlanner::Private::G_Expression(const levi::Variable &normalizedQuaternion)
@@ -36,14 +33,17 @@ levi::Expression DynamicalPlanner::Private::G_Expression(const levi::Variable &n
     minusQuaternion = -quaternionImaginaryPart;
     skewQuaternion = minusQuaternion.skew();
     levi::Expression otherColumns = levi::Identity(3,3) * normalizedQuaternion(0,0) + skewQuaternion;
-    return  levi::Expression::ComposeByCols({minusQuaternion.col(0),
-                                            otherColumns.col(0),
-                                            otherColumns.col(1),
-                                            otherColumns.col(2)}, "G");
+    return  levi::Expression::Horzcat(minusQuaternion, otherColumns, "G");
 }
 
 levi::Expression DynamicalPlanner::Private::NormalizedQuaternion(const levi::Variable &notNormalizedQuaternion)
 {
     levi::Expression inputQuaternion = notNormalizedQuaternion;
     return inputQuaternion/(inputQuaternion.transpose() * inputQuaternion).pow(0.5);
+}
+
+levi::Expression DynamicalPlanner::Private::BodyTwistFromQuaternionVelocity(const levi::Variable &linearVelocity, const levi::Variable &quaternionVelocity,
+                                                                            const levi::Variable &normalizedQuaternion, const std::string& name)
+{
+    return levi::Expression::Vertcat(linearVelocity, 2.0 * G_Expression(normalizedQuaternion) * quaternionVelocity, name);
 }
