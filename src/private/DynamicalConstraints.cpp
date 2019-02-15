@@ -35,6 +35,7 @@ public:
     RobotState robotState;
     std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
     std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
+    std::shared_ptr<ExpressionsServer> expressionServer;
 
     HyperbolicTangent activationXY;
     levi::Variable force;
@@ -201,11 +202,8 @@ public:
 
         iDynTree::LinVelocity baseLinVelocity, baseAngVelocity;
 
-        iDynTree::toEigen(baseLinVelocity) = iDynTree::toEigen(controlVariables(baseLinearVelocityRange));
-        iDynTree::toEigen(baseAngVelocity) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(baseQuaternionNormalized)) * iDynTree::toEigen(baseQuaternionVelocity);
-
-
-        robotState.base_velocity = iDynTree::Twist(baseLinVelocity, baseAngVelocity);
+        iDynTree::toEigen(robotState.base_linearVelocity) = iDynTree::toEigen(controlVariables(baseLinearVelocityRange));
+        robotState.base_quaternionVelocity = baseQuaternionVelocity;
 
         iDynTree::toEigen(comPosition) = iDynTree::toEigen(stateVariables(comPositionRange));
     }
@@ -248,13 +246,16 @@ public:
 };
 
 
-DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const HyperbolicTangent& planarVelocityActivation)
+DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
+                                           std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                           std::shared_ptr<ExpressionsServer> expressionsServer, const HyperbolicTangent& planarVelocityActivation)
    : iDynTree::optimalcontrol::DynamicalSystem (stateVariables.size(), controlVariables.size())
    , m_pimpl(std::make_unique<Implementation>())
 {
     assert(timelySharedKinDyn);
     assert(timelySharedKinDyn->isValid());
     m_pimpl->timedSharedKinDyn = timelySharedKinDyn;
+    m_pimpl->expressionServer = expressionsServer;
     m_pimpl->stateVariables = stateVariables;
     m_pimpl->controlVariables = controlVariables;
     m_pimpl->dynamics = m_pimpl->stateVariables;
@@ -357,7 +358,7 @@ bool DynamicalConstraints::dynamics(const iDynTree::VectorDynSize &state, double
 
     iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->comPositionRange)) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->momentumRange)).topRows<3>()/m_pimpl->totalMass;
 
-    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->basePositionRange)) = iDynTree::toEigen(m_pimpl->baseRotation) * iDynTree::toEigen(m_pimpl->robotState.base_velocity.getLinearVec3());
+    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->basePositionRange)) = iDynTree::toEigen(m_pimpl->baseRotation) * iDynTree::toEigen(m_pimpl->robotState.base_linearVelocity);
 
 //    iDynTree::toEigen(m_pimpl->dynamics(m_pimpl->baseQuaternionRange)) = iDynTree::toEigen(QuaternionLeftTrivializedDerivative(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(m_pimpl->robotState.base_velocity.getAngularVec3());
 
@@ -397,7 +398,7 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
 
     iDynTree::Matrix4x4 normalizedQuaternionDerivative = NormalizedQuaternionDerivative(m_pimpl->baseQuaternion);
     jacobianMap.block<3,4>(m_pimpl->basePositionRange.offset, m_pimpl->baseQuaternionRange.offset) =
-            iDynTree::toEigen(RotatedVectorQuaternionJacobian(m_pimpl->robotState.base_velocity.getLinearVec3(), m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(normalizedQuaternionDerivative);
+            iDynTree::toEigen(RotatedVectorQuaternionJacobian(m_pimpl->robotState.base_linearVelocity, m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
 //    jacobianMap.block<4,4>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseQuaternionRange.offset) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeTimesOmegaJacobian(m_pimpl->robotState.base_velocity.getAngularVec3())) * iDynTree::toEigen(normalizedQuaternionDerivative);
 
@@ -453,24 +454,20 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTState(double time, 
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
+    m_pimpl->expressionServer->updateRobotState(time, m_pimpl->robotState);
+
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
-    Eigen::Vector3d linearVelocity = iDynTree::toEigen(m_pimpl->robotState.base_velocity.getLinearVec3());
+    levi::Expression baseVelocity = *(m_pimpl->expressionServer->baseRotation()) * *(m_pimpl->expressionServer->baseLinearVelocity());
 
-    levi::Expression baseRotation = m_pimpl->sharedKinDyn->baseRotation(m_pimpl->robotState);
-
-    levi::Variable quaternion = m_pimpl->sharedKinDyn->baseQuaternion(m_pimpl->robotState);
-
-    levi::Expression baseVelocity = baseRotation * linearVelocity;
-
-    levi::Expression baseVelocityDerivative = baseVelocity.getColumnDerivative(0, quaternion);
+    levi::Expression baseVelocityDerivative = baseVelocity.getColumnDerivative(0, *(m_pimpl->expressionServer->baseQuaternion()));
 
     Eigen::Matrix<double, 1, 4> quaternionHessian;
 
     for (unsigned int i = 0; i < 4; ++i) {
         quaternionHessian = iDynTree::toEigen(m_pimpl->lambda(m_pimpl->basePositionRange)).transpose() *
-            baseVelocityDerivative.getColumnDerivative(i, quaternion).evaluate();
+            baseVelocityDerivative.getColumnDerivative(i, *(m_pimpl->expressionServer->baseQuaternion())).evaluate();
 
         hessianMap.block<1,4>(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionRange.offset) = quaternionHessian;
 
@@ -496,16 +493,15 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControl(double
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
+    m_pimpl->expressionServer->updateRobotState(time, m_pimpl->robotState);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
-    levi::Expression baseRotation = m_pimpl->sharedKinDyn->baseRotation(m_pimpl->robotState);
-
-    levi::Variable quaternion = m_pimpl->sharedKinDyn->baseQuaternion(m_pimpl->robotState);
+    levi::Expression baseRotation = *(m_pimpl->expressionServer->baseRotation());
 
     for (unsigned int i = 0; i < 3; ++i) {
         hessianMap.block<4,1>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseLinearVelocityRange.offset + i) =
-            (baseRotation.getColumnDerivative(i, quaternion).evaluate()).transpose() *
+            (baseRotation.getColumnDerivative(i, *(m_pimpl->expressionServer->baseQuaternion())).evaluate()).transpose() *
             iDynTree::toEigen(m_pimpl->lambda(m_pimpl->basePositionRange));
     }
 

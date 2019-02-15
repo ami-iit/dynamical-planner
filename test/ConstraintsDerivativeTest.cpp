@@ -7,7 +7,8 @@
 
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
-#include <DynamicalPlannerPrivate/Utilities/SharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <DynamicalPlannerPrivate/Constraints.h>
 #include <DynamicalPlannerPrivate/Constraints/DynamicalConstraints.h>
 #include <DynamicalPlannerPrivate/Utilities/HyperbolicSecant.h>
@@ -109,6 +110,7 @@ void configureSharedKinDyn(std::shared_ptr<TimelySharedKinDynComputations> timel
 void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTree::Position>& leftPositions,
                            const std::vector<iDynTree::Position>& rightPositions, const VariablesLabeller& stateVariables,
                            const VariablesLabeller& controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                           std::shared_ptr<ExpressionsServer> expressionsServer,
                            iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
     iDynTree::Vector3 velocityMaximumDerivative;
 
@@ -145,7 +147,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
 
     bool ok = false;
-    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, velocityActivationXY);
+    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, velocityActivationXY);
     ok = ocProblem.setDynamicalSystemConstraint(constraints.dynamical);
     ASSERT_IS_TRUE(ok);
 
@@ -457,6 +459,7 @@ int main() {
     iDynTree::optimalcontrol::OptimalControlProblem ocProblem;
 
     configureSharedKinDyn(timelySharedKinDyn);
+    std::shared_ptr<ExpressionsServer> expressionsServer = std::make_shared<ExpressionsServer>(timelySharedKinDyn);
     setVariables(stateVariables, controlVariables, 4, timelySharedKinDyn->model().getNrOfDOFs());
     std::vector<iDynTree::Position> leftPositions, rightPositions;
     leftPositions.resize(4);
@@ -470,7 +473,7 @@ int main() {
     iDynTree::toEigen(rightPositions[2]) << -0.063, -0.04, 0.0;
     iDynTree::toEigen(rightPositions[3]) << 0.063,  0.04, 0.0;
 
-    initializeConstraints(constraints, leftPositions, rightPositions, stateVariables, controlVariables, timelySharedKinDyn, ocProblem);
+    initializeConstraints(constraints, leftPositions, rightPositions, stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, ocProblem);
 
     iDynTree::VectorDynSize stateVector, controlVector;
     stateVector.resize(static_cast<unsigned int>(stateVariables.size()));

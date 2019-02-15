@@ -13,6 +13,7 @@
 #include <DynamicalPlannerPrivate/Constraints/DynamicalConstraints.h>
 #include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 
 #include <iDynTree/OptimalControlProblem.h>
@@ -268,6 +269,7 @@ public:
     std::shared_ptr<iDynTree::optimalcontrol::OptimalControlProblem> ocProblem;
     std::shared_ptr<iDynTree::optimalcontrol::MultipleShootingSolver> multipleShootingSolver;
     std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn;
+    std::shared_ptr<ExpressionsServer> expressionsServer;
 
     CostsSet costs;
     ConstraintSet constraints;
@@ -1113,12 +1115,15 @@ bool Solver::specifySettings(const Settings &settings)
         return false;
     }
 
+    m_pimpl->expressionsServer = std::make_shared<ExpressionsServer>(m_pimpl->timelySharedKinDyn);
+
     HyperbolicTangent velocityActivationXY;
     velocityActivationXY.setScaling(st.planarVelocityHyperbolicTangentScaling);
 
     m_pimpl->constraints.dynamical = std::make_shared<DynamicalConstraints>(m_pimpl->stateStructure,
                                                                             m_pimpl->controlStructure,
                                                                             m_pimpl->timelySharedKinDyn,
+                                                                            m_pimpl->expressionsServer,
                                                                             velocityActivationXY);
 
     m_pimpl->ocProblem = std::make_shared<iDynTree::optimalcontrol::OptimalControlProblem>();

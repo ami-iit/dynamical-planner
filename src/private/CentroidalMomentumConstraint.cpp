@@ -10,6 +10,10 @@
 #include <DynamicalPlannerPrivate/Utilities/CheckEqualVector.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/CoMInBaseExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/QuaternionExpressions.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
 #include <cassert>
 
 using namespace DynamicalPlanner::Private;
@@ -37,6 +41,7 @@ public:
     RobotState robotState;
     std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
     std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
+    std::shared_ptr<ExpressionsServer> expressionsServer;
 
     bool updateDoneOnceConstraint = false;
     bool updateDoneOnceStateJacobian = false;
@@ -93,13 +98,10 @@ public:
 
         robotState.s_dot = controlVariables(jointsVelocityRange);
 
-        iDynTree::LinVelocity baseLinVelocity, baseAngVelocity;
 
-        iDynTree::toEigen(baseLinVelocity) = iDynTree::toEigen(controlVariables(baseLinearVelocityRange));
-        iDynTree::toEigen(baseAngVelocity) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(baseQuaternionNormalized)) * iDynTree::toEigen(baseQuaternionVelocity);
+        robotState.base_linearVelocity = controlVariables(baseLinearVelocityRange);
+        robotState.base_quaternionVelocity = baseQuaternionVelocity;
 
-
-        robotState.base_velocity = iDynTree::Twist(baseLinVelocity, baseAngVelocity);
     }
 
     void updateVariables (){
@@ -119,7 +121,7 @@ public:
         same = same && VectorsAreEqual(basePosition, stateVariables(basePositionRange), tolerance);
         same = same && VectorsAreEqual(baseQuaternion, stateVariables(baseQuaternionRange), tolerance);
         same = same && VectorsAreEqual(robotState.s, stateVariables(jointsPositionRange), tolerance);
-        same = same && VectorsAreEqual(robotState.base_velocity.getLinearVec3(), controlVariables(baseLinearVelocityRange), tolerance);
+        same = same && VectorsAreEqual(robotState.base_linearVelocity, controlVariables(baseLinearVelocityRange), tolerance);
         same = same && VectorsAreEqual(baseQuaternionVelocity, controlVariables(baseQuaternionDerivativeRange), tolerance);
         same = same && VectorsAreEqual(robotState.s_dot, controlVariables(jointsVelocityRange), tolerance);
 
@@ -148,7 +150,8 @@ public:
 
 
 
-CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
+CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
+                                                           std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
     : iDynTree::optimalcontrol::Constraint (3, "CentroidalMomentum")
     , m_pimpl(std::make_unique<Implementation>())
 {
@@ -183,6 +186,8 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
     m_pimpl->tolerance = timelySharedKinDyn->getUpdateTolerance();
 
     m_pimpl->setSparsity();
+
+//    m_pimpl->expressionsServer = expressionServer;
 
 }
 
@@ -355,4 +360,19 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTControlSparsity(iDynTree
 {
     controlSparsity = m_pimpl->controlSparsity;
     return true;
+}
+
+bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
+{
+
+}
+
+bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTControl(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
+{
+
+}
+
+bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTStateControl(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
+{
+
 }

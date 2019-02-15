@@ -74,7 +74,8 @@ RobotState RandomRobotState(const iDynTree::Model& model) {
     state.s_dot.resize(static_cast<unsigned int>(model.getNrOfJoints()));
     iDynTree::getRandomVector(state.s_dot, -1.0, 1.0);
     state.base_position = iDynTree::getRandomPosition();
-    state.base_velocity = iDynTree::getRandomTwist();
+    iDynTree::getRandomVector(state.base_linearVelocity, -1.0, 1.0);
+    iDynTree::getRandomVector(state.base_quaternionVelocity, -1.0, 1.0);
     iDynTree::getRandomVector(state.base_quaternion, -1.0, 1.0);
     state.base_quaternion(0) = std::abs(state.base_quaternion(0));
     return state;
@@ -373,8 +374,15 @@ void validateRelativeVelocityExpression(std::shared_ptr<TimelySharedKinDynComput
 
     SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
 
+    iDynTree::LinVelocity baseLinVelocity, baseAngVelocity;
+    baseLinVelocity = robotState.base_linearVelocity;
+    iDynTree::Vector4 quaternionNormalized;
+    iDynTree::toEigen(quaternionNormalized) = iDynTree::toEigen(robotState.base_quaternion).normalized();
+    iDynTree::toEigen(baseAngVelocity) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(quaternionNormalized)) *
+        iDynTree::toEigen(robotState.base_quaternionVelocity);
+
     iDynTree::Twist checkRelativeVelocity = kinDyn->getFrameVel(robotState, "r_sole", iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION) -
-        kinDyn->getRelativeTransform(robotState, "r_sole", "root_link") * robotState.base_velocity;
+        kinDyn->getRelativeTransform(robotState, "r_sole", "root_link") * iDynTree::Twist(baseLinVelocity, baseAngVelocity);
 
     iDynTree::Vector6 relVelocityEval;
     iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.evaluate();

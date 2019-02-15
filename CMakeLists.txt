@@ -84,7 +84,8 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${UTILITIES_DIR}/VariablesLabeller.h
                                      ${UTILITIES_DIR}/HyperbolicSecant.h
                                      ${UTILITIES_DIR}/SmoothingFunction.h
                                      ${UTILITIES_DIR}/HyperbolicTangent.h
-                                     ${UTILITIES_DIR}/TimelySharedKinDynComputations.h)
+                                     ${UTILITIES_DIR}/TimelySharedKinDynComputations.h
+                                     ${UTILITIES_DIR}/ExpressionsServer.h)
 
 set(LEVI_UTILITIES_DIR include/DynamicalPlannerPrivate/Utilities/levi)
 
@@ -129,7 +130,8 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/RelativePositionExpression.cpp
                              src/private/TransformExpression.cpp
                              src/private/CoMInBaseExpression.cpp
-                             src/private/RelativeVelocityExpression.cpp)
+                             src/private/RelativeVelocityExpression.cpp
+                             src/private/ExpressionsServer.cpp)
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})
 target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)

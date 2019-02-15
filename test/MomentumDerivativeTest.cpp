@@ -51,9 +51,6 @@ void validateMomentumDerivative(RobotState& robotState, std::shared_ptr<SharedKi
     for (unsigned int i = 0; i < robotState.s.size(); ++i) {
         perturbedState = robotState;
         perturbedState.s(i) = robotState.s(i) + perturbationValue;
-        iDynTree::Transform randomTransform = iDynTree::getRandomTransform();
-        perturbedState.base_position = randomTransform.getPosition();
-        perturbedState.base_quaternion = randomTransform.getRotation().asQuaternion();
 
         perturbedMomentum = sharedKinDyn->getLinearAngularMomentum(perturbedState,
                                                                    iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
@@ -98,7 +95,8 @@ int main() {
 
     RobotState robotState;
 
-    robotState.base_velocity = iDynTree::getRandomTwist();
+    iDynTree::getRandomVector(robotState.base_linearVelocity, -1.0, 1.0);
+    iDynTree::getRandomVector(robotState.base_quaternionVelocity, -1.0, 1.0);
     robotState.s.resize(static_cast<unsigned int>(sharedKinDyn->model().getNrOfDOFs()));
     iDynTree::getRandomVector(robotState.s);
     robotState.s_dot.resize(static_cast<unsigned int>(sharedKinDyn->model().getNrOfDOFs()));

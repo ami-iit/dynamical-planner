@@ -12,6 +12,7 @@
 #include <iDynTree/Core/Position.h>
 #include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <DynamicalPlannerPrivate/Utilities/HyperbolicTangent.h>
 #include <iDynTree/SparsityStructure.h>
 #include <memory>
@@ -29,7 +30,10 @@ class DynamicalPlanner::Private::DynamicalConstraints : public iDynTree::optimal
 
 public:
 
-    DynamicalConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const DynamicalPlanner::Private::HyperbolicTangent &planarVelocityActivation);
+    DynamicalConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
+                         std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                         std::shared_ptr<ExpressionsServer> expressionsServer,
+                         const DynamicalPlanner::Private::HyperbolicTangent &planarVelocityActivation);
 
     ~DynamicalConstraints() override;
 

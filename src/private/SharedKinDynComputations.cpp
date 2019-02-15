@@ -10,6 +10,7 @@
 #include <iDynTree/Model/ForwardKinematics.h>
 #include <iDynTree/Model/Dynamics.h>
 #include <DynamicalPlannerPrivate/Utilities/CheckEqualVector.h>
+#include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
 
@@ -34,41 +35,47 @@ public:
     std::vector<std::vector<iDynTree::SpatialForceVector>> childrenForceDerivatives;
     std::vector<iDynTree::SpatialForceVector> zeroDerivatives;
     iDynTree::Transform baseTransform;
-    iDynTree::Rotation baseRotation_iDyn;
+    iDynTree::Rotation baseRotation;
     iDynTree::Position basePosition;
-
-    levi::Variable quaternion = levi::Variable(4, "q");
-    levi::Expression quaternionNormalized;
-    levi::Expression baseRotation;
+    iDynTree::Vector4 quaternionNormalized;
 
     bool updateNecessary;
     double tol;
 };
 
-bool SharedKinDynComputations::sameState(const RobotState &other)
+bool SharedKinDynComputations::sameStatePrivate(const RobotState &other) const
 {
-    if (VectorsAreEqual(other.base_position, m_data->state.base_position, m_data->tol)
+    if (!(m_data->updateNecessary)
+            && VectorsAreEqual(other.base_position, m_data->state.base_position, m_data->tol)
             && VectorsAreEqual(other.base_quaternion, m_data->state.base_quaternion, m_data->tol)
             && VectorsAreEqual(other.s, m_data->state.s, m_data->tol)
-            && VectorsAreEqual(other.base_velocity, m_data->state.base_velocity, m_data->tol)
+            && VectorsAreEqual(other.base_linearVelocity, m_data->state.base_linearVelocity, m_data->tol)
+            && VectorsAreEqual(other.base_quaternionVelocity, m_data->state.base_quaternionVelocity, m_data->tol)
             && VectorsAreEqual(other.s_dot, m_data->state.s_dot, m_data->tol)) {
         return true;
     }
     return false;
 }
 
-bool SharedKinDynComputations::updateRobotState(const RobotState &currentState)
+bool SharedKinDynComputations::updateRobotStatePrivate(const RobotState &currentState)
 {
-    if (m_data->updateNecessary || !sameState(currentState)) {
+    if (!sameStatePrivate(currentState)) {
 
-        m_data->quaternion = iDynTree::toEigen(currentState.base_quaternion);
-        iDynTree::toEigen(m_data->baseRotation_iDyn) = m_data->baseRotation.evaluate();
+        iDynTree::toEigen(m_data->quaternionNormalized) = iDynTree::toEigen(currentState.base_quaternion).normalized();
+
+        m_data->baseRotation.fromQuaternion(m_data->quaternionNormalized);
         iDynTree::toEigen(m_data->basePosition) = iDynTree::toEigen(currentState.base_position);
-        m_data->baseTransform.setRotation(m_data->baseRotation_iDyn);
+        m_data->baseTransform.setRotation(m_data->baseRotation);
         m_data->baseTransform.setPosition(m_data->basePosition);
 
+        iDynTree::LinVelocity baseLinVelocity, baseAngVelocity;
+        baseLinVelocity = currentState.base_linearVelocity;
+        iDynTree::toEigen(baseAngVelocity) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_data->quaternionNormalized)) *
+            iDynTree::toEigen(currentState.base_quaternionVelocity);
+
         m_data->kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION); //The base_velocity saved in the robot state is supposed to be in body frame
-        bool ok = m_data->kinDyn.setRobotState(m_data->baseTransform, currentState.s, currentState.base_velocity, currentState.s_dot, m_data->gravity);
+        bool ok = m_data->kinDyn.setRobotState(m_data->baseTransform, currentState.s, iDynTree::Twist(baseLinVelocity, baseAngVelocity),
+                                               currentState.s_dot, m_data->gravity);
         if (!ok) {
             return false;
         }
@@ -189,17 +196,12 @@ SharedKinDynComputations::SharedKinDynComputations()
     m_data->state.base_quaternion.zero();
     m_data->state.base_quaternion(0) = 1.0;
     m_data->state.base_position.zero();
-    m_data->state.base_velocity.zero();
+    m_data->state.base_linearVelocity.zero();
+    m_data->state.base_quaternionVelocity.zero();
     m_data->gravity.zero();
     m_data->gravity(2) = -9.81;
     m_data->updateNecessary = true;
     m_data->tol = iDynTree::DEFAULT_TOL;
-
-    m_data->quaternionNormalized = m_data->quaternion/(m_data->quaternion.transpose() * m_data->quaternion).pow(0.5);
-    levi::Expression skewQuaternion = m_data->quaternionNormalized.block(1,0,3,1).skew();
-    levi::Expression twoSkewQuaternion = 2.0 * skewQuaternion;
-    m_data->baseRotation = levi::Identity(3,3) + m_data->quaternionNormalized(0,0) * twoSkewQuaternion + twoSkewQuaternion * skewQuaternion;
-
 }
 
 SharedKinDynComputations::SharedKinDynComputations(const DynamicalPlanner::Private::SharedKinDynComputations &other)
@@ -210,7 +212,8 @@ SharedKinDynComputations::SharedKinDynComputations(const DynamicalPlanner::Priva
     m_data->state.base_quaternion.zero();
     m_data->state.base_quaternion(0) = 1.0;
     m_data->state.base_position.zero();
-    m_data->state.base_velocity.zero();
+    m_data->state.base_linearVelocity.zero();
+    m_data->state.base_quaternionVelocity.zero();
     m_data->gravity = other.gravity();
     m_data->updateNecessary = true;
 
@@ -221,11 +224,6 @@ SharedKinDynComputations::SharedKinDynComputations(const DynamicalPlanner::Priva
     setFloatingBase(other.getFloatingBase());
 
     assert(isValid());
-
-    m_data->quaternionNormalized = m_data->quaternion/(m_data->quaternion.transpose() * m_data->quaternion).pow(0.5);
-    levi::Expression skewQuaternion = m_data->quaternionNormalized.block(1,0,3,1).skew();
-    levi::Expression twoSkewQuaternion = 2.0 * skewQuaternion;
-    m_data->baseRotation = levi::Identity(3,3) + m_data->quaternionNormalized(0,0) * twoSkewQuaternion + twoSkewQuaternion * skewQuaternion;
 }
 
 SharedKinDynComputations::~SharedKinDynComputations()
@@ -339,6 +337,20 @@ const iDynTree::Traversal &SharedKinDynComputations::traversal() const
     return m_data->traversal;
 }
 
+bool SharedKinDynComputations::sameState(const RobotState &other) const
+{
+    std::lock_guard<std::mutex> guard(m_data->mutex);
+
+    return sameStatePrivate(other);
+}
+
+bool SharedKinDynComputations::updateRobotState(const RobotState &currentState)
+{
+    std::lock_guard<std::mutex> guard(m_data->mutex);
+
+    return updateRobotStatePrivate(currentState);
+}
+
 const RobotState &SharedKinDynComputations::currentState() const
 {
     return m_data->state;
@@ -348,7 +360,7 @@ iDynTree::Position SharedKinDynComputations::getCenterOfMassPosition(const Robot
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     return m_data->kinDyn.getCenterOfMassPosition();
@@ -358,7 +370,7 @@ bool SharedKinDynComputations::getCenterOfMassJacobian(const RobotState &current
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -371,7 +383,7 @@ iDynTree::Transform SharedKinDynComputations::getWorldTransform(const RobotState
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     return m_data->kinDyn.getWorldTransform(frameName);
@@ -381,7 +393,7 @@ iDynTree::Transform SharedKinDynComputations::getWorldTransform(const RobotState
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     return m_data->kinDyn.getWorldTransform(frameIndex);
@@ -391,37 +403,18 @@ const iDynTree::Transform &SharedKinDynComputations::getBaseTransform(const Robo
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     return m_data->baseTransform;
 }
 
-levi::Expression& SharedKinDynComputations::baseRotation(const RobotState &currentState)
-{
-    std::lock_guard<std::mutex> guard(m_data->mutex);
-
-    bool ok = updateRobotState(currentState);
-    assert(ok);
-
-    return m_data->baseRotation;
-}
-
-levi::Variable &SharedKinDynComputations::baseQuaternion(const RobotState &currentState)
-{
-    std::lock_guard<std::mutex> guard(m_data->mutex);
-
-    bool ok = updateRobotState(currentState);
-    assert(ok);
-
-    return m_data->quaternion;
-}
 
 bool SharedKinDynComputations::getFrameFreeFloatingJacobian(const RobotState &currentState, const std::string &frameName, iDynTree::MatrixDynSize &outJacobian, iDynTree::FrameVelocityRepresentation trivialization)
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -433,7 +426,7 @@ bool SharedKinDynComputations::getFrameFreeFloatingJacobian(const RobotState &cu
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -447,7 +440,7 @@ iDynTree::Transform SharedKinDynComputations::getRelativeTransform(const RobotSt
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     return m_data->kinDyn.getRelativeTransform(refFrameIndex, frameIndex);
@@ -459,7 +452,7 @@ iDynTree::Transform SharedKinDynComputations::getRelativeTransform(const RobotSt
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     return m_data->kinDyn.getRelativeTransform(refFrameName, frameName);
@@ -469,7 +462,7 @@ bool SharedKinDynComputations::getRelativeJacobian(const RobotState &currentStat
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -481,7 +474,7 @@ iDynTree::Twist SharedKinDynComputations::getFrameVel(const RobotState &currentS
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -493,7 +486,7 @@ iDynTree::Twist SharedKinDynComputations::getFrameVel(const RobotState &currentS
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -508,7 +501,7 @@ bool SharedKinDynComputations::getFrameVelJointsDerivative(const RobotState &cur
     if (!m_data->kinDyn.isValid())
         return false;
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
@@ -552,7 +545,7 @@ iDynTree::SpatialMomentum SharedKinDynComputations::getLinearAngularMomentum(con
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    bool ok = updateRobotState(currentState);
+    bool ok = updateRobotStatePrivate(currentState);
     assert(ok);
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -564,7 +557,7 @@ bool SharedKinDynComputations::getLinearAngularMomentumJacobian(const RobotState
 {
     std::lock_guard<std::mutex> guard(m_data->mutex);
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);
@@ -580,7 +573,7 @@ bool SharedKinDynComputations::getLinearAngularMomentumJointsDerivative(const Ro
     if (!m_data->kinDyn.isValid())
         return false;
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
@@ -677,7 +670,7 @@ bool SharedKinDynComputations::getStaticForcesJointsDerivative(const RobotState 
     if (!m_data->kinDyn.isValid())
         return false;
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
@@ -771,7 +764,7 @@ bool SharedKinDynComputations::getFreeFloatingMassMatrix(const RobotState &curre
     if (!m_data->kinDyn.isValid())
         return false;
 
-    if (!updateRobotState(currentState))
+    if (!updateRobotStatePrivate(currentState))
         return false;
 
     m_data->kinDyn.setFrameVelocityRepresentation(trivialization);

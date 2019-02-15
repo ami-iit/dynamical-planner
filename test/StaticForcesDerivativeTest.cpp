@@ -79,7 +79,8 @@ int main() {
 
     RobotState robotState;
 
-    robotState.base_velocity = iDynTree::getRandomTwist();
+    iDynTree::getRandomVector(robotState.base_linearVelocity, -1.0, 1.0);
+    iDynTree::getRandomVector(robotState.base_quaternionVelocity, -1.0, 1.0);
     robotState.s.resize(static_cast<unsigned int>(sharedKinDyn->model().getNrOfDOFs()));
     iDynTree::getRandomVector(robotState.s);
     robotState.s_dot.resize(static_cast<unsigned int>(sharedKinDyn->model().getNrOfDOFs()));

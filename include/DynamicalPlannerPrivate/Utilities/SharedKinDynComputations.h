@@ -30,7 +30,8 @@ namespace DynamicalPlanner {
             iDynTree::Vector3 base_position;
             iDynTree::Vector4 base_quaternion;
             iDynTree::VectorDynSize s;
-            iDynTree::Twist base_velocity;
+            iDynTree::Vector3 base_linearVelocity;
+            iDynTree::Vector4 base_quaternionVelocity;
             iDynTree::VectorDynSize s_dot;
         } RobotState;
 
@@ -51,10 +52,6 @@ class DynamicalPlanner::Private::SharedKinDynComputations {
     class Data;
     std::unique_ptr<Data> m_data;
 
-    bool sameState(const RobotState& other);
-
-    bool updateRobotState(const RobotState &currentState);
-
     void fillJointsInfo();
 
     void updateChildBuffersForMomentumDerivative();
@@ -62,6 +59,10 @@ class DynamicalPlanner::Private::SharedKinDynComputations {
     void computeChildStaticForceDerivative(const iDynTree::LinkWrenches &linkStaticForces);
 
     bool computeStaticForces(const RobotState &currentState, const iDynTree::LinkNetExternalWrenches &linkExtForces);
+
+    bool sameStatePrivate(const RobotState& other) const;
+
+    bool updateRobotStatePrivate(const RobotState &currentState);
 
 
 public:
@@ -98,6 +99,10 @@ public:
 
     const iDynTree::Traversal &traversal() const;
 
+    bool sameState(const RobotState& other) const;
+
+    bool updateRobotState(const RobotState &currentState);
+
     const RobotState &currentState() const;
 
     iDynTree::Position getCenterOfMassPosition(const RobotState &currentState);
@@ -112,10 +117,6 @@ public:
     iDynTree::Transform getWorldTransform(const RobotState &currentState, const iDynTree::FrameIndex frameIndex);
 
     const iDynTree::Transform& getBaseTransform(const RobotState &currentState);
-
-    levi::Expression &baseRotation(const RobotState &currentState);
-
-    levi::Variable &baseQuaternion(const RobotState &currentState); //not normalized
 
     bool getFrameFreeFloatingJacobian(const RobotState &currentState,
                                       const std::string & frameName,
