@@ -669,7 +669,8 @@ public:
 
         bool ok = false;
 
-        constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateStructure, controlStructure, timelySharedKinDyn);
+        constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateStructure, controlStructure,
+                                                                                        timelySharedKinDyn, expressionsServer);
         constraints.centroidalMomentum->setEqualityTolerance(st.centroidalMomentumConstraintTolerance);
         ok = ocp->addConstraint(constraints.centroidalMomentum);
         if (!ok) {

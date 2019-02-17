@@ -50,6 +50,9 @@ public:
 
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 
+    levi::Expression asExpression, quaternionDerivative, jointsDerivative;
+    iDynTree::VectorDynSize jointsHessianBuffer;
+
     void getRanges() {
 
         momentumRange = stateVariables.getIndexRange("Momentum");
@@ -146,12 +149,54 @@ public:
 
     }
 
+    void constructExpressions() {
+        const iDynTree::Model& model = timedSharedKinDyn->model();
+        std::string baseFrame = timedSharedKinDyn->getFloatingBase();
+        iDynTree::LinkIndex baseIndex = model.getLinkIndex(baseFrame);
+        assert(baseIndex != iDynTree::LINK_INVALID_INDEX);
+
+        iDynTree::LinkConstPtr baseLink = model.getLink(baseIndex);
+        levi::Constant baseInertia(6,6,"I_b");
+
+        baseInertia = iDynTree::toEigen(baseLink->getInertia().asMatrix());
+
+        asExpression = baseInertia * *expressionsServer->baseTwist();
+        std::string linkName;
+
+        levi::Expression *adjointWrench, *adjoint, *relativeVelocity;
+
+        for (iDynTree::LinkIndex l = 0; l < static_cast<int>(model.getNrOfLinks()); ++l) {
+            if (l != baseIndex) {
+                linkName = model.getLinkName(l);
+                adjoint = expressionsServer->adjointTransform(linkName, baseFrame);
+                adjointWrench = expressionsServer->adjointTransformWrench(baseFrame, linkName);
+                relativeVelocity = expressionsServer->relativeVelocity(baseFrame, linkName);
+                levi::Constant inertia(6,6,"I_" + linkName);
+                inertia = iDynTree::toEigen(model.getLink(l)->getInertia().asMatrix());
+
+                asExpression = asExpression + (*adjointWrench * inertia) *(*relativeVelocity + *adjoint * *expressionsServer->baseTwist());
+            }
+        }
+
+        levi::Expression* worldToBaseRotation = expressionsServer->baseRotation();
+        levi::Expression* comInBasePosition = expressionsServer->comInBase();
+
+        levi::Expression mixedAdjointBottomRows =
+            levi::Expression::Horzcat(*worldToBaseRotation * (-1.0 * *comInBasePosition).skew(), *worldToBaseRotation, "G_bar_X_b");
+
+        asExpression = mixedAdjointBottomRows * asExpression;
+
+        quaternionDerivative = asExpression.getColumnDerivative(0, *expressionsServer->baseQuaternion());
+        jointsDerivative = asExpression.getColumnDerivative(0, *expressionsServer->jointsPosition());
+    }
+
 };
 
 
 
 CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
-                                                           std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn)
+                                                           std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                                           std::shared_ptr<ExpressionsServer> expressionServer)
     : iDynTree::optimalcontrol::Constraint (3, "CentroidalMomentum")
     , m_pimpl(std::make_unique<Implementation>())
 {
@@ -187,7 +232,11 @@ CentroidalMomentumConstraint::CentroidalMomentumConstraint(const VariablesLabell
 
     m_pimpl->setSparsity();
 
-//    m_pimpl->expressionsServer = expressionServer;
+    m_pimpl->expressionsServer = expressionServer;
+
+    m_pimpl->constructExpressions();
+
+    m_pimpl->jointsHessianBuffer.resize(static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
 
 }
 
@@ -364,15 +413,112 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTControlSparsity(iDynTree
 
 bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
 {
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
 
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
+
+    m_pimpl->updateRobotState();
+    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+
+    iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);
+    iDynTree::iDynTreeEigenConstVector lambdaMap = iDynTree::toEigen(lambda);
+
+    iDynTree::iDynTreeEigenVector jointsMap = iDynTree::toEigen(m_pimpl->jointsHessianBuffer);
+    Eigen::Matrix<double, 1, 4> quaternionHessian;
+
+    for (Eigen::Index i = 0; i < 4; ++i) {
+
+        quaternionHessian = lambdaMap.transpose() *
+            m_pimpl->quaternionDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->baseQuaternion())).evaluate();
+
+        hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionRange.offset, 1, 4) = quaternionHessian;
+
+        jointsMap =
+            (m_pimpl->quaternionDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+            lambdaMap;
+
+        hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->jointsPositionRange.offset, 1, m_pimpl->jointsPositionRange.size) =
+            jointsMap.transpose();
+
+        hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =
+            jointsMap;
+    }
+
+    for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
+        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+            lambdaMap;
+
+        hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =
+            jointsMap;
+    }
+
+    return true;
 }
 
-bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTControl(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
+bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                               const iDynTree::VectorDynSize &/*control*/,
+                                                                               const iDynTree::VectorDynSize &/*lambda*/,
+                                                                               iDynTree::MatrixDynSize &/*hessian*/)
 {
-
+    return true;
 }
 
 bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTStateControl(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
 {
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
 
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
+
+    m_pimpl->updateRobotState();
+    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+
+    iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);
+    iDynTree::iDynTreeEigenConstVector lambdaMap = iDynTree::toEigen(lambda);
+
+    iDynTree::iDynTreeEigenVector jointsMap = iDynTree::toEigen(m_pimpl->jointsHessianBuffer);
+    Eigen::Matrix<double, 1, 4> quaternionHessian;
+    Eigen::Matrix<double, 1, 3> baseVelocityHessian;
+
+    for (Eigen::Index i = 0; i < 4; ++i) {
+
+        baseVelocityHessian = lambdaMap.transpose() *
+            m_pimpl->quaternionDerivative.getColumnDerivative(i, *m_pimpl->expressionsServer->baseLinearVelocity()).evaluate();
+
+        hessianMap.block<1, 3>(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseLinearVelocityRange.offset) = baseVelocityHessian;
+
+        quaternionHessian = lambdaMap.transpose() *
+            m_pimpl->quaternionDerivative.getColumnDerivative(i, *m_pimpl->expressionsServer->baseQuaternionVelocity()).evaluate();
+
+        hessianMap.block<1,4>(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionDerivativeRange.offset) = quaternionHessian;
+
+        jointsMap = (m_pimpl->quaternionDerivative.getColumnDerivative(i, *m_pimpl->expressionsServer->jointsVelocity()).evaluate()).transpose() *
+            lambdaMap;
+
+        hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->jointsVelocityRange.offset, 1, m_pimpl->jointsVelocityRange.size) =
+            jointsMap.transpose();
+
+    }
+
+    for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
+
+        baseVelocityHessian = lambdaMap.transpose() *
+            m_pimpl->jointsDerivative.getColumnDerivative(i, *m_pimpl->expressionsServer->baseLinearVelocity()).evaluate();
+
+        hessianMap.block<1, 3>(m_pimpl->jointsPositionRange.offset + i, m_pimpl->baseLinearVelocityRange.offset) = baseVelocityHessian;
+
+        quaternionHessian = lambdaMap.transpose() *
+            m_pimpl->jointsDerivative.getColumnDerivative(i, *m_pimpl->expressionsServer->baseQuaternionVelocity()).evaluate();
+
+        hessianMap.block<1,4>(m_pimpl->jointsPositionRange.offset + i, m_pimpl->baseQuaternionDerivativeRange.offset) = quaternionHessian;
+
+        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, *m_pimpl->expressionsServer->jointsVelocity()).evaluate()).transpose() *
+            lambdaMap;
+
+        hessianMap.block(m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsVelocityRange.offset, 1, m_pimpl->jointsVelocityRange.size) =
+            jointsMap.transpose();
+    }
+
+    return true;
 }

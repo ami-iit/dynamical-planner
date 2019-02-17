@@ -110,8 +110,7 @@ void configureSharedKinDyn(std::shared_ptr<TimelySharedKinDynComputations> timel
 void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTree::Position>& leftPositions,
                            const std::vector<iDynTree::Position>& rightPositions, const VariablesLabeller& stateVariables,
                            const VariablesLabeller& controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
-                           std::shared_ptr<ExpressionsServer> expressionsServer,
-                           iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
+                           std::shared_ptr<ExpressionsServer> expressionsServer, iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
     iDynTree::Vector3 velocityMaximumDerivative;
 
     double forceMaximumDerivative = 10.0;
@@ -224,7 +223,8 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ok = ocProblem.addConstraint(constraints.rightComplementarity[i]);
         ASSERT_IS_TRUE(ok);
     }
-    constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables, timelySharedKinDyn);
+    constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables,
+                                                                                    timelySharedKinDyn, expressionsServer);
     ok = ocProblem.addConstraint(constraints.centroidalMomentum);
     ASSERT_IS_TRUE(ok);
 

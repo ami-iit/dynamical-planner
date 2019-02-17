@@ -30,7 +30,8 @@ class DynamicalPlanner::Private::CentroidalMomentumConstraint : public iDynTree:
 public:
 
     CentroidalMomentumConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                                 std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn);
+                                 std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                 std::shared_ptr<ExpressionsServer> expressionServer);
 
     void setEqualityTolerance(double tolerance);
 
