@@ -165,3 +165,41 @@ bool DynamicalComplementarityConstraint::constraintJacobianWRTControlSparsity(iD
     controlSparsity = m_pimpl->controlSparsity;
     return true;
 }
+
+bool DynamicalComplementarityConstraint::constraintSecondPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                   const iDynTree::VectorDynSize &/*control*/,
+                                                                                   const iDynTree::VectorDynSize &lambda,
+                                                                                   iDynTree::MatrixDynSize &hessian)
+{
+    unsigned int fzIndex = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
+
+    hessian(fzIndex, pzIndex) = lambda(0) * m_pimpl->dissipationGain;
+    hessian(pzIndex, fzIndex) = lambda(0) * m_pimpl->dissipationGain;
+    return true;
+}
+
+bool DynamicalComplementarityConstraint::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                     const iDynTree::VectorDynSize &/*control*/,
+                                                                                     const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                     iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}
+
+bool DynamicalComplementarityConstraint::constraintSecondPartialDerivativeWRTStateControl(double /*time*/,
+                                                                                          const iDynTree::VectorDynSize &/*state*/,
+                                                                                          const iDynTree::VectorDynSize &/*control*/,
+                                                                                          const iDynTree::VectorDynSize &lambda,
+                                                                                          iDynTree::MatrixDynSize &hessian)
+{
+    unsigned int fzIndex = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
+    unsigned int fzDotIndex = static_cast<unsigned int>(m_pimpl->forceControlRange.offset + 2);
+    unsigned int vzIndex = static_cast<unsigned int>(m_pimpl->velocityControlRange.offset + 2);
+
+    hessian(fzIndex, vzIndex) = lambda(0);
+    hessian(pzIndex, fzDotIndex) = lambda(0);
+    return true;
+
+}

@@ -39,12 +39,16 @@ public:
     RobotState robotState;
     std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
     std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
+    std::shared_ptr<ExpressionsServer> expressionsServer;
 
     bool updateDoneOnceConstraint = false;
     bool updateDoneOnceStateJacobian = false;
     double tolerance;
 
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+
+    levi::Expression asExpression, quaternionDerivative, jointsDerivative;
+    iDynTree::VectorDynSize jointsHessianBuffer;
 
     void getRanges() {
 
@@ -113,6 +117,7 @@ public:
 ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const VariablesLabeller& stateVariables,
                                                                            const VariablesLabeller& controlVariables,
                                                                            std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                                                           std::shared_ptr<ExpressionsServer> expressionsServer,
                                                                            iDynTree::FrameIndex footFrame, const std::string &footName,
                                                                            const iDynTree::Position &positionInFoot, size_t contactIndex)
     : iDynTree::optimalcontrol::Constraint(3, "ContactPositionConsistency" + footName + std::to_string(contactIndex))
@@ -153,6 +158,19 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     m_lowerBound.zero();
 
     m_pimpl->setSparsity();
+
+    m_pimpl->expressionsServer = expressionsServer;
+    m_pimpl->jointsHessianBuffer.resize(static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
+
+    levi::Constant positionInFootExpr(3,1, footName + "_p_" + std::to_string(contactIndex));
+    positionInFootExpr = iDynTree::toEigen(positionInFoot);
+
+    std::string frameName = timelySharedKinDyn->model().getFrameName(footFrame);
+    m_pimpl->asExpression = *m_pimpl->expressionsServer->worldToBase() *
+        *m_pimpl->expressionsServer->relativeTransform(timelySharedKinDyn->getFloatingBase(), frameName) * positionInFootExpr;
+
+    m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, *(m_pimpl->expressionsServer->baseQuaternion()));
+    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, *(m_pimpl->expressionsServer->jointsPosition()));
 
 }
 
@@ -277,5 +295,70 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTStateSparsity(iD
 bool ContactPositionConsistencyConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
     controlSparsity = m_pimpl->controlSparsity;
+    return true;
+}
+
+bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state,
+                                                                                     const iDynTree::VectorDynSize &control,
+                                                                                     const iDynTree::VectorDynSize &lambda,
+                                                                                     iDynTree::MatrixDynSize &hessian)
+{
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
+
+    m_pimpl->updateRobotState();
+    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+
+    iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);
+    iDynTree::iDynTreeEigenConstVector lambdaMap = iDynTree::toEigen(lambda);
+
+    iDynTree::iDynTreeEigenVector jointsMap = iDynTree::toEigen(m_pimpl->jointsHessianBuffer);
+    Eigen::Matrix<double, 1, 4> quaternionHessian;
+
+    for (Eigen::Index i = 0; i < 4; ++i) {
+
+        quaternionHessian = lambdaMap.transpose() *
+            m_pimpl->quaternionDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->baseQuaternion())).evaluate();
+
+        hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionRange.offset, 1, 4) = quaternionHessian;
+
+        jointsMap =
+            (m_pimpl->quaternionDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+            lambdaMap;
+
+        hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->jointsPositionRange.offset, 1, m_pimpl->jointsPositionRange.size) =
+            jointsMap.transpose();
+
+        hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =
+            jointsMap;
+    }
+
+    for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
+        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+            lambdaMap;
+
+        hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =
+            jointsMap;
+    }
+
+    return true;
+}
+
+bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                       const iDynTree::VectorDynSize &/*control*/,
+                                                                                       const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                       iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}
+
+bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTStateControl(double /*time*/,
+                                                                                            const iDynTree::VectorDynSize &/*state*/,
+                                                                                            const iDynTree::VectorDynSize &/*control*/,
+                                                                                            const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                            iDynTree::MatrixDynSize &/*hessian*/)
+{
     return true;
 }

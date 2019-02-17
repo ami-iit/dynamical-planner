@@ -156,3 +156,34 @@ bool NormalVelocityControlConstraints::constraintJacobianWRTControlSparsity(iDyn
     controlSparsity = m_pimpl->controlSparsity;
     return true;
 }
+
+bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &state,
+                                                                                 const iDynTree::VectorDynSize &/*control*/,
+                                                                                 const iDynTree::VectorDynSize &lambda,
+                                                                                 iDynTree::MatrixDynSize &hessian)
+{
+    m_pimpl->stateVariables = state;
+
+    unsigned int forceIndex = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
+    double deltaDoubleDerivative = m_pimpl->normalVelocityActivation.evalDoubleDerivative(m_pimpl->pointForce(2));
+
+    hessian(forceIndex, forceIndex) = (lambda(0) + lambda(1)) * deltaDoubleDerivative * m_pimpl->maximumDerivative;
+
+    return true;
+}
+
+bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                   const iDynTree::VectorDynSize &/*control*/,
+                                                                                   const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                   iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}
+
+bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                        const iDynTree::VectorDynSize &/*control*/,
+                                                                                        const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                        iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}

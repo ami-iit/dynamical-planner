@@ -11,6 +11,7 @@
 #include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/CoMInBaseExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/RelativePositionExpression.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
 #include <unordered_map>
@@ -18,6 +19,7 @@
 using namespace DynamicalPlanner::Private;
 
 using ExpressionMap = std::unordered_map<std::string, levi::Expression>;
+using TransformsMap = std::unordered_map<std::string, TransformExpression>;
 
 class ExpressionsServer::Implementation {
 public:
@@ -35,7 +37,8 @@ public:
     levi::Expression baseTwist;
     TransformExpression worldToBase;
     levi::Expression comInBase;
-    ExpressionMap adjointMap, adjointWrenchMap, velocitiesMap;
+    ExpressionMap adjointMap, adjointWrenchMap, velocitiesMap, relativePositionsMap;
+    TransformsMap transformsMap;
     RobotState robotState;
 
     bool first;
@@ -184,6 +187,44 @@ levi::Expression *ExpressionsServer::adjointTransformWrench(const std::string &b
                                                              m_pimpl->q,
                                                              m_pimpl->time);
         auto result = m_pimpl->adjointWrenchMap.insert(newElement);
+        assert(result.second);
+        return &(result.first->second);
+    }
+}
+
+levi::Expression *ExpressionsServer::relativePosition(const std::string &baseFrame, const std::string &targetFrame)
+{
+    ExpressionMap::iterator element = m_pimpl->relativePositionsMap.find(baseFrame+targetFrame);
+
+    if (element != m_pimpl->relativePositionsMap.end()) {
+        return &(element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = baseFrame + targetFrame;
+        newElement.second = RelativePositionExpression(m_pimpl->timelySharedKinDyn,
+                                                       &(m_pimpl->robotState),
+                                                       baseFrame, targetFrame,
+                                                       m_pimpl->q, m_pimpl->time);
+        auto result = m_pimpl->relativePositionsMap.insert(newElement);
+        assert(result.second);
+        return &(result.first->second);
+    }
+}
+
+TransformExpression *ExpressionsServer::relativeTransform(const std::string &baseFrame, const std::string &targetFrame)
+{
+    TransformsMap::iterator element = m_pimpl->transformsMap.find(baseFrame+targetFrame);
+
+    if (element != m_pimpl->transformsMap.end()) {
+        return &(element->second);
+    } else {
+        std::pair<std::string, TransformExpression> newElement;
+        newElement.first = baseFrame + targetFrame;
+        newElement.second = TransformExpression::RelativeTransform(m_pimpl->timelySharedKinDyn,
+                                                                   &(m_pimpl->robotState),
+                                                                   baseFrame, targetFrame,
+                                                                   m_pimpl->q, m_pimpl->time);
+        auto result = m_pimpl->transformsMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);
     }

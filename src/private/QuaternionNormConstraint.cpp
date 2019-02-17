@@ -107,3 +107,33 @@ bool QuaternionNormConstraint::constraintJacobianWRTControlSparsity(iDynTree::op
     controlSparsity = m_pimpl->controlSparsity;
     return true;
 }
+
+bool QuaternionNormConstraint::constraintSecondPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                         const iDynTree::VectorDynSize &/*control*/,
+                                                                         const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
+{
+    unsigned int col = static_cast<unsigned int>(m_pimpl->baseQuaternionRange.offset);
+
+    hessian(col, col) = 2.0 * lambda(0);
+    hessian(col + 1, col + 1) = 2.0 * lambda(0);
+    hessian(col + 2, col + 2) = 2.0 * lambda(0);
+    hessian(col + 3, col + 3) = 2.0 * lambda(0);
+
+    return true;
+}
+
+bool QuaternionNormConstraint::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                           const iDynTree::VectorDynSize &/*control*/,
+                                                                           const iDynTree::VectorDynSize &/*lambda*/,
+                                                                           iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}
+
+bool QuaternionNormConstraint::constraintSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                const iDynTree::VectorDynSize &/*control*/,
+                                                                                const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}

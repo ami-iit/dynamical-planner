@@ -56,6 +56,12 @@ public:
     levi::Expression* adjointTransformWrench(const std::string& baseFrame,
                                              const std::string &targetFrame);
 
+    levi::Expression* relativePosition(const std::string& baseFrame,
+                                       const std::string &targetFrame);
+
+    TransformExpression* relativeTransform(const std::string& baseFrame,
+                                           const std::string &targetFrame);
+
     levi::Expression* relativeVelocity(const std::string& baseFrame,
                                        const std::string &targetFrame);
 

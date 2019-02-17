@@ -685,7 +685,8 @@ public:
             return false;
         }
 
-        constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateStructure, controlStructure, timelySharedKinDyn,
+        constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateStructure, controlStructure,
+                                                                                          timelySharedKinDyn, expressionsServer,
                                                                                           st.indexOfLateralDirection,
                                                                                           st.robotModel.getFrameIndex(
                                                                                               st.referenceFrameNameForFeetDistance),
@@ -754,7 +755,8 @@ public:
             }
 
             constraints.leftContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateStructure, controlStructure,
-                                                                                                         timelySharedKinDyn, leftFrame, "Left",
+                                                                                                         timelySharedKinDyn, expressionsServer,
+                                                                                                         leftFrame, "Left",
                                                                                                          st.leftPointsPosition[i], i);
 
             constraints.leftContactsPosition[i]->setEqualityTolerance(st.pointPositionConstraintTolerance);
@@ -814,7 +816,8 @@ public:
             }
 
             constraints.rightContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateStructure, controlStructure,
-                                                                                                          timelySharedKinDyn, rightFrame, "Right",
+                                                                                                          timelySharedKinDyn, expressionsServer,
+                                                                                                          rightFrame, "Right",
                                                                                                           st.rightPointsPosition[i], i);
 
             constraints.rightContactsPosition[i]->setEqualityTolerance(st.pointPositionConstraintTolerance);

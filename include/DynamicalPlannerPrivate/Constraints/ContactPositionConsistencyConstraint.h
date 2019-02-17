@@ -13,6 +13,7 @@
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <iDynTree/Core/Position.h>
 #include <memory>
 #include <string>
@@ -32,6 +33,7 @@ public:
 
     ContactPositionConsistencyConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
                                          std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                         std::shared_ptr<ExpressionsServer> expressionsServer,
                                          iDynTree::FrameIndex footFrame, const std::string &footName,
                                          const iDynTree::Position &positionInFoot, size_t contactIndex);
 
@@ -39,11 +41,14 @@ public:
 
     void setEqualityTolerance(double tolerance);
 
-    virtual bool evaluateConstraint(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::VectorDynSize& constraint) override;
+    virtual bool evaluateConstraint(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&,
+                                    iDynTree::VectorDynSize& constraint) override;
 
-    virtual bool constraintJacobianWRTState(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
+    virtual bool constraintJacobianWRTState(double time, const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&,
+                                            iDynTree::MatrixDynSize& jacobian) override;
 
-    virtual bool constraintJacobianWRTControl(double, const iDynTree::VectorDynSize&, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize& jacobian) override;
+    virtual bool constraintJacobianWRTControl(double, const iDynTree::VectorDynSize&, const iDynTree::VectorDynSize&,
+                                              iDynTree::MatrixDynSize& jacobian) override;
 
     virtual size_t expectedStateSpaceSize() const override;
 
@@ -52,6 +57,24 @@ public:
     virtual bool constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
 
     virtual bool constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTState(double time,
+                                                           const iDynTree::VectorDynSize& state,
+                                                           const iDynTree::VectorDynSize& control,
+                                                           const iDynTree::VectorDynSize& lambda,
+                                                           iDynTree::MatrixDynSize& hessian) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTControl(double time,
+                                                             const iDynTree::VectorDynSize& state,
+                                                             const iDynTree::VectorDynSize& control,
+                                                             const iDynTree::VectorDynSize& lambda,
+                                                             iDynTree::MatrixDynSize& hessian) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTStateControl(double time,
+                                                                  const iDynTree::VectorDynSize& state,
+                                                                  const iDynTree::VectorDynSize& control,
+                                                                  const iDynTree::VectorDynSize& lambda,
+                                                                  iDynTree::MatrixDynSize& hessian) override;
 };
 
 #endif // DPLANNER_CONTACTPOSITIONCONSISTENCYCONSTRAINT_H

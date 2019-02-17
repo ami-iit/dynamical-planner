@@ -13,6 +13,7 @@
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <memory>
 
 namespace DynamicalPlanner {
@@ -29,7 +30,8 @@ class DynamicalPlanner::Private::FeetLateralDistanceConstraint : public  iDynTre
 public:
 
     FeetLateralDistanceConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
-                                  std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, unsigned int lateralIndex,
+                                  std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                  std::shared_ptr<ExpressionsServer> expressionsServer, unsigned int lateralIndex,
                                   iDynTree::FrameIndex referenceFootFrame, iDynTree::FrameIndex otherFootFrame);
 
     ~FeetLateralDistanceConstraint() override;
@@ -49,6 +51,24 @@ public:
     virtual bool constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
 
     virtual bool constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTState(double time,
+                                                           const iDynTree::VectorDynSize& state,
+                                                           const iDynTree::VectorDynSize& control,
+                                                           const iDynTree::VectorDynSize& lambda,
+                                                           iDynTree::MatrixDynSize& hessian) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTControl(double time,
+                                                             const iDynTree::VectorDynSize& state,
+                                                             const iDynTree::VectorDynSize& control,
+                                                             const iDynTree::VectorDynSize& lambda,
+                                                             iDynTree::MatrixDynSize& hessian) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTStateControl(double time,
+                                                                  const iDynTree::VectorDynSize& state,
+                                                                  const iDynTree::VectorDynSize& control,
+                                                                  const iDynTree::VectorDynSize& lambda,
+                                                                  iDynTree::MatrixDynSize& hessian) override;
 };
 
 

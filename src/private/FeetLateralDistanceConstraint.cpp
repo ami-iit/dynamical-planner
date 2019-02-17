@@ -28,12 +28,16 @@ public:
     RobotState robotState;
     std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
     std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
+    std::shared_ptr<ExpressionsServer> expressionsServer;
 
     bool updateDoneOnceConstraint = false;
     bool updateDoneOnceStateJacobian = false;
     double tolerance;
 
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+
+    levi::Expression asExpression, jointsDerivative;
+    iDynTree::VectorDynSize jointsHessianBuffer;
 
     void updateRobotState() {
 
@@ -65,6 +69,7 @@ public:
 FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabeller& stateVariables,
                                                              const VariablesLabeller& controlVariables,
                                                              std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                                             std::shared_ptr<ExpressionsServer> expressionsServer,
                                                              unsigned int lateralIndex, iDynTree::FrameIndex referenceFootFrame,
                                                              iDynTree::FrameIndex otherFootFrame)
     : iDynTree::optimalcontrol::Constraint (1, "FeetLateralConstraint")
@@ -102,6 +107,15 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
     m_lowerBound.zero();
 
     m_pimpl->setSparsity();
+
+    m_pimpl->expressionsServer = expressionsServer;
+    m_pimpl->jointsHessianBuffer.resize(static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
+
+    std::string referenceFrameName = timelySharedKinDyn->model().getFrameName(referenceFootFrame);
+    std::string otherFootName = timelySharedKinDyn->model().getFrameName(otherFootFrame);
+
+    m_pimpl->asExpression = (m_pimpl->expressionsServer->relativePosition(referenceFrameName, otherFootName))->row(lateralIndex);
+    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, *(m_pimpl->expressionsServer->jointsPosition()));
 
 }
 
@@ -189,5 +203,51 @@ bool FeetLateralDistanceConstraint::constraintJacobianWRTStateSparsity(iDynTree:
 bool FeetLateralDistanceConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
     controlSparsity = m_pimpl->controlSparsity;
+    return true;
+}
+
+bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state,
+                                                                              const iDynTree::VectorDynSize &control,
+                                                                              const iDynTree::VectorDynSize &lambda,
+                                                                              iDynTree::MatrixDynSize &hessian)
+{
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
+
+    m_pimpl->updateRobotState();
+    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+
+    iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);
+    iDynTree::iDynTreeEigenConstVector lambdaMap = iDynTree::toEigen(lambda);
+
+    iDynTree::iDynTreeEigenVector jointsMap = iDynTree::toEigen(m_pimpl->jointsHessianBuffer);
+    Eigen::Matrix<double, 1, 4> quaternionHessian;
+
+    for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
+        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+            lambdaMap;
+
+        hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =
+            jointsMap;
+    }
+
+    return true;
+}
+
+bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                const iDynTree::VectorDynSize &/*control*/,
+                                                                                const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}
+
+bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                     const iDynTree::VectorDynSize &/*control*/,
+                                                                                     const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                     iDynTree::MatrixDynSize &/*hessian*/)
+{
     return true;
 }

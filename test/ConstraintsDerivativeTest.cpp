@@ -177,7 +177,8 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ASSERT_IS_TRUE(ok);
 
         constraints.leftContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
-                                                                                                     timelySharedKinDyn, leftFrame, "Left",
+                                                                                                     timelySharedKinDyn, expressionsServer,
+                                                                                                     leftFrame, "Left",
                                                                                                      leftPositions[i], i);
         ok = ocProblem.addConstraint(constraints.leftContactsPosition[i]);
         ASSERT_IS_TRUE(ok);
@@ -213,8 +214,9 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ASSERT_IS_TRUE(ok);
 
         constraints.rightContactsPosition[i] = std::make_shared<ContactPositionConsistencyConstraint>(stateVariables, controlVariables,
-                                                                                                     timelySharedKinDyn, rightFrame, "Right",
-                                                                                                     rightPositions[i], i);
+                                                                                                      timelySharedKinDyn, expressionsServer,
+                                                                                                      rightFrame, "Right",
+                                                                                                      rightPositions[i], i);
         ok = ocProblem.addConstraint(constraints.rightContactsPosition[i]);
         ASSERT_IS_TRUE(ok);
 
@@ -233,7 +235,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     ASSERT_IS_TRUE(ok);
 
     constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, timelySharedKinDyn,
-                                                                                      1, rightFrame, leftFrame);
+                                                                                      expressionsServer, 1, rightFrame, leftFrame);
     ok = ocProblem.addConstraint(constraints.feetLateralDistance);
     ASSERT_IS_TRUE(ok);
 
