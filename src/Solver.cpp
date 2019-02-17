@@ -677,7 +677,8 @@ public:
             return false;
         }
 
-        constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateStructure, controlStructure, timelySharedKinDyn);
+        constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateStructure, controlStructure,
+                                                                          timelySharedKinDyn, expressionsServer);
         constraints.comPosition->setEqualityTolerance(st.comPositionConstraintTolerance);
         ok = ocp->addConstraint(constraints.comPosition);
         if (!ok) {

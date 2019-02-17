@@ -228,7 +228,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     ok = ocProblem.addConstraint(constraints.centroidalMomentum);
     ASSERT_IS_TRUE(ok);
 
-    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, timelySharedKinDyn);
+    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer);
     ok = ocProblem.addConstraint(constraints.comPosition);
     ASSERT_IS_TRUE(ok);
 

@@ -6,7 +6,6 @@
  */
 
 #include <DynamicalPlannerPrivate/Constraints/ContactForceControlConstraints.h>
-#include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/Core/MatrixFixSize.h>
 #include <cassert>
 
@@ -190,5 +189,48 @@ bool ContactForceControlConstraints::constraintJacobianWRTStateSparsity(iDynTree
 bool ContactForceControlConstraints::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
     controlSparsity = m_pimpl->controlSparsity;
+    return true;
+}
+
+bool ContactForceControlConstraints::constraintSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state,
+                                                                               const iDynTree::VectorDynSize &/*control*/,
+                                                                               const iDynTree::VectorDynSize &lambda,
+                                                                               iDynTree::MatrixDynSize &hessian)
+{
+    m_pimpl->stateVariables = state;
+
+    m_pimpl->pointPosition = m_pimpl->stateVariables(m_pimpl->positionPointRange);
+    m_pimpl->pointForce = m_pimpl->stateVariables(m_pimpl->forcePointRange);
+
+    double fz = m_pimpl->pointForce(2);
+
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
+    unsigned int fzIndex = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
+
+    double maxDerivative = (time > m_pimpl->deactivationTime) ? 0.0 : m_pimpl->maximumNormalDerivative;
+    double deltaDerivative = m_pimpl->activation.evalDerivative(m_pimpl->pointPosition(2));
+    double deltaDoubleDerivative = m_pimpl->activation.evalDoubleDerivative(m_pimpl->pointPosition(2));
+
+    hessian(pzIndex, pzIndex) = lambda(0) * (deltaDoubleDerivative * maxDerivative + deltaDoubleDerivative * m_pimpl->dissipationRatio * fz) +
+        lambda(1) * (deltaDoubleDerivative * maxDerivative - deltaDoubleDerivative * m_pimpl->dissipationRatio * fz);
+    hessian(pzIndex, fzIndex) = (lambda(0) - lambda(1)) * deltaDerivative * m_pimpl->dissipationRatio;
+    hessian(fzIndex, pzIndex) = hessian(pzIndex, fzIndex);
+
+    return true;
+}
+
+bool ContactForceControlConstraints::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                 const iDynTree::VectorDynSize &/*control*/,
+                                                                                 const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                 iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}
+
+bool ContactForceControlConstraints::constraintSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                      const iDynTree::VectorDynSize &/*control*/,
+                                                                                      const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                      iDynTree::MatrixDynSize &/*hessian*/)
+{
     return true;
 }

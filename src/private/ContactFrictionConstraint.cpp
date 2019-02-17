@@ -21,7 +21,6 @@ public:
     iDynTree::IndexRange forcePointRange;
 
     iDynTree::Vector3 pointForce;
-    iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
 
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 };
@@ -41,12 +40,6 @@ ContactFrictionConstraint::ContactFrictionConstraint(const VariablesLabeller &st
 
     m_pimpl->forcePointRange = stateVariables.getIndexRange(footName + "ForcePoint" + std::to_string(contactIndex));
     assert(m_pimpl->forcePointRange.isValid());
-
-    m_pimpl->stateJacobianBuffer.resize(1, static_cast<unsigned int>(stateVariables.size()));
-    m_pimpl->stateJacobianBuffer.zero();
-
-    m_pimpl->controlJacobianBuffer.resize(1, static_cast<unsigned int>(controlVariables.size()));
-    m_pimpl->controlJacobianBuffer.zero();
 
     m_pimpl->frictionCoefficient = 0.3;
 
@@ -95,18 +88,16 @@ bool ContactFrictionConstraint::constraintJacobianWRTState(double, const iDynTre
 
     unsigned int col = static_cast<unsigned int>(m_pimpl->forcePointRange.offset);
 
-    m_pimpl->stateJacobianBuffer(0, col) = 2 * m_pimpl->pointForce(0);
-    m_pimpl->stateJacobianBuffer(0, col+1) = 2 * m_pimpl->pointForce(1);
-    m_pimpl->stateJacobianBuffer(0, col+2) = -2 * m_pimpl->frictionCoefficient * m_pimpl->frictionCoefficient * m_pimpl->pointForce(2);
-
-    jacobian = m_pimpl->stateJacobianBuffer;
+    jacobian(0, col) = 2 * m_pimpl->pointForce(0);
+    jacobian(0, col+1) = 2 * m_pimpl->pointForce(1);
+    jacobian(0, col+2) = -2 * m_pimpl->frictionCoefficient * m_pimpl->frictionCoefficient * m_pimpl->pointForce(2);
 
     return true;
 }
 
-bool ContactFrictionConstraint::constraintJacobianWRTControl(double, const iDynTree::VectorDynSize &, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &jacobian)
+bool ContactFrictionConstraint::constraintJacobianWRTControl(double, const iDynTree::VectorDynSize &, const iDynTree::VectorDynSize &, iDynTree::MatrixDynSize &/*jacobian*/)
 {
-    jacobian = m_pimpl->controlJacobianBuffer;
+//    jacobian = m_pimpl->controlJacobianBuffer;
 
     return true;
 }
@@ -130,5 +121,34 @@ bool ContactFrictionConstraint::constraintJacobianWRTStateSparsity(iDynTree::opt
 bool ContactFrictionConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
     controlSparsity = m_pimpl->controlSparsity;
+    return true;
+}
+
+bool ContactFrictionConstraint::constraintSecondPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                          const iDynTree::VectorDynSize &/*control*/,
+                                                                          const iDynTree::VectorDynSize &lambda, iDynTree::MatrixDynSize &hessian)
+{
+    unsigned int col = static_cast<unsigned int>(m_pimpl->forcePointRange.offset);
+
+    hessian(col, col) = 2.0 * lambda(0);
+    hessian(col + 1, col + 1) = 2.0 * lambda(0);
+    hessian(col + 2, col + 2) = -2.0 * m_pimpl->frictionCoefficient * m_pimpl->frictionCoefficient * lambda(0);
+
+    return true;
+}
+
+bool ContactFrictionConstraint::constraintSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                            const iDynTree::VectorDynSize &/*control*/,
+                                                                            const iDynTree::VectorDynSize &/*lambda*/,
+                                                                            iDynTree::MatrixDynSize &/*hessian*/)
+{
+    return true;
+}
+
+bool ContactFrictionConstraint::constraintSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                                 const iDynTree::VectorDynSize &/*control*/,
+                                                                                 const iDynTree::VectorDynSize &/*lambda*/,
+                                                                                 iDynTree::MatrixDynSize &/*hessian*/)
+{
     return true;
 }

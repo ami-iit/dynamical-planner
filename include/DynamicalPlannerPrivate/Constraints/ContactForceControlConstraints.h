@@ -60,6 +60,24 @@ public:
 
     virtual bool constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 
+    virtual bool constraintSecondPartialDerivativeWRTState(double time,
+                                                           const iDynTree::VectorDynSize& state,
+                                                           const iDynTree::VectorDynSize& control,
+                                                           const iDynTree::VectorDynSize& lambda,
+                                                           iDynTree::MatrixDynSize& hessian) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTControl(double time,
+                                                             const iDynTree::VectorDynSize& state,
+                                                             const iDynTree::VectorDynSize& control,
+                                                             const iDynTree::VectorDynSize& lambda,
+                                                             iDynTree::MatrixDynSize& hessian) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTStateControl(double time,
+                                                                  const iDynTree::VectorDynSize& state,
+                                                                  const iDynTree::VectorDynSize& control,
+                                                                  const iDynTree::VectorDynSize& lambda,
+                                                                  iDynTree::MatrixDynSize& hessian) override;
+
 };
 
 
