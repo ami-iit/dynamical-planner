@@ -10,7 +10,6 @@
 #include <iDynTree/Model/Traversal.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
 #include <cassert>
 #include <vector>
 
@@ -25,9 +24,7 @@ using namespace DynamicalPlanner::Private;
 class DynamicalPlanner::Private::RelativeLeftJacobianEvaluable :
     public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
 
-    std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
-    RobotState* m_robotState;
-    levi::ScalarVariable m_timeVariable;
+    ExpressionsServer* m_expressionsServer;
     iDynTree::MatrixDynSize m_jacobian;
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
 
@@ -35,16 +32,14 @@ class DynamicalPlanner::Private::RelativeLeftJacobianEvaluable :
 
 public:
 
-    RelativeLeftJacobianEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                              RobotState *robotState, const std::string &baseFrame, const std::string &targetFrame,
-                              levi::Variable jointsVariable, levi::ScalarVariable timeVariable)
+    RelativeLeftJacobianEvaluable(ExpressionsServer* expressionsServer,
+                                  const std::string& baseFrame,
+                                  const std::string &targetFrame)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (jointsVariable, 6, jointsVariable.rows(), baseFrame + "_J_" + targetFrame)
-          , m_timelySharedKinDyn(sharedKinDyn)
-          , m_robotState(robotState)
-          , m_timeVariable(timeVariable)
+          (*expressionsServer->jointsPosition(), 6, expressionsServer->jointsPosition()->rows(), baseFrame + "_J_" + targetFrame)
+          , m_expressionsServer(expressionsServer)
     {
-        const iDynTree::Model& model = sharedKinDyn->model();
+        const iDynTree::Model& model = expressionsServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
         assert(m_baseFrame != iDynTree::FRAME_INVALID_INDEX);
         m_targetFrame = model.getFrameIndex(targetFrame);
@@ -57,7 +52,7 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, baseLink);
         assert(ok);
 
-        m_columns.resize(static_cast<size_t>(jointsVariable.rows()), levi::Null(6,1));
+        m_columns.resize(static_cast<size_t>(expressionsServer->jointsPosition()->rows()), levi::Null(6,1));
 
         iDynTree::IJointConstPtr jointPtr;
         size_t jointIndex;
@@ -76,7 +71,7 @@ public:
                                                                                        childLink,
                                                                                        parentLink));
 
-            m_columns[jointIndex] = AdjointTransformExpression(sharedKinDyn, robotState, targetFrame, model.getLinkName(childLink), jointsVariable, timeVariable) *
+            m_columns[jointIndex] = *m_expressionsServer->adjointTransform(targetFrame, model.getLinkName(childLink)) *
                 levi::Constant(motionSubSpaceVector, "s_" + std::to_string(jointIndex));
 
             visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
@@ -86,9 +81,9 @@ public:
 
     const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
 
-        SharedKinDynComputationsPointer kinDyn = m_timelySharedKinDyn->get(m_timeVariable.evaluate());
+        SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
-        bool ok = kinDyn->getRelativeJacobian(*m_robotState, m_baseFrame, m_targetFrame, m_jacobian, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+        bool ok = kinDyn->getRelativeJacobian(m_expressionsServer->currentState(), m_baseFrame, m_targetFrame, m_jacobian, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
         assert(ok);
 
         m_evaluationBuffer = iDynTree::toEigen(m_jacobian);
@@ -114,13 +109,10 @@ RelativeLeftJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::
 }
 
 
-levi::Expression DynamicalPlanner::Private::RelativeLeftJacobianExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                                       RobotState *robotState, const std::string &baseFrame,
-                                                                       const std::string &targetFrame, levi::Variable jointsVariable,
-                                                                       levi::ScalarVariable timeVariable)
+levi::Expression DynamicalPlanner::Private::RelativeLeftJacobianExpression(ExpressionsServer *expressionsServer, const std::string &baseFrame,
+                                                                           const std::string &targetFrame)
 {
-    return levi::ExpressionComponent<RelativeLeftJacobianEvaluable>(sharedKinDyn, robotState, baseFrame,
-                                                                targetFrame, jointsVariable, timeVariable);
+    return levi::ExpressionComponent<RelativeLeftJacobianEvaluable>(expressionsServer, baseFrame, targetFrame);
 }
 
 

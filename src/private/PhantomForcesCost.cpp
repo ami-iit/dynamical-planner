@@ -104,7 +104,7 @@ bool PhantomForcesCost::costFirstPartialDerivativeWRTControl(double, const iDynT
     return true;
 }
 
-bool PhantomForcesCost::costSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &partialDerivative)
+bool PhantomForcesCost::costSecondPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &partialDerivative)
 {
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;

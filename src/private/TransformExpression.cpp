@@ -62,17 +62,6 @@ void TransformExpression::operator=(const TransformExpression &other)
     m_pimpl->rotation = other.rotation();
 }
 
-TransformExpression TransformExpression::RelativeTransform(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn, RobotState *robotState, const std::string &baseFrame, const std::string &targetFrame, levi::Variable jointsVariable, levi::ScalarVariable timeVariable)
-{
-
-    levi::Expression jacobian = RelativeLeftJacobianExpression(sharedKinDyn, robotState, baseFrame, targetFrame, jointsVariable, timeVariable);
-    levi::Expression quaternion = RelativeQuaternionExpression(sharedKinDyn, robotState, baseFrame, targetFrame, jointsVariable, timeVariable, jacobian);
-    levi::Expression rotation = RotationExpression(quaternion.asVariable());
-    levi::Expression position = RelativePositionExpression(sharedKinDyn, robotState, baseFrame, targetFrame, jointsVariable, timeVariable, jacobian, rotation);
-
-    return TransformExpression(position, rotation);
-}
-
 TransformExpression operator*(const TransformExpression &lhs, const TransformExpression &rhs)
 {
     return TransformExpression(lhs.position() + lhs.rotation() * rhs.position(), lhs.rotation() * rhs.rotation());

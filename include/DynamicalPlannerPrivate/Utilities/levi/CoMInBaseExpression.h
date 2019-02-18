@@ -8,7 +8,7 @@
 #define DPLANNER_COMPOSITIONEXPRESSION_H
 
 #include <levi/ForwardDeclarations.h>
-#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/TransformExpression.h>
 #include <memory>
 #include <string>
@@ -16,10 +16,7 @@
 namespace DynamicalPlanner {
     namespace Private {
 
-        levi::Expression CoMInBaseExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                             RobotState *robotState,
-                                             levi::Variable jointsVariable,
-                                             levi::ScalarVariable timeVariable);
+        levi::Expression CoMInBaseExpression(ExpressionsServer* expressionsServer);
 
         levi::Expression CoMAdjointTransformWrench(const levi::Expression& worldToBaseRotation, const levi::Expression& comInBasePosition);
     }

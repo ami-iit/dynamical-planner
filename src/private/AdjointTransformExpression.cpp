@@ -25,9 +25,7 @@ using namespace DynamicalPlanner::Private;
 class DynamicalPlanner::Private::AdjointTransformEvaluable :
     public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
 
-    std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
-    RobotState* m_robotState;
-    levi::ScalarVariable m_timeVariable;
+    ExpressionsServer* m_expressionsServer;
     iDynTree::Transform m_transform;
     std::string m_baseFrameName, m_targetFrameName;
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
@@ -41,19 +39,16 @@ class DynamicalPlanner::Private::AdjointTransformEvaluable :
 
 public:
 
-    AdjointTransformEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                              RobotState *robotState, const std::string &baseFrame, const std::string &targetFrame,
-                              levi::Variable jointsVariable, levi::ScalarVariable timeVariable)
+    AdjointTransformEvaluable(ExpressionsServer* expressionsServer,
+                              const std::string &baseFrame, const std::string &targetFrame)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (jointsVariable, 6,6, baseFrame + "_X_" + targetFrame)
-        , m_timelySharedKinDyn(sharedKinDyn)
-        , m_robotState(robotState)
-        , m_timeVariable(timeVariable)
+          (*expressionsServer->jointsPosition(), 6,6, baseFrame + "_X_" + targetFrame)
+        , m_expressionsServer(expressionsServer)
         , m_baseFrameName(baseFrame)
         , m_targetFrameName(targetFrame)
     {
-        assert(sharedKinDyn);
-        const iDynTree::Model& model = sharedKinDyn->model();
+        assert(expressionsServer);
+        const iDynTree::Model& model = expressionsServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
         assert(m_baseFrame != iDynTree::FRAME_INVALID_INDEX);
         m_targetFrame = model.getFrameIndex(targetFrame);
@@ -66,8 +61,8 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, m_baseLink);
         assert(ok);
 
-        m_jointsDerivative.resize(static_cast<size_t>(jointsVariable.rows()), levi::Null(6,6));
-        m_colsDerivatives.resize(static_cast<size_t>(jointsVariable.rows()), levi::Null(6,1));
+        m_jointsDerivative.resize(static_cast<size_t>(expressionsServer->jointsPosition()->rows()), levi::Null(6,6));
+        m_colsDerivatives.resize(static_cast<size_t>(expressionsServer->jointsPosition()->rows()), levi::Null(6,1));
 
         m_targetLink = model.getFrameLink(m_targetFrame);
 
@@ -102,10 +97,9 @@ public:
                                                                                                    visitedLink,
                                                                                                    parentLink).asCrossProductMatrix());
 
-                m_jointsDerivative[jointIndex] =
-                    AdjointTransformExpression(sharedKinDyn, robotState, baseFrame, model.getLinkName(visitedLink),jointsVariable, timeVariable) *
+                m_jointsDerivative[jointIndex] = *m_expressionsServer->adjointTransform(baseFrame, model.getLinkName(visitedLink)) *
                     levi::Constant(motionSubSpaceAsCrossProduct, "s_" + std::to_string(jointIndex) + "x") *
-                    AdjointTransformExpression(sharedKinDyn, robotState, model.getLinkName(visitedLink), targetFrame, jointsVariable, timeVariable);
+                    *m_expressionsServer->adjointTransform(model.getLinkName(visitedLink), targetFrame);
 
 
                 visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
@@ -116,9 +110,9 @@ public:
 
     const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
 
-        SharedKinDynComputationsPointer kinDyn = m_timelySharedKinDyn->get(m_timeVariable.evaluate());
+        SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
-        m_transform = kinDyn->getRelativeTransform(*m_robotState, m_baseFrame, m_targetFrame);
+        m_transform = kinDyn->getRelativeTransform(m_expressionsServer->currentState(), m_baseFrame, m_targetFrame);
 
         m_evaluationBuffer = iDynTree::toEigen(m_transform.asAdjointTransform());
 
@@ -135,7 +129,7 @@ AdjointTransformEvaluable::getNewColumnDerivative(Eigen::Index column, std::shar
     if (variable->variableName() == m_expression.name() && (m_baseLink != m_targetLink)) { //m_expression contains the jointsVariable specified in the constructor
 
         m_jointsDerivative[m_parentJointIndex] =
-            AdjointTransformExpression(m_timelySharedKinDyn, m_robotState, m_baseFrameName, m_targetFrameName, m_expression, m_timeVariable) *
+            /**m_expressionsServer->adjointTransform(m_baseFrameName, m_targetFrameName)*/AdjointTransformExpression(m_expressionsServer, m_baseFrameName, m_targetFrameName) *
             m_thisMotionSubspace;
 
         for (size_t i = 0; i < m_jointsDerivative.size(); ++i) {
@@ -154,9 +148,7 @@ AdjointTransformEvaluable::getNewColumnDerivative(Eigen::Index column, std::shar
 class DynamicalPlanner::Private::AdjointTransformWrenchEvaluable :
     public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
 
-    std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
-    RobotState* m_robotState;
-    levi::ScalarVariable m_timeVariable;
+    ExpressionsServer* m_expressionsServer;
     iDynTree::Transform m_transform;
     std::string m_baseFrameName, m_targetFrameName;
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
@@ -170,19 +162,17 @@ class DynamicalPlanner::Private::AdjointTransformWrenchEvaluable :
 
 public:
 
-    AdjointTransformWrenchEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                    RobotState *robotState, const std::string &baseFrame, const std::string &targetFrame,
-                                    levi::Variable jointsVariable, levi::ScalarVariable timeVariable)
+    AdjointTransformWrenchEvaluable(ExpressionsServer* expressionServer,
+                                    const std::string& baseFrame,
+                                    const std::string &targetFrame)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (jointsVariable, 6,6, baseFrame + "_X*_" + targetFrame)
-          , m_timelySharedKinDyn(sharedKinDyn)
-          , m_robotState(robotState)
-          , m_timeVariable(timeVariable)
+          (*expressionServer->jointsPosition(), 6,6, baseFrame + "_X*_" + targetFrame)
+          , m_expressionsServer(expressionServer)
           , m_baseFrameName(baseFrame)
           , m_targetFrameName(targetFrame)
     {
-        assert(sharedKinDyn);
-        const iDynTree::Model& model = sharedKinDyn->model();
+        assert(expressionServer);
+        const iDynTree::Model& model = expressionServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
         assert(m_baseFrame != iDynTree::FRAME_INVALID_INDEX);
         m_targetFrame = model.getFrameIndex(targetFrame);
@@ -195,8 +185,8 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, m_baseLink);
         assert(ok);
 
-        m_jointsDerivative.resize(static_cast<size_t>(jointsVariable.rows()), levi::Null(6,6));
-        m_colsDerivatives.resize(static_cast<size_t>(jointsVariable.rows()), levi::Null(6,1));
+        m_jointsDerivative.resize(static_cast<size_t>(expressionServer->jointsPosition()->rows()), levi::Null(6,6));
+        m_colsDerivatives.resize(static_cast<size_t>(expressionServer->jointsPosition()->rows()), levi::Null(6,1));
 
         m_targetLink = model.getFrameLink(m_targetFrame);
 
@@ -231,11 +221,9 @@ public:
                                                                                                    visitedLink,
                                                                                                    parentLink).asCrossProductMatrixWrench());
 
-                m_jointsDerivative[jointIndex] =
-                    AdjointTransformWrenchExpression(sharedKinDyn, robotState, baseFrame, model.getLinkName(visitedLink),jointsVariable, timeVariable) *
+                m_jointsDerivative[jointIndex] = *m_expressionsServer->adjointTransformWrench(baseFrame, model.getLinkName(visitedLink)) *
                     levi::Constant(motionSubSpaceAsCrossProduct, "s_" + std::to_string(jointIndex) + "x") *
-                    AdjointTransformWrenchExpression(sharedKinDyn, robotState, model.getLinkName(visitedLink), targetFrame, jointsVariable, timeVariable);
-
+                    *m_expressionsServer->adjointTransformWrench(model.getLinkName(visitedLink), targetFrame);
 
                 visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
             }
@@ -245,9 +233,9 @@ public:
 
     const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
 
-        SharedKinDynComputationsPointer kinDyn = m_timelySharedKinDyn->get(m_timeVariable.evaluate());
+        SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
-        m_transform = kinDyn->getRelativeTransform(*m_robotState, m_baseFrame, m_targetFrame);
+        m_transform = kinDyn->getRelativeTransform( m_expressionsServer->currentState(), m_baseFrame, m_targetFrame);
 
         m_evaluationBuffer = iDynTree::toEigen(m_transform.asAdjointTransformWrench());
 
@@ -264,7 +252,7 @@ AdjointTransformWrenchEvaluable::getNewColumnDerivative(Eigen::Index column, std
     if (variable->variableName() == m_expression.name() && (m_baseLink != m_targetLink)) { //m_expression contains the jointsVariable specified in the constructor
 
         m_jointsDerivative[m_parentJointIndex] =
-            AdjointTransformWrenchExpression(m_timelySharedKinDyn, m_robotState, m_baseFrameName, m_targetFrameName, m_expression, m_timeVariable) *
+            /**m_expressionsServer->adjointTransformWrench(m_baseFrameName, m_targetFrameName)*/ AdjointTransformWrenchExpression(m_expressionsServer, m_baseFrameName, m_targetFrameName) *
             m_thisMotionSubspace;
 
         for (size_t i = 0; i < m_jointsDerivative.size(); ++i) {
@@ -279,20 +267,14 @@ AdjointTransformWrenchEvaluable::getNewColumnDerivative(Eigen::Index column, std
 
 }
 
-levi::Expression DynamicalPlanner::Private::AdjointTransformExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                                       RobotState *robotState, const std::string &baseFrame,
-                                                                       const std::string &targetFrame, levi::Variable jointsVariable,
-                                                                       levi::ScalarVariable timeVariable)
+levi::Expression DynamicalPlanner::Private::AdjointTransformExpression(ExpressionsServer* expressionServer, const std::string &baseFrame,
+                                                                       const std::string &targetFrame)
 {
-    return levi::ExpressionComponent<AdjointTransformEvaluable>(sharedKinDyn, robotState, baseFrame,
-                                                                targetFrame, jointsVariable, timeVariable);
+    return levi::ExpressionComponent<AdjointTransformEvaluable>(expressionServer, baseFrame, targetFrame);
 }
 
-levi::Expression DynamicalPlanner::Private:: AdjointTransformWrenchExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                                             RobotState *robotState, const std::string &baseFrame,
-                                                                             const std::string &targetFrame, levi::Variable jointsVariable,
-                                                                             levi::ScalarVariable timeVariable)
+levi::Expression DynamicalPlanner::Private:: AdjointTransformWrenchExpression(ExpressionsServer *expressionServer, const std::string &baseFrame,
+                                                                             const std::string &targetFrame)
 {
-    return levi::ExpressionComponent<AdjointTransformWrenchEvaluable>(sharedKinDyn, robotState, baseFrame,
-                                                                      targetFrame, jointsVariable, timeVariable);
+    return levi::ExpressionComponent<AdjointTransformWrenchEvaluable>(expressionServer, baseFrame, targetFrame);
 }

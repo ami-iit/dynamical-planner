@@ -8,19 +8,16 @@
 #define DPLANNER_RELATIVEJACOBIANEXPRESSION_H
 
 #include <levi/ForwardDeclarations.h>
-#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <memory>
 #include <string>
 
 namespace DynamicalPlanner {
     namespace Private {
 
-        levi::Expression RelativeLeftJacobianExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                        RobotState *robotState,
+        levi::Expression RelativeLeftJacobianExpression(ExpressionsServer* expressionsServer,
                                                         const std::string& baseFrame,
-                                                        const std::string &targetFrame,
-                                                        levi::Variable jointsVariable,
-                                                        levi::ScalarVariable timeVariable);
+                                                        const std::string &targetFrame);
 
     }
 }

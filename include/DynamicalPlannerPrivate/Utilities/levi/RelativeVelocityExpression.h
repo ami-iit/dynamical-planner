@@ -8,20 +8,16 @@
 #define DPLANNER_RELATIVEVELOCITYEXPRESSION_H
 
 #include <levi/ForwardDeclarations.h>
-#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <memory>
 #include <string>
 
 namespace DynamicalPlanner {
     namespace Private {
 
-        levi::Expression RelativeLeftVelocityExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                        RobotState *robotState,
+        levi::Expression RelativeLeftVelocityExpression(ExpressionsServer* expressionsServer,
                                                         const std::string& baseFrame,
-                                                        const std::string &targetFrame,
-                                                        levi::Variable jointsVariable,
-                                                        levi::Variable jointsVelocityVariable,
-                                                        levi::ScalarVariable timeVariable);
+                                                        const std::string &targetFrame);
 
     }
 }

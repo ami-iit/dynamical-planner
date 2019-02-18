@@ -6,7 +6,6 @@
 */
 
 #include <levi/levi.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
@@ -22,34 +21,22 @@ using namespace DynamicalPlanner::Private;
 
 class DynamicalPlanner::Private::RelativeLeftVelocityEvaluable : public levi::DefaultEvaluable {
 
-    std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
-    RobotState* m_robotState;
+    ExpressionsServer* m_expressionsServer;
     std::string m_baseFrameName, m_targetFrameName;
-    levi::Variable m_jointsVariable;
-    levi::Variable m_jointsVelocityVariable;
-    levi::ScalarVariable m_timeVariable;
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
     levi::Expression m_thisExpression;
 
 public:
 
-    RelativeLeftVelocityEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                        RobotState *robotState,
-                                                        const std::string& baseFrame,
-                                                        const std::string &targetFrame,
-                                                        levi::Variable jointsVariable,
-                                                        levi::Variable jointsVelocityVariable,
-                                                        levi::ScalarVariable timeVariable)
+    RelativeLeftVelocityEvaluable(ExpressionsServer* expressionsServer,
+                                  const std::string& baseFrame,
+                                  const std::string &targetFrame)
         : levi::DefaultEvaluable(6,1, targetFrame + "_V_" + baseFrame + "," + targetFrame)
-          , m_timelySharedKinDyn(sharedKinDyn)
-          , m_robotState(robotState)
+          , m_expressionsServer(expressionsServer)
           , m_baseFrameName(baseFrame)
           , m_targetFrameName(targetFrame)
-          , m_jointsVariable(jointsVariable)
-          , m_jointsVelocityVariable(jointsVelocityVariable)
-          , m_timeVariable(timeVariable)
     {
-        const iDynTree::Model& model = sharedKinDyn->model();
+        const iDynTree::Model& model = expressionsServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
         assert(m_baseFrame != iDynTree::FRAME_INVALID_INDEX);
         m_targetFrame = model.getFrameIndex(targetFrame);
@@ -57,16 +44,16 @@ public:
         iDynTree::LinkIndex baseLink = model.getFrameLink(m_baseFrame);
         assert(baseLink != iDynTree::LINK_INVALID_INDEX);
 
-        levi::Expression jacobian = RelativeLeftJacobianExpression(sharedKinDyn, robotState, baseFrame, targetFrame, jointsVariable, timeVariable);
-        m_thisExpression = jacobian * m_jointsVelocityVariable;
+        levi::Expression jacobian = *expressionsServer->relativeLeftJacobian(baseFrame, targetFrame);
+        m_thisExpression = jacobian * *expressionsServer->jointsVelocity();
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
-        SharedKinDynComputationsPointer kinDyn = m_timelySharedKinDyn->get(m_timeVariable.evaluate());
+        SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
-        iDynTree::Twist velocityInInertial = kinDyn->getFrameVel(*m_robotState, m_targetFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
-        iDynTree::Twist baseVelocity = kinDyn->getFrameVel(*m_robotState, m_baseFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
-        iDynTree::Transform relativeTransform = kinDyn->getRelativeTransform(*m_robotState, m_targetFrame, m_baseFrame);
+        iDynTree::Twist velocityInInertial = kinDyn->getFrameVel(m_expressionsServer->currentState(), m_targetFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+        iDynTree::Twist baseVelocity = kinDyn->getFrameVel(m_expressionsServer->currentState(), m_baseFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
+        iDynTree::Transform relativeTransform = kinDyn->getRelativeTransform(m_expressionsServer->currentState(), m_targetFrame, m_baseFrame);
 
         m_evaluationBuffer = iDynTree::toEigen(velocityInInertial - relativeTransform*baseVelocity);
 
@@ -74,7 +61,7 @@ public:
     }
 
     virtual bool isNew(size_t callerID) final {
-        if (m_jointsVariable.isNew() || m_jointsVelocityVariable.isNew()) {
+        if (m_expressionsServer->jointsPosition()->isNew() || m_expressionsServer->jointsVelocity()->isNew()) {
             resetEvaluationRegister();
         }
 
@@ -92,14 +79,14 @@ public:
 };
 
 bool RelativeLeftVelocityEvaluable::isDependentFrom(std::shared_ptr<levi::VariableBase> variable) {
-    return ((variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()) ||
-            (variable->variableName() == m_jointsVelocityVariable.name() && variable->dimension() == m_jointsVelocityVariable.rows()));
+    return ((variable->variableName() == m_expressionsServer->jointsPosition()->name() &&
+             variable->dimension() == m_expressionsServer->jointsPosition()->rows()) ||
+            (variable->variableName() == m_expressionsServer->jointsVelocity()->name() &&
+             variable->dimension() == m_expressionsServer->jointsVelocity()->rows()));
 }
 
-levi::Expression DynamicalPlanner::Private::RelativeLeftVelocityExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                                           RobotState *robotState, const std::string &baseFrame,
-                                                                           const std::string &targetFrame, levi::Variable jointsVariable,
-                                                                           levi::Variable jointsVelocityVariable, levi::ScalarVariable timeVariable)
+levi::Expression DynamicalPlanner::Private::RelativeLeftVelocityExpression(ExpressionsServer *expressionsServer, const std::string &baseFrame,
+                                                                           const std::string &targetFrame)
 {
-    return levi::ExpressionComponent<RelativeLeftVelocityEvaluable>(sharedKinDyn, robotState, baseFrame, targetFrame, jointsVariable, jointsVelocityVariable, timeVariable);
+    return levi::ExpressionComponent<RelativeLeftVelocityEvaluable>(expressionsServer, baseFrame, targetFrame);
 }

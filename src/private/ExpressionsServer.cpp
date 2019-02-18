@@ -75,7 +75,7 @@ ExpressionsServer::ExpressionsServer(std::shared_ptr<TimelySharedKinDynComputati
     m_pimpl->baseTwist = BodyTwistFromQuaternionVelocity(m_pimpl->baseLinearVelocity, m_pimpl->baseQuaternionVelocity,
                                                          m_pimpl->quaternionNormalized.asVariable(), "baseTwist");
     m_pimpl->worldToBase = TransformExpression(m_pimpl->basePositionExpr, m_pimpl->baseRotation);
-    m_pimpl->comInBase = CoMInBaseExpression(m_pimpl->timelySharedKinDyn, &(m_pimpl->robotState), m_pimpl->s, m_pimpl->time);
+    m_pimpl->comInBase = CoMInBaseExpression(this);
 
     m_pimpl->first = true;
 
@@ -93,6 +93,7 @@ ExpressionsServer::~ExpressionsServer()
     m_pimpl->clearDerivatives(m_pimpl->relativeRotationsMap);
     m_pimpl->clearDerivatives(m_pimpl->relativeJacobiansMap);
     m_pimpl->clearDerivatives(m_pimpl->quaternionsErrorsMap);
+    m_pimpl->comInBase.clearDerivativesCache();
 }
 
 bool ExpressionsServer::updateRobotState(double time, const RobotState &currentState)
@@ -204,12 +205,7 @@ levi::Expression *ExpressionsServer::adjointTransform(const std::string &baseFra
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = AdjointTransformExpression(m_pimpl->timelySharedKinDyn,
-                                                       &(m_pimpl->robotState),
-                                                       baseFrame,
-                                                       targetFrame,
-                                                       m_pimpl->s,
-                                                       m_pimpl->time);
+        newElement.second = AdjointTransformExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->adjointMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);
@@ -225,12 +221,7 @@ levi::Expression *ExpressionsServer::adjointTransformWrench(const std::string &b
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = AdjointTransformWrenchExpression(m_pimpl->timelySharedKinDyn,
-                                                             &(m_pimpl->robotState),
-                                                             baseFrame,
-                                                             targetFrame,
-                                                             m_pimpl->s,
-                                                             m_pimpl->time);
+        newElement.second = AdjointTransformWrenchExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->adjointWrenchMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);
@@ -246,12 +237,7 @@ levi::Expression *ExpressionsServer::relativePosition(const std::string &baseFra
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativePositionExpression(m_pimpl->timelySharedKinDyn,
-                                                       &(m_pimpl->robotState),
-                                                       baseFrame, targetFrame,
-                                                       m_pimpl->s, m_pimpl->time,
-                                                       *relativeLeftJacobian(baseFrame, targetFrame),
-                                                       *relativeRotation(baseFrame, targetFrame));
+        newElement.second = RelativePositionExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->relativePositionsMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);
@@ -267,11 +253,7 @@ levi::Expression *ExpressionsServer::relativeQuaternion(const std::string &baseF
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativeQuaternionExpression(m_pimpl->timelySharedKinDyn,
-                                                         &(m_pimpl->robotState),
-                                                         baseFrame, targetFrame,
-                                                         m_pimpl->s, m_pimpl->time,
-                                                         *relativeLeftJacobian(baseFrame, targetFrame));
+        newElement.second = RelativeQuaternionExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->relativeQuaternionsMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);
@@ -319,10 +301,7 @@ levi::Expression *ExpressionsServer::relativeLeftJacobian(const std::string &bas
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativeLeftJacobianExpression(m_pimpl->timelySharedKinDyn,
-                                                           &(m_pimpl->robotState),
-                                                           baseFrame, targetFrame,
-                                                           m_pimpl->s, m_pimpl->time);
+        newElement.second = RelativeLeftJacobianExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->relativeJacobiansMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);
@@ -338,13 +317,7 @@ levi::Expression *ExpressionsServer::relativeVelocity(const std::string &baseFra
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativeLeftVelocityExpression(m_pimpl->timelySharedKinDyn,
-                                                           &(m_pimpl->robotState),
-                                                           baseFrame,
-                                                           targetFrame,
-                                                           m_pimpl->s,
-                                                           m_pimpl->s_dot,
-                                                           m_pimpl->time);
+        newElement.second = RelativeLeftVelocityExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->velocitiesMap.insert(newElement);
         assert(result.second);
         return &(result.first->second);

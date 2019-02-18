@@ -9,9 +9,6 @@
 #include <iDynTree/Model/Model.h>
 #include <iDynTree/Model/Traversal.h>
 #include <iDynTree/Core/EigenHelpers.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/RelativeQuaternionExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/QuaternionExpressions.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativePositionExpression.h>
 #include <cassert>
 #include <vector>
@@ -27,8 +24,7 @@ using namespace DynamicalPlanner::Private;
 class DynamicalPlanner::Private::RelativePositionEvaluable :
     public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
 
-    std::shared_ptr<TimelySharedKinDynComputations> m_timelySharedKinDyn;
-    RobotState* m_robotState;
+    ExpressionsServer* m_expressionsServer;
     levi::ScalarVariable m_timeVariable;
     std::string m_baseName, m_targetName;
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
@@ -37,32 +33,30 @@ class DynamicalPlanner::Private::RelativePositionEvaluable :
 
 public:
 
-    RelativePositionEvaluable(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                              RobotState *robotState, const std::string &baseFrame, const std::string &targetFrame,
-                              levi::Variable jointsVariable, levi::ScalarVariable timeVariable,
-                              const levi::Expression& relativeJacobian, const levi::Expression& relativeRotation)
+    RelativePositionEvaluable(ExpressionsServer* expressionsServer,
+                              const std::string& baseFrame,
+                              const std::string &targetFrame)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (jointsVariable, 3, 1, baseFrame + "_p_" + targetFrame)
-          , m_timelySharedKinDyn(sharedKinDyn)
-          , m_robotState(robotState)
-          , m_timeVariable(timeVariable)
+          (*expressionsServer->jointsPosition(), 3, 1, baseFrame + "_p_" + targetFrame)
+          , m_expressionsServer(expressionsServer)
           , m_baseName(baseFrame)
           , m_targetName(targetFrame)
     {
-        const iDynTree::Model& model = sharedKinDyn->model();
+        const iDynTree::Model& model = expressionsServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
         assert(m_baseFrame != iDynTree::FRAME_INVALID_INDEX);
         m_targetFrame = model.getFrameIndex(targetFrame);
         assert(m_targetFrame != iDynTree::FRAME_INVALID_INDEX);
 
-        m_derivative = relativeRotation * relativeJacobian.block(0, 0, 3, jointsVariable.rows());
+        m_derivative = *expressionsServer->relativeRotation(baseFrame, targetFrame) *
+            expressionsServer->relativeLeftJacobian(baseFrame, targetFrame)->block(0, 0, 3, expressionsServer->jointsPosition()->rows());
     }
 
     const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
 
-        SharedKinDynComputationsPointer kinDyn = m_timelySharedKinDyn->get(m_timeVariable.evaluate());
+        SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
-        m_evaluationBuffer = iDynTree::toEigen(kinDyn->getRelativeTransform(*m_robotState, m_baseFrame, m_targetFrame).getPosition());
+        m_evaluationBuffer = iDynTree::toEigen(kinDyn->getRelativeTransform(m_expressionsServer->currentState(), m_baseFrame, m_targetFrame).getPosition());
 
         return m_evaluationBuffer;
     }
@@ -88,29 +82,11 @@ RelativePositionEvaluable::getNewColumnDerivative(Eigen::Index column, std::shar
 }
 
 
-levi::Expression DynamicalPlanner::Private::RelativePositionExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                                       RobotState *robotState, const std::string &baseFrame,
-                                                                       const std::string &targetFrame, levi::Variable jointsVariable,
-                                                                       levi::ScalarVariable timeVariable)
+levi::Expression DynamicalPlanner::Private::RelativePositionExpression(ExpressionsServer *expressionsServer, const std::string &baseFrame,
+                                                                       const std::string &targetFrame)
 {
 
-    levi::Expression jacobian = RelativeLeftJacobianExpression(sharedKinDyn, robotState, baseFrame, targetFrame, jointsVariable, timeVariable);
-    levi::Expression quaternion = RelativeQuaternionExpression(sharedKinDyn, robotState, baseFrame, targetFrame, jointsVariable, timeVariable, jacobian);
-    levi::Expression rotation = RotationExpression(quaternion.asVariable());
-
-    return levi::ExpressionComponent<RelativePositionEvaluable>(sharedKinDyn, robotState, baseFrame,
-                                                                targetFrame, jointsVariable, timeVariable, jacobian, rotation);
-}
-
-levi::Expression DynamicalPlanner::Private::RelativePositionExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                                       RobotState *robotState, const std::string &baseFrame,
-                                                                       const std::string &targetFrame, levi::Variable jointsVariable,
-                                                                       levi::ScalarVariable timeVariable, const levi::Expression& relativeJacobian,
-                                                                       const levi::Expression &relativeRotation)
-{
-
-    return levi::ExpressionComponent<RelativePositionEvaluable>(sharedKinDyn, robotState, baseFrame,
-                                                                targetFrame, jointsVariable, timeVariable, relativeJacobian, relativeRotation);
+    return levi::ExpressionComponent<RelativePositionEvaluable>(expressionsServer, baseFrame, targetFrame);
 }
 
 

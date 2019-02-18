@@ -8,12 +8,6 @@
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/QuaternionExpressions.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/TransformExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/CoMInBaseExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
-#include <DynamicalPlannerPrivate/Utilities/levi/QuaternionErrorExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 
@@ -85,13 +79,10 @@ RobotState RandomRobotState(const iDynTree::Model& model) {
 
 void validateAdjoint(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
     RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
-    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
-    levi::ScalarVariable t("t");
+    ExpressionsServer expressionServer(timelySharedKinDyn);
+    expressionServer.updateRobotState(time, robotState);
 
-    t = time;
-    q = iDynTree::toEigen(robotState.s);
-
-    levi::Expression adjoint = AdjointTransformExpression(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
+    levi::Expression adjoint = *expressionServer.adjointTransform("root_link", "l_sole");
     ASSERT_IS_TRUE(adjoint.isValidExpression());
 
     SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
@@ -109,9 +100,9 @@ void validateAdjoint(std::shared_ptr<TimelySharedKinDynComputations> timelyShare
     for (Eigen::Index col = 0; col < 6; ++col) {
 
         iDynTree::toEigen(robotState.s) = originalJoints;
-        q = originalJoints;
+        expressionServer.updateRobotState(time, robotState);
 
-        derivative = adjoint.getColumnDerivative(col, q).evaluate();
+        derivative = adjoint.getColumnDerivative(col, *expressionServer.jointsPosition()).evaluate();
 
         for (unsigned int joint = 0; joint < robotState.s.size(); ++joint) {
 
@@ -130,13 +121,10 @@ void validateAdjoint(std::shared_ptr<TimelySharedKinDynComputations> timelyShare
 
 void validateAdjointWrench(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
     RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
-    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
-    levi::ScalarVariable t("t");
+    ExpressionsServer expressionServer(timelySharedKinDyn);
+    expressionServer.updateRobotState(time, robotState);
 
-    t = time;
-    q = iDynTree::toEigen(robotState.s);
-
-    levi::Expression adjoint = AdjointTransformWrenchExpression(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
+    levi::Expression adjoint = *expressionServer.adjointTransformWrench("root_link", "l_sole");
     ASSERT_IS_TRUE(adjoint.isValidExpression());
 
     SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
@@ -154,9 +142,9 @@ void validateAdjointWrench(std::shared_ptr<TimelySharedKinDynComputations> timel
     for (Eigen::Index col = 0; col < 6; ++col) {
 
         iDynTree::toEigen(robotState.s) = originalJoints;
-        q = originalJoints;
+        expressionServer.updateRobotState(time, robotState);
 
-        derivative = adjoint.getColumnDerivative(col, q).evaluate();
+        derivative = adjoint.getColumnDerivative(col, *expressionServer.jointsPosition()).evaluate();
 
         for (unsigned int joint = 0; joint < robotState.s.size(); ++joint) {
 
@@ -175,13 +163,10 @@ void validateAdjointWrench(std::shared_ptr<TimelySharedKinDynComputations> timel
 
 void validateJacobian(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
     RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
-    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
-    levi::ScalarVariable t("t");
+    ExpressionsServer expressionServer(timelySharedKinDyn);
+    expressionServer.updateRobotState(time, robotState);
 
-    t = time;
-    q = iDynTree::toEigen(robotState.s);
-
-    levi::Expression jacobian = RelativeLeftJacobianExpression(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
+    levi::Expression jacobian = *expressionServer.relativeLeftJacobian("root_link", "l_sole");
     ASSERT_IS_TRUE(jacobian.isValidExpression());
 
     SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
@@ -204,11 +189,11 @@ void validateJacobian(std::shared_ptr<TimelySharedKinDynComputations> timelyShar
     for (Eigen::Index col = 0; col < robotState.s.size(); ++col) {
 
         iDynTree::toEigen(robotState.s) = originalJoints;
-        q = originalJoints;
+        expressionServer.updateRobotState(time, robotState);
 
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        derivative = jacobian.getColumnDerivative(col, q).evaluate();
+        derivative = jacobian.getColumnDerivative(col, *expressionServer.jointsPosition()).evaluate();
         std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
         std::cout << "Elapsed time ms (col " << col << "): " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
 
@@ -232,13 +217,10 @@ void validateJacobian(std::shared_ptr<TimelySharedKinDynComputations> timelyShar
 
 void validateTransform(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
     RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
-    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
-    levi::ScalarVariable t("t");
+    ExpressionsServer expressionServer(timelySharedKinDyn);
+    expressionServer.updateRobotState(time, robotState);
 
-    t = time;
-    q = iDynTree::toEigen(robotState.s);
-
-    TransformExpression newTransform = TransformExpression::RelativeTransform(timelySharedKinDyn, &robotState, "root_link", "l_sole", q, t);
+    TransformExpression newTransform = *expressionServer.relativeTransform("root_link", "l_sole");
 
     iDynTree::Position testPosition = iDynTree::getRandomPosition();
 
@@ -265,7 +247,7 @@ void validateTransform(std::shared_ptr<TimelySharedKinDynComputations> timelySha
 
     Eigen::MatrixXd jacobian(3, robotState.s.size());
 
-    jacobian = transformedPos.getColumnDerivative(0, q).evaluate();
+    jacobian = transformedPos.getColumnDerivative(0, *expressionServer.jointsPosition()).evaluate();
 
     originalJoints = iDynTree::toEigen(robotState.s);
 
@@ -285,29 +267,14 @@ void validateTransform(std::shared_ptr<TimelySharedKinDynComputations> timelySha
 
 void validateCom(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
     RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
-    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
-    levi::ScalarVariable t("t");
+    ExpressionsServer expressionServer(timelySharedKinDyn);
+    expressionServer.updateRobotState(time, robotState);
 
-    t = time;
-    q = iDynTree::toEigen(robotState.s);
-
-    levi::Variable p_base(3, "p_b");
-
-    p_base = iDynTree::toEigen(robotState.base_position);
-
-    levi::Variable base_quat(4, "qb");
-
-    base_quat = iDynTree::toEigen(robotState.base_quaternion);
-
-    levi::Expression baseRotation = RotationExpression(NormalizedQuaternion(base_quat).asVariable());
-
-    TransformExpression baseTransform(p_base, baseRotation);
-
-    levi::Expression comPosition = baseTransform * CoMInBaseExpression(timelySharedKinDyn, &robotState, q, t);
+    levi::Expression comPosition = *expressionServer.worldToBase() * *expressionServer.comInBase();
 
     ASSERT_IS_TRUE(comPosition.isValidExpression());
 
-    levi::Expression comJacobian = comPosition.getColumnDerivative(0, q);
+    levi::Expression comJacobian = comPosition.getColumnDerivative(0, *expressionServer.jointsPosition());
 
     iDynTree::MatrixDynSize iDyntree_jacobian;
 
@@ -338,7 +305,7 @@ void validateCom(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKin
         Eigen::MatrixXd jacobianDerivative(3, robotState.s.size());
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        jacobianDerivative = comJacobian.getColumnDerivative(col, q).evaluate();
+        jacobianDerivative = comJacobian.getColumnDerivative(col, *expressionServer.jointsPosition()).evaluate();
         std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
         std::cout << "Elapsed time ms (Com jacobian col " << col << "): " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
 
@@ -362,15 +329,10 @@ void validateCom(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKin
 
 void validateRelativeVelocityExpression(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
     RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
-    levi::Variable q(timelySharedKinDyn->model().getNrOfJoints(), "q");
-    levi::Variable q_dot(timelySharedKinDyn->model().getNrOfJoints(), "q_dot");
-    levi::ScalarVariable t("t");
+    ExpressionsServer expressionServer(timelySharedKinDyn);
+    expressionServer.updateRobotState(time, robotState);
 
-    t = time;
-    q = iDynTree::toEigen(robotState.s);
-    q_dot = iDynTree::toEigen(robotState.s_dot);
-
-    levi::Expression relativeVelocityExpression = RelativeLeftVelocityExpression(timelySharedKinDyn, &robotState, "root_link", "r_sole", q, q_dot, t);
+    levi::Expression relativeVelocityExpression = *expressionServer.relativeVelocity("root_link", "r_sole");
 
     ASSERT_IS_TRUE(relativeVelocityExpression.isValidExpression());
 
@@ -390,7 +352,7 @@ void validateRelativeVelocityExpression(std::shared_ptr<TimelySharedKinDynComput
     iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.evaluate();
     ASSERT_EQUAL_VECTOR(relVelocityEval, checkRelativeVelocity);
 
-    iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.getColumnDerivative(0, q_dot).evaluate() * q_dot.evaluate();
+    iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.getColumnDerivative(0, *expressionServer.jointsVelocity()).evaluate() * expressionServer.jointsVelocity()->evaluate();
     ASSERT_EQUAL_VECTOR(relVelocityEval, checkRelativeVelocity);
 }
 
@@ -471,31 +433,31 @@ int main() {
     std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn = std::make_shared<TimelySharedKinDynComputations>();
     configureSharedKinDyn(timelySharedKinDyn);
 
-//    validateQuaternionExpressions(iDynTree::getRandomRotation());
+    validateQuaternionExpressions(iDynTree::getRandomRotation());
 
-//    validateAdjoint(timelySharedKinDyn, 0.0);
+    validateAdjoint(timelySharedKinDyn, 0.0);
 
-//    validateAdjoint(timelySharedKinDyn, 1.0);
+    validateAdjoint(timelySharedKinDyn, 1.0);
 
-//    validateAdjointWrench(timelySharedKinDyn, 0.0);
+    validateAdjointWrench(timelySharedKinDyn, 0.0);
 
-//    validateAdjointWrench(timelySharedKinDyn, 1.0);
+    validateAdjointWrench(timelySharedKinDyn, 1.0);
 
-//    validateJacobian(timelySharedKinDyn, 0.0);
+    validateJacobian(timelySharedKinDyn, 0.0);
 
-//    validateJacobian(timelySharedKinDyn, 1.0);
+    validateJacobian(timelySharedKinDyn, 1.0);
 
-//    validateTransform(timelySharedKinDyn, 0.0);
+    validateTransform(timelySharedKinDyn, 0.0);
 
-//    validateTransform(timelySharedKinDyn, 1.0);
+    validateTransform(timelySharedKinDyn, 1.0);
 
-//    validateCom(timelySharedKinDyn, 0.0);
+    validateCom(timelySharedKinDyn, 0.0);
 
-//    validateCom(timelySharedKinDyn, 1.0);
+    validateCom(timelySharedKinDyn, 1.0);
 
-//    validateRelativeVelocityExpression(timelySharedKinDyn, 0.0);
+    validateRelativeVelocityExpression(timelySharedKinDyn, 0.0);
 
-//    validateRelativeVelocityExpression(timelySharedKinDyn, 1.0);
+    validateRelativeVelocityExpression(timelySharedKinDyn, 1.0);
 
     validateQuaternionError(timelySharedKinDyn, 0.0);
 

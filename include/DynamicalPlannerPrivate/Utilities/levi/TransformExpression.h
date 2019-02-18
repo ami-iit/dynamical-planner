@@ -37,13 +37,6 @@ namespace DynamicalPlanner {
             levi::Expression operator*(const levi::Expression& position) const;
 
             void operator=(const TransformExpression& other);
-
-            static TransformExpression RelativeTransform(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                         RobotState *robotState,
-                                                         const std::string& baseFrame,
-                                                         const std::string &targetFrame,
-                                                         levi::Variable jointsVariable,
-                                                         levi::ScalarVariable timeVariable);
         };
     }
 }

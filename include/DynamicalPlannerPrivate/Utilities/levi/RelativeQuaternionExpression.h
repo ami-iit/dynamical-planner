@@ -8,28 +8,16 @@
 #define DPLANNER_RELATIVEQUATERNIONEXPRESSION_H
 
 #include <levi/ForwardDeclarations.h>
-#include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <memory>
 #include <string>
 
 namespace DynamicalPlanner {
     namespace Private {
 
-        levi::Expression RelativeQuaternionExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                      RobotState *robotState,
+        levi::Expression RelativeQuaternionExpression(ExpressionsServer* expressionsServer,
                                                       const std::string& baseFrame,
-                                                      const std::string &targetFrame,
-                                                      levi::Variable jointsVariable,
-                                                      levi::ScalarVariable timeVariable);
-
-        levi::Expression RelativeQuaternionExpression(std::shared_ptr<TimelySharedKinDynComputations> sharedKinDyn,
-                                                      RobotState *robotState,
-                                                      const std::string& baseFrame,
-                                                      const std::string &targetFrame,
-                                                      levi::Variable jointsVariable,
-                                                      levi::ScalarVariable timeVariable,
-                                                      const levi::Expression& relativeJacobian);
-
+                                                      const std::string &targetFrame);
     }
 }
 
