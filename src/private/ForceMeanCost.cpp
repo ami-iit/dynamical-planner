@@ -111,3 +111,52 @@ bool ForceMeanCost::costFirstPartialDerivativeWRTControl(double, const iDynTree:
     partialDerivative = m_pimpl->controlGradientBuffer;
     return true;
 }
+
+bool ForceMeanCost::costSecondPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                        const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &partialDerivative)
+{
+    double numberOfPoints = m_pimpl->otherPointsRanges.size() + 1.0;
+    double numberOfPointsInverse = 1.0 / numberOfPoints;
+
+    iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
+
+    hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, m_pimpl->forcePointRange.offset).setIdentity();
+    hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, m_pimpl->forcePointRange.offset) *= (1.0 - numberOfPointsInverse) *
+        (1.0 - numberOfPointsInverse);
+
+    for (auto& force : m_pimpl->otherPointsRanges) {
+        hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, force.offset).setIdentity();
+        hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, force.offset) *= -numberOfPointsInverse * (1.0 - numberOfPointsInverse);
+        hessianMap.block<3,3>(force.offset, m_pimpl->forcePointRange.offset) =
+            hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, force.offset);
+    }
+
+    for (size_t i = 0; i < m_pimpl->otherPointsRanges.size(); ++i) {
+        for (size_t j = i; j < m_pimpl->otherPointsRanges.size(); ++j) {
+            hessianMap.block<3,3>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset).setIdentity();
+            hessianMap.block<3,3>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset) *= numberOfPointsInverse *
+                numberOfPointsInverse;
+
+            if (i != j) {
+                hessianMap.block<3,3>(m_pimpl->otherPointsRanges[j].offset, m_pimpl->otherPointsRanges[i].offset) =
+                    hessianMap.block<3,3>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset);
+            }
+        }
+    }
+
+    return true;
+}
+
+bool ForceMeanCost::costSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                          const iDynTree::VectorDynSize &/*control*/,
+                                                          iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
+    return true;
+}
+
+bool ForceMeanCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                               const iDynTree::VectorDynSize &/*control*/,
+                                                               iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
+    return true;
+}

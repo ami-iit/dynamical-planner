@@ -95,8 +95,9 @@ void configureSharedKinDyn(std::shared_ptr<TimelySharedKinDynComputations> timel
 }
 
 void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                    std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const std::vector<iDynTree::Position>& leftPositions,
-                    const std::vector<iDynTree::Position>& rightPositions, std::shared_ptr<StaticTorquesCost>& staticTorquesCost,
+                    std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, std::shared_ptr<ExpressionsServer> expressionsServer,
+                    const std::vector<iDynTree::Position>& leftPositions, const std::vector<iDynTree::Position>& rightPositions,
+                    std::shared_ptr<StaticTorquesCost>& staticTorquesCost,
                     iDynTree::optimalcontrol::OptimalControlProblem& ocProblem) {
     bool ok = false;
     HyperbolicSecant forceActivation;
@@ -135,7 +136,7 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
                                                                                                                            controlVariables.size());
     ok = ocProblem.addLagrangeTerm(0.5, comCost);
     ASSERT_IS_TRUE(ok);
-    std::shared_ptr<FrameOrientationCost> orientationCost = std::make_shared<FrameOrientationCost>(stateVariables, controlVariables, timelySharedKinDyn, 22);
+    std::shared_ptr<FrameOrientationCost> orientationCost = std::make_shared<FrameOrientationCost>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, 22);
     ok = ocProblem.addLagrangeTerm(0.5, orientationCost);
     ASSERT_IS_TRUE(ok);
 
@@ -355,12 +356,14 @@ int main() {
     rightPositions.push_back(iDynTree::Position( 0.063,  0.04, 0.0));
 
     configureSharedKinDyn(timelySharedKinDyn);
+    std::shared_ptr<ExpressionsServer> expressionsServer = std::make_shared<ExpressionsServer>(timelySharedKinDyn);
+
     setVariables(stateVariables, controlVariables, leftPositions.size(), timelySharedKinDyn);
 
 
     std::shared_ptr<StaticTorquesCost> staticTorquesPtr;
 
-    configureCosts(stateVariables, controlVariables, timelySharedKinDyn, leftPositions, rightPositions, staticTorquesPtr, ocProblem);
+    configureCosts(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, leftPositions, rightPositions, staticTorquesPtr, ocProblem);
 
     iDynTree::VectorDynSize stateVector, controlVector;
     stateVector.resize(static_cast<unsigned int>(stateVariables.size()));

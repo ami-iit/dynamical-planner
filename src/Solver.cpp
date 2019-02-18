@@ -393,6 +393,7 @@ public:
 
         if (st.frameCostActive) {
             costs.frameOrientation = std::make_shared<FrameOrientationCost>(stateStructure, controlStructure, timelySharedKinDyn,
+                                                                            expressionsServer,
                                                                             st.robotModel.getFrameIndex(st.frameForOrientationCost));
 
             ok = costs.frameOrientation->setDesiredRotationTrajectory(st.desiredRotationTrajectory);

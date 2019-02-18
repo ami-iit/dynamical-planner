@@ -32,6 +32,12 @@ public:
     RobotState robotState;
     std::shared_ptr<SharedKinDynComputations> sharedKinDyn;
     std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
+    std::shared_ptr<ExpressionsServer> expressionsServer;
+
+    levi::Expression quaternionErrorExpression,
+        asExpression, quaternionDerivative, jointsDerivative,
+        quaternionHessian, jointsHessian, quaternionJointsHessian;
+    levi::Variable desiredQuaternion;
 
     std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredTrajectory;
 
@@ -72,7 +78,9 @@ public:
 
 };
 
-FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, const iDynTree::FrameIndex &desiredFrame)
+FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
+                                           std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
+                                           std::shared_ptr<ExpressionsServer> expressionsServer, const iDynTree::FrameIndex &desiredFrame)
     : iDynTree::optimalcontrol::Cost ("FrameOrientation")
     , m_pimpl(std::make_unique<Implementation>())
 {
@@ -110,6 +118,24 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
 
     m_pimpl->desiredTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantRotation>(iDynTree::Rotation::Identity());
     m_pimpl->identityQuaternion = iDynTree::Rotation::Identity().asQuaternion();
+
+    m_pimpl->expressionsServer = expressionsServer;
+
+    std::string desiredFrameName = timelySharedKinDyn->model().getFrameName(desiredFrame);
+    m_pimpl->desiredQuaternion = levi::Variable(4, "quat_desired");
+    m_pimpl->quaternionErrorExpression = *expressionsServer->quaternionError(desiredFrameName, m_pimpl->desiredQuaternion);
+    levi::Constant identityQuat_expr(4,1,"quaternionIdentity");
+    identityQuat_expr = iDynTree::toEigen(m_pimpl->identityQuaternion);
+
+    levi::Expression quaternionDifference = m_pimpl->quaternionErrorExpression - identityQuat_expr;
+    m_pimpl->asExpression = 0.5 * quaternionDifference.transpose() * quaternionDifference;
+
+    m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, *m_pimpl->expressionsServer->baseQuaternion());
+    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, *m_pimpl->expressionsServer->jointsPosition());
+
+    m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, *m_pimpl->expressionsServer->baseQuaternion());
+    m_pimpl->jointsHessian = m_pimpl->jointsDerivative.transpose().getColumnDerivative(0, *m_pimpl->expressionsServer->jointsPosition());
+    m_pimpl->quaternionJointsHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, *m_pimpl->expressionsServer->jointsPosition());
 
 }
 
@@ -221,7 +247,7 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
 
         iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
 
-        gradientMap.segment<3>(m_pimpl->basePositionRange.offset) = reducedGradientMap.segment<3>(0);
+//        gradientMap.segment<3>(m_pimpl->basePositionRange.offset) = reducedGradientMap.segment<3>(0);
         gradientMap.segment<4>(m_pimpl->baseQuaternionRange.offset) = reducedGradientMap.segment<4>(3);
         gradientMap.segment(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.size) =
                 reducedGradientMap.segment(7, m_pimpl->jointsPositionRange.size);
@@ -238,5 +264,56 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTControl(double /*time*/,
 {
     partialDerivative = m_pimpl->controlGradientBuffer;
 
+    return true;
+}
+
+bool FrameOrientationCost::costSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &partialDerivative)
+{
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
+
+    m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
+
+    m_pimpl->updateRobotState();
+    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+
+    bool isValid = false;
+    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][FrameOrientationCost::costFirstPartialDerivativeWRTState] Unable to retrieve a valid rotation at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
+    m_pimpl->desiredQuaternion = iDynTree::toEigen(desiredRotation.asQuaternion());
+
+    iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
+
+    hessianMap.block<4,4>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseQuaternionRange.offset) =
+        m_pimpl->quaternionHessian.evaluate();
+
+    hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->jointsPositionRange.size) =
+        m_pimpl->jointsHessian.evaluate();
+
+    hessianMap.block(m_pimpl->baseQuaternionRange.offset, m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.size, m_pimpl->jointsPositionRange.size) =
+        m_pimpl->quaternionJointsHessian.evaluate();
+
+    hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->baseQuaternionRange.size) =
+        m_pimpl->quaternionJointsHessian.evaluate().transpose();
+
+
+    return true;
+}
+
+bool FrameOrientationCost::costSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                 const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
+    return true;
+}
+
+bool FrameOrientationCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                      const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
     return true;
 }
