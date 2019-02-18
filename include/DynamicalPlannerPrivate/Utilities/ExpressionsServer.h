@@ -30,7 +30,17 @@ public:
 
     bool updateRobotState(double time, const RobotState &currentState);
 
+    const RobotState &currentState() const;
+
+    SharedKinDynComputationsPointer currentKinDyn();
+
+    const iDynTree::Model& model() const;
+
+    std::string getFloatingBase() const;
+
     levi::Expression* baseRotation();
+
+    levi::Expression *normalizedBaseQuaternion();
 
     levi::Variable* baseQuaternion(); //not normalized
 
@@ -59,11 +69,23 @@ public:
     levi::Expression* relativePosition(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
+    levi::Expression* relativeQuaternion(const std::string& baseFrame,
+                                         const std::string &targetFrame);
+
+    levi::Expression* relativeRotation(const std::string& baseFrame,
+                                       const std::string &targetFrame);
+
     TransformExpression* relativeTransform(const std::string& baseFrame,
+                                           const std::string &targetFrame);
+
+    levi::Expression* relativeLeftJacobian(const std::string& baseFrame,
                                            const std::string &targetFrame);
 
     levi::Expression* relativeVelocity(const std::string& baseFrame,
                                        const std::string &targetFrame);
+
+    levi::Expression* quaternionError(const std::string &desiredFrame,
+                                      const levi::Variable& desiredQuaternion);
 
 };
 

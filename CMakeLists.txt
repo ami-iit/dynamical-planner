@@ -96,7 +96,8 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${LEVI_UTILITIES_DIR}/QuaternionExpressions
                                      ${LEVI_UTILITIES_DIR}/RelativePositionExpression.h
                                      ${LEVI_UTILITIES_DIR}/TransformExpression.h
                                      ${LEVI_UTILITIES_DIR}/CoMInBaseExpression.h
-                                     ${LEVI_UTILITIES_DIR}/RelativeVelocityExpression.h)
+                                     ${LEVI_UTILITIES_DIR}/RelativeVelocityExpression.h
+                                     ${LEVI_UTILITIES_DIR}/QuaternionErrorExpression.h)
 
 set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/DynamicalConstraints.cpp
@@ -131,7 +132,8 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/TransformExpression.cpp
                              src/private/CoMInBaseExpression.cpp
                              src/private/RelativeVelocityExpression.cpp
-                             src/private/ExpressionsServer.cpp)
+                             src/private/ExpressionsServer.cpp
+                             src/private/QuaternionErrorExpression.cpp)
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})
 target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)

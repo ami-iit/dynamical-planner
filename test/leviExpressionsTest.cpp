@@ -13,7 +13,9 @@
 #include <DynamicalPlannerPrivate/Utilities/levi/TransformExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/CoMInBaseExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/QuaternionErrorExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
+#include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 
 #include <URDFdir.h>
 
@@ -390,6 +392,76 @@ void validateRelativeVelocityExpression(std::shared_ptr<TimelySharedKinDynComput
 
     iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.getColumnDerivative(0, q_dot).evaluate() * q_dot.evaluate();
     ASSERT_EQUAL_VECTOR(relVelocityEval, checkRelativeVelocity);
+}
+
+void validateQuaternionError(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {
+    std::shared_ptr<ExpressionsServer> expressionsServer = std::make_shared<ExpressionsServer>(timelySharedKinDyn);
+    RobotState robotState = RandomRobotState(timelySharedKinDyn->model());
+
+    expressionsServer->updateRobotState(time, robotState);
+
+    iDynTree::Rotation desiredRotation = iDynTree::getRandomRotation();
+    levi::Variable quat_des(4, "quat_des");
+    quat_des = iDynTree::toEigen(desiredRotation.asQuaternion());
+
+    SharedKinDynComputationsPointer kinDyn = timelySharedKinDyn->get(time);
+
+    levi::Expression quaternionErrorExpression = *expressionsServer->quaternionError("neck_2", quat_des);
+
+    ASSERT_IS_TRUE(quaternionErrorExpression.isValidExpression());
+
+    iDynTree::Transform frameTransform = kinDyn->getWorldTransform(robotState, "neck_2");
+
+    iDynTree::Vector4 quaternion_iDyn = ErrorQuaternion(frameTransform.getRotation(), desiredRotation);
+
+    iDynTree::Vector4 quaternion_levi;
+
+    iDynTree::toEigen(quaternion_levi) = quaternionErrorExpression.evaluate();
+
+    ASSERT_EQUAL_VECTOR(quaternion_levi, quaternion_iDyn);
+
+    double perturbation = 1e-3;
+    Eigen::VectorXd originalJoints, jointsPerturbation;
+    iDynTree::Vector4 firstOrderTaylor, perturbedQuaternion, originalQuaternion;
+    Eigen::MatrixXd derivative;
+
+    derivative = quaternionErrorExpression.getColumnDerivative(0, *expressionsServer->jointsPosition()).evaluate();
+
+    originalJoints = iDynTree::toEigen(robotState.s);
+
+    for (unsigned int joint = 0; joint < robotState.s.size(); ++joint) {
+
+        iDynTree::toEigen(robotState.s) = originalJoints;
+        robotState.s(joint) += perturbation;
+
+        frameTransform = kinDyn->getWorldTransform(robotState, "neck_2");
+        perturbedQuaternion = ErrorQuaternion(frameTransform.getRotation(), desiredRotation);
+
+        iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(quaternion_iDyn) + derivative * (iDynTree::toEigen(robotState.s) - originalJoints);
+
+        ASSERT_EQUAL_VECTOR_TOL(perturbedQuaternion, firstOrderTaylor, perturbation/1000.0);
+
+    }
+
+    iDynTree::toEigen(robotState.s) = originalJoints;
+
+    Eigen::MatrixXd derivativeBase = quaternionErrorExpression.getColumnDerivative(0, *expressionsServer->baseQuaternion()).evaluate();
+
+    originalQuaternion = robotState.base_quaternion;
+
+    for (unsigned int i = 0; i < 4; ++i) {
+
+        robotState.base_quaternion = originalQuaternion;
+        robotState.base_quaternion(i) += perturbation;
+
+        frameTransform = kinDyn->getWorldTransform(robotState, "neck_2");
+        perturbedQuaternion = ErrorQuaternion(frameTransform.getRotation(), desiredRotation);
+
+        iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(quaternion_iDyn) + derivativeBase * (iDynTree::toEigen(robotState.base_quaternion) - iDynTree::toEigen(originalQuaternion));
+
+        ASSERT_EQUAL_VECTOR_TOL(perturbedQuaternion, firstOrderTaylor, perturbation/1000.0);
+
+    }
 
 
 }
@@ -399,31 +471,33 @@ int main() {
     std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn = std::make_shared<TimelySharedKinDynComputations>();
     configureSharedKinDyn(timelySharedKinDyn);
 
-    validateQuaternionExpressions(iDynTree::getRandomRotation());
+//    validateQuaternionExpressions(iDynTree::getRandomRotation());
 
-    validateAdjoint(timelySharedKinDyn, 0.0);
+//    validateAdjoint(timelySharedKinDyn, 0.0);
 
-    validateAdjoint(timelySharedKinDyn, 1.0);
+//    validateAdjoint(timelySharedKinDyn, 1.0);
 
-    validateAdjointWrench(timelySharedKinDyn, 0.0);
+//    validateAdjointWrench(timelySharedKinDyn, 0.0);
 
-    validateAdjointWrench(timelySharedKinDyn, 1.0);
+//    validateAdjointWrench(timelySharedKinDyn, 1.0);
 
-    validateJacobian(timelySharedKinDyn, 0.0);
+//    validateJacobian(timelySharedKinDyn, 0.0);
 
-    validateJacobian(timelySharedKinDyn, 1.0);
+//    validateJacobian(timelySharedKinDyn, 1.0);
 
-    validateTransform(timelySharedKinDyn, 0.0);
+//    validateTransform(timelySharedKinDyn, 0.0);
 
-    validateTransform(timelySharedKinDyn, 1.0);
+//    validateTransform(timelySharedKinDyn, 1.0);
 
-    validateCom(timelySharedKinDyn, 0.0);
+//    validateCom(timelySharedKinDyn, 0.0);
 
-    validateCom(timelySharedKinDyn, 1.0);
+//    validateCom(timelySharedKinDyn, 1.0);
 
-    validateRelativeVelocityExpression(timelySharedKinDyn, 0.0);
+//    validateRelativeVelocityExpression(timelySharedKinDyn, 0.0);
 
-    validateRelativeVelocityExpression(timelySharedKinDyn, 1.0);
+//    validateRelativeVelocityExpression(timelySharedKinDyn, 1.0);
+
+    validateQuaternionError(timelySharedKinDyn, 0.0);
 
     return 0;
 }
