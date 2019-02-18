@@ -103,3 +103,38 @@ bool PhantomForcesCost::costFirstPartialDerivativeWRTControl(double, const iDynT
     partialDerivative = m_pimpl->controlJacobianBuffer;
     return true;
 }
+
+bool PhantomForcesCost::costSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &partialDerivative)
+{
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
+
+    m_pimpl->pointPosition = m_pimpl->stateVariables(m_pimpl->positionPointRange);
+    m_pimpl->pointForce = m_pimpl->stateVariables(m_pimpl->forcePointRange);
+
+    double delta = m_pimpl->activation.eval(m_pimpl->pointPosition(2));
+    double deltaDerivative = m_pimpl->activation.evalDerivative(m_pimpl->pointPosition(2));
+    double deltaDoubleDerivative = m_pimpl->activation.evalDoubleDerivative(m_pimpl->pointPosition(2));
+    double fz = m_pimpl->pointForce(2);
+    unsigned int pzCol = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
+    unsigned int fzCol = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
+
+    double phantomForce = (1- delta) * fz;
+
+    partialDerivative(pzCol, pzCol) = (deltaDerivative * fz) * (deltaDerivative * fz) - phantomForce * deltaDoubleDerivative;
+    partialDerivative(fzCol, fzCol) = (1- delta) * (1- delta);
+    partialDerivative(fzCol, pzCol) = -2.0 * phantomForce * deltaDerivative;
+    partialDerivative(pzCol, fzCol) = partialDerivative(fzCol, pzCol);
+
+    return true;
+}
+
+bool PhantomForcesCost::costSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
+    return true;
+}
+
+bool PhantomForcesCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
+    return true;
+}

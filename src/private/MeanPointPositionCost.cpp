@@ -113,7 +113,7 @@ bool MeanPointPositionCost::costFirstPartialDerivativeWRTState(double time, cons
 {
     m_pimpl->stateVariables = state;
 
-    double numberOfPointsInverse = 1/static_cast<double>(m_pimpl->pointRanges.size());
+    double numberOfPointsInverse = 1.0/static_cast<double>(m_pimpl->pointRanges.size());
 
     m_pimpl->distanceFromTarget = m_pimpl->stateVariables(m_pimpl->pointRanges[0]);
     for (size_t i = 1; i < m_pimpl->pointRanges.size(); ++i) {
@@ -154,5 +154,49 @@ bool MeanPointPositionCost::costFirstPartialDerivativeWRTControl(double, const i
                                                                  iDynTree::VectorDynSize &partialDerivative)
 {
     partialDerivative = m_pimpl->controlGradientBuffer;
+    return true;
+}
+
+bool MeanPointPositionCost::costSecondPartialDerivativeWRTState(double time, const iDynTree::VectorDynSize &/*state*/, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &partialDerivative)
+{
+    double numberOfPointsInverse = 1.0/static_cast<double>(m_pimpl->pointRanges.size());
+
+    iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
+
+    bool isValid;
+    const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][MeanPointPositionCost::costEvaluation] Unable to retrieve a valid timeVaryingWeight at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
+
+    for (size_t i = 0; i < m_pimpl->pointRanges.size(); ++i) {
+        for (size_t j = i; j < m_pimpl->pointRanges.size(); ++j) {
+            hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset).setIdentity();
+            hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset) *= timeWeight * numberOfPointsInverse *
+                timeWeight * numberOfPointsInverse;
+
+            if (i != j) {
+                hessianMap.block<3,3>(m_pimpl->pointRanges[j].offset, m_pimpl->pointRanges[i].offset) =
+                    hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset);
+            }
+        }
+    }
+
+    return true;
+}
+
+bool MeanPointPositionCost::costSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                  const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
+    return true;
+}
+
+bool MeanPointPositionCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
+                                                                       const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
+{
     return true;
 }

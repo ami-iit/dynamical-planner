@@ -46,6 +46,21 @@ public:
 
     virtual bool costFirstPartialDerivativeWRTControl(double, const iDynTree::VectorDynSize&, const iDynTree::VectorDynSize&,
                                                       iDynTree::VectorDynSize& partialDerivative) override;
+
+    virtual bool costSecondPartialDerivativeWRTState(double time,
+                                                     const iDynTree::VectorDynSize& state,
+                                                     const iDynTree::VectorDynSize& control,
+                                                     iDynTree::MatrixDynSize& partialDerivative) override;
+
+    virtual bool costSecondPartialDerivativeWRTControl(double time,
+                                                       const iDynTree::VectorDynSize& state,
+                                                       const iDynTree::VectorDynSize& control,
+                                                       iDynTree::MatrixDynSize& partialDerivative) override;
+
+    virtual bool costSecondPartialDerivativeWRTStateControl(double time,
+                                                            const iDynTree::VectorDynSize& state,
+                                                            const iDynTree::VectorDynSize& control,
+                                                            iDynTree::MatrixDynSize& partialDerivative) override;
 };
 
 #endif // DPLANNER_MEANPOINTPOSITIONCOST_H

@@ -95,3 +95,45 @@ bool SwingCost::costFirstPartialDerivativeWRTControl(double, const iDynTree::Vec
 
     return true;
 }
+
+bool SwingCost::costSecondPartialDerivativeWRTState(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &partialDerivative)
+{
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->pointPositionRange.offset + 2);
+    double ux = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0);
+    double uy = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1);
+
+    partialDerivative(pzIndex, pzIndex) = ux * ux + uy * uy;
+
+    return true;
+}
+
+bool SwingCost::costSecondPartialDerivativeWRTControl(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &partialDerivative)
+{
+    m_pimpl->stateVariables = state;
+    unsigned int uxIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
+    unsigned int uyIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 1);
+    double heightDifference = (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
+
+    partialDerivative(uxIndex, uxIndex) = heightDifference * heightDifference;
+    partialDerivative(uyIndex, uyIndex) = partialDerivative(uxIndex, uxIndex);
+    return true;
+}
+
+bool SwingCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::MatrixDynSize &partialDerivative)
+{
+    m_pimpl->stateVariables = state;
+    m_pimpl->controlVariables = control;
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->pointPositionRange.offset + 2);
+    unsigned int uxIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
+    unsigned int uyIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 1);
+    double ux = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0);
+    double uy = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1);
+    double heightDifference = (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
+
+    partialDerivative(pzIndex, uxIndex) = 2.0 * ux * heightDifference;
+    partialDerivative(pzIndex, uyIndex) = 2.0 * uy * heightDifference;
+
+    return true;
+}
