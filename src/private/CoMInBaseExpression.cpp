@@ -32,7 +32,7 @@ public:
 
     CoMInBaseJacobianEvaluable(ExpressionsServer* expressionsServer)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (*expressionsServer->jointsPosition(), 3, expressionsServer->jointsPosition()->rows(), "B_J_[B, CoM]")
+          (expressionsServer->jointsPosition(), 3, expressionsServer->jointsPosition().rows(), "B_J_[B, CoM]")
           , m_expressionsServer(expressionsServer)
     {
         const iDynTree::Model& model = expressionsServer->model();
@@ -50,7 +50,7 @@ public:
             totalMass += model.getLink(static_cast<iDynTree::LinkIndex>(l))->getInertia().getMass();
         }
 
-        m_columns.resize(static_cast<size_t>(expressionsServer->jointsPosition()->rows()), levi::Null(3,1));
+        m_columns.resize(static_cast<size_t>(expressionsServer->jointsPosition().rows()), levi::Null(3,1));
 
         iDynTree::IJointConstPtr jointPtr;
         iDynTree::LinkIndex linkIndex;
@@ -83,7 +83,7 @@ public:
                                                                                            childLink,
                                                                                            parentLink)) * relativeMass;
 
-                m_columns[jointIndex] = m_columns[jointIndex] + expressionsServer->adjointTransform(linkName, model.getLinkName(childLink))->block(0,0,3,6) *
+                m_columns[jointIndex] = m_columns[jointIndex] + expressionsServer->adjointTransform(linkName, model.getLinkName(childLink)).block(0,0,3,6) *
                         levi::Constant(motionSubSpaceVector, "s_" + std::to_string(jointIndex) + " m_" + std::to_string(jointIndex) + "/M");
 
                 visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
@@ -138,7 +138,7 @@ public:
 
     CoMInBasePositionEvaluable(ExpressionsServer* expressionsServer)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (*expressionsServer->jointsPosition(), 3, 1, "b_p_CoM")
+          (expressionsServer->jointsPosition(), 3, 1, "b_p_CoM")
           , m_expressionsServer(expressionsServer)
     {
 

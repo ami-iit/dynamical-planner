@@ -123,19 +123,19 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
 
     std::string desiredFrameName = timelySharedKinDyn->model().getFrameName(desiredFrame);
     m_pimpl->desiredQuaternion = levi::Variable(4, "quat_desired");
-    m_pimpl->quaternionErrorExpression = *expressionsServer->quaternionError(desiredFrameName, m_pimpl->desiredQuaternion);
+    m_pimpl->quaternionErrorExpression = expressionsServer->quaternionError(desiredFrameName, m_pimpl->desiredQuaternion);
     levi::Constant identityQuat_expr(4,1,"quaternionIdentity");
     identityQuat_expr = iDynTree::toEigen(m_pimpl->identityQuaternion);
 
     levi::Expression quaternionDifference = m_pimpl->quaternionErrorExpression - identityQuat_expr;
     m_pimpl->asExpression = 0.5 * quaternionDifference.transpose() * quaternionDifference;
 
-    m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, *m_pimpl->expressionsServer->baseQuaternion());
-    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, *m_pimpl->expressionsServer->jointsPosition());
+    m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
+    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
 
-    m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, *m_pimpl->expressionsServer->baseQuaternion());
-    m_pimpl->jointsHessian = m_pimpl->jointsDerivative.transpose().getColumnDerivative(0, *m_pimpl->expressionsServer->jointsPosition());
-    m_pimpl->quaternionJointsHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, *m_pimpl->expressionsServer->jointsPosition());
+    m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
+    m_pimpl->jointsHessian = m_pimpl->jointsDerivative.transpose().getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
+    m_pimpl->quaternionJointsHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
 
 }
 

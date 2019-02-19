@@ -44,8 +44,8 @@ public:
         iDynTree::LinkIndex baseLink = model.getFrameLink(m_baseFrame);
         assert(baseLink != iDynTree::LINK_INVALID_INDEX);
 
-        levi::Expression jacobian = *expressionsServer->relativeLeftJacobian(baseFrame, targetFrame);
-        m_thisExpression = jacobian * *expressionsServer->jointsVelocity();
+        levi::Expression jacobian = expressionsServer->relativeLeftJacobian(baseFrame, targetFrame);
+        m_thisExpression = jacobian * expressionsServer->jointsVelocity();
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
@@ -61,7 +61,7 @@ public:
     }
 
     virtual bool isNew(size_t callerID) final {
-        if (m_expressionsServer->jointsPosition()->isNew() || m_expressionsServer->jointsVelocity()->isNew()) {
+        if (m_expressionsServer->jointsPosition().isNew() || m_expressionsServer->jointsVelocity().isNew()) {
             resetEvaluationRegister();
         }
 
@@ -79,10 +79,10 @@ public:
 };
 
 bool RelativeLeftVelocityEvaluable::isDependentFrom(std::shared_ptr<levi::VariableBase> variable) {
-    return ((variable->variableName() == m_expressionsServer->jointsPosition()->name() &&
-             variable->dimension() == m_expressionsServer->jointsPosition()->rows()) ||
-            (variable->variableName() == m_expressionsServer->jointsVelocity()->name() &&
-             variable->dimension() == m_expressionsServer->jointsVelocity()->rows()));
+    return ((variable->variableName() == m_expressionsServer->jointsPosition().name() &&
+             variable->dimension() == m_expressionsServer->jointsPosition().rows()) ||
+            (variable->variableName() == m_expressionsServer->jointsVelocity().name() &&
+             variable->dimension() == m_expressionsServer->jointsVelocity().rows()));
 }
 
 levi::Expression DynamicalPlanner::Private::RelativeLeftVelocityExpression(ExpressionsServer *expressionsServer, const std::string &baseFrame,

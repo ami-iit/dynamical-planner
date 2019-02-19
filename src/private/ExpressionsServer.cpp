@@ -141,201 +141,201 @@ std::string ExpressionsServer::getFloatingBase() const
     return m_pimpl->timelySharedKinDyn->getFloatingBase();
 }
 
-levi::Expression *ExpressionsServer::baseRotation()
+levi::Expression ExpressionsServer::baseRotation()
 {
-    return &(m_pimpl->baseRotation);
+    return (m_pimpl->baseRotation);
 }
 
-levi::Expression *ExpressionsServer::normalizedBaseQuaternion()
+levi::Expression ExpressionsServer::normalizedBaseQuaternion()
 {
-    return &(m_pimpl->quaternionNormalized);
+    return (m_pimpl->quaternionNormalized);
 }
 
-levi::Variable *ExpressionsServer::baseQuaternion()
+levi::Variable ExpressionsServer::baseQuaternion()
 {
-    return &(m_pimpl->quaternion);
+    return (m_pimpl->quaternion);
 }
 
-levi::Variable *ExpressionsServer::basePosition()
+levi::Variable ExpressionsServer::basePosition()
 {
-    return &(m_pimpl->basePositionExpr);
+    return (m_pimpl->basePositionExpr);
 }
 
-levi::Variable *ExpressionsServer::baseLinearVelocity()
+levi::Variable ExpressionsServer::baseLinearVelocity()
 {
-    return &(m_pimpl->baseLinearVelocity);
+    return (m_pimpl->baseLinearVelocity);
 }
 
-levi::Variable *ExpressionsServer::baseQuaternionVelocity()
+levi::Variable ExpressionsServer::baseQuaternionVelocity()
 {
-    return &(m_pimpl->baseQuaternionVelocity);
+    return (m_pimpl->baseQuaternionVelocity);
 }
 
-levi::Expression *ExpressionsServer::baseTwist()
+levi::Expression ExpressionsServer::baseTwist()
 {
-    return &(m_pimpl->baseTwist);
+    return (m_pimpl->baseTwist);
 }
 
-levi::Variable *ExpressionsServer::jointsPosition()
+levi::Variable ExpressionsServer::jointsPosition()
 {
-    return &(m_pimpl->s);
+    return (m_pimpl->s);
 }
 
-levi::Variable *ExpressionsServer::jointsVelocity()
+levi::Variable ExpressionsServer::jointsVelocity()
 {
-    return &(m_pimpl->s_dot);
+    return (m_pimpl->s_dot);
 }
 
-TransformExpression *ExpressionsServer::worldToBase()
+TransformExpression ExpressionsServer::worldToBase()
 {
-    return &(m_pimpl->worldToBase);
+    return (m_pimpl->worldToBase);
 }
 
-levi::Expression *ExpressionsServer::comInBase()
+levi::Expression ExpressionsServer::comInBase()
 {
-    return &(m_pimpl->comInBase);
+    return (m_pimpl->comInBase);
 }
 
-levi::Expression *ExpressionsServer::adjointTransform(const std::string &baseFrame, const std::string &targetFrame)
+levi::Expression ExpressionsServer::adjointTransform(const std::string &baseFrame, const std::string &targetFrame)
 {
     ExpressionMap::iterator element = m_pimpl->adjointMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->adjointMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
         newElement.second = AdjointTransformExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->adjointMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-levi::Expression *ExpressionsServer::adjointTransformWrench(const std::string &baseFrame, const std::string &targetFrame)
+levi::Expression ExpressionsServer::adjointTransformWrench(const std::string &baseFrame, const std::string &targetFrame)
 {
     ExpressionMap::iterator element = m_pimpl->adjointWrenchMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->adjointWrenchMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
         newElement.second = AdjointTransformWrenchExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->adjointWrenchMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-levi::Expression *ExpressionsServer::relativePosition(const std::string &baseFrame, const std::string &targetFrame)
+levi::Expression ExpressionsServer::relativePosition(const std::string &baseFrame, const std::string &targetFrame)
 {
     ExpressionMap::iterator element = m_pimpl->relativePositionsMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->relativePositionsMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
         newElement.second = RelativePositionExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->relativePositionsMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-levi::Expression *ExpressionsServer::relativeQuaternion(const std::string &baseFrame, const std::string &targetFrame)
+levi::Expression ExpressionsServer::relativeQuaternion(const std::string &baseFrame, const std::string &targetFrame)
 {
     ExpressionMap::iterator element = m_pimpl->relativeQuaternionsMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->relativeQuaternionsMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
         newElement.second = RelativeQuaternionExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->relativeQuaternionsMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-levi::Expression *ExpressionsServer::relativeRotation(const std::string &baseFrame, const std::string &targetFrame)
+levi::Expression ExpressionsServer::relativeRotation(const std::string &baseFrame, const std::string &targetFrame)
 {
     ExpressionMap::iterator element = m_pimpl->relativeRotationsMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->relativeRotationsMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RotationExpression(relativeQuaternion(baseFrame, targetFrame)->asVariable());
+        newElement.second = RotationExpression(relativeQuaternion(baseFrame, targetFrame).asVariable());
         auto result = m_pimpl->relativeRotationsMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-TransformExpression *ExpressionsServer::relativeTransform(const std::string &baseFrame, const std::string &targetFrame)
+TransformExpression ExpressionsServer::relativeTransform(const std::string &baseFrame, const std::string &targetFrame)
 {
     TransformsMap::iterator element = m_pimpl->transformsMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->transformsMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, TransformExpression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = TransformExpression(*relativePosition(baseFrame, targetFrame), *relativeRotation(baseFrame, targetFrame));
+        newElement.second = TransformExpression(relativePosition(baseFrame, targetFrame), relativeRotation(baseFrame, targetFrame));
         auto result = m_pimpl->transformsMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-levi::Expression *ExpressionsServer::relativeLeftJacobian(const std::string &baseFrame, const std::string &targetFrame)
+levi::Expression ExpressionsServer::relativeLeftJacobian(const std::string &baseFrame, const std::string &targetFrame)
 {
     ExpressionMap::iterator element = m_pimpl->relativeJacobiansMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->relativeJacobiansMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
         newElement.second = RelativeLeftJacobianExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->relativeJacobiansMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-levi::Expression *ExpressionsServer::relativeVelocity(const std::string &baseFrame, const std::string &targetFrame)
+levi::Expression ExpressionsServer::relativeVelocity(const std::string &baseFrame, const std::string &targetFrame)
 {
     ExpressionMap::iterator element = m_pimpl->velocitiesMap.find(baseFrame+targetFrame);
 
     if (element != m_pimpl->velocitiesMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
         newElement.second = RelativeLeftVelocityExpression(this, baseFrame, targetFrame);
         auto result = m_pimpl->velocitiesMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }
 
-levi::Expression *ExpressionsServer::quaternionError(const std::string &desiredFrame, const levi::Variable &desiredQuaternion)
+levi::Expression ExpressionsServer::quaternionError(const std::string &desiredFrame, const levi::Variable &desiredQuaternion)
 {
     ExpressionMap::iterator element = m_pimpl->quaternionsErrorsMap.find(desiredFrame);
 
     if (element != m_pimpl->quaternionsErrorsMap.end()) {
-        return &(element->second);
+        return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = desiredFrame;
         newElement.second = QuaternionError(desiredFrame, this, desiredQuaternion);
         auto result = m_pimpl->quaternionsErrorsMap.insert(newElement);
         assert(result.second);
-        return &(result.first->second);
+        return (result.first->second);
     }
 }

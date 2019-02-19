@@ -37,7 +37,7 @@ public:
                               const std::string& baseFrame,
                               const std::string &targetFrame)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (*expressionsServer->jointsPosition(), 3, 1, baseFrame + "_p_" + targetFrame)
+          (expressionsServer->jointsPosition(), 3, 1, baseFrame + "_p_" + targetFrame)
           , m_expressionsServer(expressionsServer)
           , m_baseName(baseFrame)
           , m_targetName(targetFrame)
@@ -48,8 +48,8 @@ public:
         m_targetFrame = model.getFrameIndex(targetFrame);
         assert(m_targetFrame != iDynTree::FRAME_INVALID_INDEX);
 
-        m_derivative = *expressionsServer->relativeRotation(baseFrame, targetFrame) *
-            expressionsServer->relativeLeftJacobian(baseFrame, targetFrame)->block(0, 0, 3, expressionsServer->jointsPosition()->rows());
+        m_derivative = expressionsServer->relativeRotation(baseFrame, targetFrame) *
+            expressionsServer->relativeLeftJacobian(baseFrame, targetFrame).block(0, 0, 3, expressionsServer->jointsPosition().rows());
     }
 
     const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {

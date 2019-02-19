@@ -166,11 +166,11 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     positionInFootExpr = iDynTree::toEigen(positionInFoot);
 
     std::string frameName = timelySharedKinDyn->model().getFrameName(footFrame);
-    m_pimpl->asExpression = *m_pimpl->expressionsServer->worldToBase() *
-        *m_pimpl->expressionsServer->relativeTransform(timelySharedKinDyn->getFloatingBase(), frameName) * positionInFootExpr;
+    m_pimpl->asExpression = m_pimpl->expressionsServer->worldToBase() *
+        m_pimpl->expressionsServer->relativeTransform(timelySharedKinDyn->getFloatingBase(), frameName) * positionInFootExpr;
 
-    m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, *(m_pimpl->expressionsServer->baseQuaternion()));
-    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, *(m_pimpl->expressionsServer->jointsPosition()));
+    m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, (m_pimpl->expressionsServer->baseQuaternion()));
+    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, (m_pimpl->expressionsServer->jointsPosition()));
 
 }
 
@@ -320,12 +320,12 @@ bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTS
     for (Eigen::Index i = 0; i < 4; ++i) {
 
         quaternionHessian = lambdaMap.transpose() *
-            m_pimpl->quaternionDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->baseQuaternion())).evaluate();
+            m_pimpl->quaternionDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->baseQuaternion())).evaluate();
 
         hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionRange.offset, 1, 4) = quaternionHessian;
 
         jointsMap =
-            (m_pimpl->quaternionDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+            (m_pimpl->quaternionDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
             lambdaMap;
 
         hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->jointsPositionRange.offset, 1, m_pimpl->jointsPositionRange.size) =
@@ -336,7 +336,7 @@ bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTS
     }
 
     for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
-        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
             lambdaMap;
 
         hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =

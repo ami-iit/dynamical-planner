@@ -59,7 +59,7 @@ public:
     }
 
     virtual bool isNew(size_t callerID) final {
-        if (m_expressionsServer->jointsPosition()->isNew() || m_expressionsServer->baseQuaternion()->isNew() || m_desiredQuaternion.isNew()) {
+        if (m_expressionsServer->jointsPosition().isNew() || m_expressionsServer->baseQuaternion().isNew() || m_desiredQuaternion.isNew()) {
             resetEvaluationRegister();
         }
 
@@ -70,15 +70,15 @@ public:
         assert(column == 0);
         levi::unused(column);
 
-        if (variable->variableName() == m_expressionsServer->jointsPosition()->name() && variable->dimension() == m_expressionsServer->jointsPosition()->rows()) {
-            return 0.5 * G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)->asVariable()).transpose() *
-                m_expressionsServer->relativeLeftJacobian(m_baseFrame, m_desiredFrameName)->block(3, 0, 3, m_expressionsServer->jointsPosition()->rows());
+        if (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()) {
+            return 0.5 * G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion).asVariable()).transpose() *
+                m_expressionsServer->relativeLeftJacobian(m_baseFrame, m_desiredFrameName).block(3, 0, 3, m_expressionsServer->jointsPosition().rows());
         }
 
-        if (variable->variableName() == m_expressionsServer->baseQuaternion()->name() && variable->dimension() == m_expressionsServer->baseQuaternion()->rows()) {
-            return G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)->asVariable()).transpose() *
-                *m_expressionsServer->relativeRotation(m_desiredFrameName, m_baseFrame) * G_Expression(m_expressionsServer->normalizedBaseQuaternion()->asVariable()) *
-                m_expressionsServer->normalizedBaseQuaternion()->getColumnDerivative(0, *m_expressionsServer->baseQuaternion());
+        if (variable->variableName() == m_expressionsServer->baseQuaternion().name() && variable->dimension() == m_expressionsServer->baseQuaternion().rows()) {
+            return G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion).asVariable()).transpose() *
+                m_expressionsServer->relativeRotation(m_desiredFrameName, m_baseFrame) * G_Expression(m_expressionsServer->normalizedBaseQuaternion().asVariable()) *
+                m_expressionsServer->normalizedBaseQuaternion().getColumnDerivative(0, m_expressionsServer->baseQuaternion());
         }
 
         if (variable->variableName() == m_desiredQuaternion.name() && variable->dimension() == m_desiredQuaternion.rows()) {
@@ -94,8 +94,8 @@ public:
 };
 
 bool QuaternionErrorEvaluable::isDependentFrom(std::shared_ptr<levi::VariableBase> variable) {
-    return ((variable->variableName() == m_expressionsServer->jointsPosition()->name() && variable->dimension() == m_expressionsServer->jointsPosition()->rows()) ||
-            (variable->variableName() == m_expressionsServer->baseQuaternion()->name() && variable->dimension() == m_expressionsServer->baseQuaternion()->rows()) ||
+    return ((variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()) ||
+            (variable->variableName() == m_expressionsServer->baseQuaternion().name() && variable->dimension() == m_expressionsServer->baseQuaternion().rows()) ||
             (variable->variableName() == m_desiredQuaternion.name() && variable->dimension() == m_desiredQuaternion.rows()));
 }
 

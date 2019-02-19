@@ -38,53 +38,53 @@ public:
 
     std::string getFloatingBase() const;
 
-    levi::Expression* baseRotation();
+    levi::Expression baseRotation();
 
-    levi::Expression *normalizedBaseQuaternion();
+    levi::Expression normalizedBaseQuaternion();
 
-    levi::Variable* baseQuaternion(); //not normalized
+    levi::Variable baseQuaternion(); //not normalized
 
-    levi::Variable* basePosition();
+    levi::Variable basePosition();
 
-    levi::Variable* baseLinearVelocity();
+    levi::Variable baseLinearVelocity();
 
-    levi::Variable* baseQuaternionVelocity();
+    levi::Variable baseQuaternionVelocity();
 
-    levi::Expression* baseTwist();
+    levi::Expression baseTwist();
 
-    levi::Variable* jointsPosition();
+    levi::Variable jointsPosition();
 
-    levi::Variable* jointsVelocity();
+    levi::Variable jointsVelocity();
 
-    TransformExpression* worldToBase();
+    TransformExpression worldToBase();
 
-    levi::Expression* comInBase();
+    levi::Expression comInBase();
 
-    levi::Expression* adjointTransform(const std::string& baseFrame,
+    levi::Expression adjointTransform(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
-    levi::Expression* adjointTransformWrench(const std::string& baseFrame,
+    levi::Expression adjointTransformWrench(const std::string& baseFrame,
                                              const std::string &targetFrame);
 
-    levi::Expression* relativePosition(const std::string& baseFrame,
+    levi::Expression relativePosition(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
-    levi::Expression* relativeQuaternion(const std::string& baseFrame,
+    levi::Expression relativeQuaternion(const std::string& baseFrame,
                                          const std::string &targetFrame);
 
-    levi::Expression* relativeRotation(const std::string& baseFrame,
+    levi::Expression relativeRotation(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
-    TransformExpression* relativeTransform(const std::string& baseFrame,
+    TransformExpression relativeTransform(const std::string& baseFrame,
                                            const std::string &targetFrame);
 
-    levi::Expression* relativeLeftJacobian(const std::string& baseFrame,
+    levi::Expression relativeLeftJacobian(const std::string& baseFrame,
                                            const std::string &targetFrame);
 
-    levi::Expression* relativeVelocity(const std::string& baseFrame,
+    levi::Expression relativeVelocity(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
-    levi::Expression* quaternionError(const std::string &desiredFrame,
+    levi::Expression quaternionError(const std::string &desiredFrame,
                                       const levi::Variable& desiredQuaternion);
 
 };

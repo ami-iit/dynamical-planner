@@ -37,7 +37,7 @@ public:
                                 const std::string& baseFrame,
                                 const std::string &targetFrame)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (*expressionsServer->jointsPosition(), 4, 1, baseFrame + "_rho_" + targetFrame)
+          (expressionsServer->jointsPosition(), 4, 1, baseFrame + "_rho_" + targetFrame)
           , m_expressionsServer(expressionsServer)
           , m_baseName(baseFrame)
           , m_targetName(targetFrame)
@@ -48,7 +48,7 @@ public:
         m_targetFrame = model.getFrameIndex(targetFrame);
         assert(m_targetFrame != iDynTree::FRAME_INVALID_INDEX);
 
-        m_relativeJacobian = expressionsServer->relativeLeftJacobian(baseFrame, targetFrame)->block(3, 0, 3, expressionsServer->jointsPosition()->rows());
+        m_relativeJacobian = expressionsServer->relativeLeftJacobian(baseFrame, targetFrame).block(3, 0, 3, expressionsServer->jointsPosition().rows());
     }
 
     const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
@@ -73,7 +73,7 @@ RelativeQuaternionEvaluable::getNewColumnDerivative(Eigen::Index column, std::sh
 
         levi::unused(column);
 
-        levi::Expression thisQuaternion = *m_expressionsServer->relativeQuaternion(m_baseName, m_targetName);
+        levi::Expression thisQuaternion = m_expressionsServer->relativeQuaternion(m_baseName, m_targetName);
 
         levi::Expression leftQuaternionMap = 0.5 * G_Expression(thisQuaternion.asVariable()).transpose();
 

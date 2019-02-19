@@ -36,7 +36,7 @@ public:
                                   const std::string& baseFrame,
                                   const std::string &targetFrame)
         : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (*expressionsServer->jointsPosition(), 6, expressionsServer->jointsPosition()->rows(), baseFrame + "_J_" + targetFrame)
+          (expressionsServer->jointsPosition(), 6, expressionsServer->jointsPosition().rows(), baseFrame + "_J_" + targetFrame)
           , m_expressionsServer(expressionsServer)
     {
         const iDynTree::Model& model = expressionsServer->model();
@@ -52,7 +52,7 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, baseLink);
         assert(ok);
 
-        m_columns.resize(static_cast<size_t>(expressionsServer->jointsPosition()->rows()), levi::Null(6,1));
+        m_columns.resize(static_cast<size_t>(expressionsServer->jointsPosition().rows()), levi::Null(6,1));
 
         iDynTree::IJointConstPtr jointPtr;
         size_t jointIndex;
@@ -71,7 +71,7 @@ public:
                                                                                        childLink,
                                                                                        parentLink));
 
-            m_columns[jointIndex] = *m_expressionsServer->adjointTransform(targetFrame, model.getLinkName(childLink)) *
+            m_columns[jointIndex] = m_expressionsServer->adjointTransform(targetFrame, model.getLinkName(childLink)) *
                 levi::Constant(motionSubSpaceVector, "s_" + std::to_string(jointIndex));
 
             visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();

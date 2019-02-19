@@ -114,8 +114,8 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
     std::string referenceFrameName = timelySharedKinDyn->model().getFrameName(referenceFootFrame);
     std::string otherFootName = timelySharedKinDyn->model().getFrameName(otherFootFrame);
 
-    m_pimpl->asExpression = (m_pimpl->expressionsServer->relativePosition(referenceFrameName, otherFootName))->row(lateralIndex);
-    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, *(m_pimpl->expressionsServer->jointsPosition()));
+    m_pimpl->asExpression = (m_pimpl->expressionsServer->relativePosition(referenceFrameName, otherFootName)).row(lateralIndex);
+    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, (m_pimpl->expressionsServer->jointsPosition()));
 
 }
 
@@ -226,7 +226,7 @@ bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTState(do
     Eigen::Matrix<double, 1, 4> quaternionHessian;
 
     for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
-        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, *(m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
             lambdaMap;
 
         hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =

@@ -459,15 +459,15 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTState(double time, 
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
-    levi::Expression baseVelocity = *(m_pimpl->expressionServer->baseRotation()) * *(m_pimpl->expressionServer->baseLinearVelocity());
+    levi::Expression baseVelocity = (m_pimpl->expressionServer->baseRotation()) * (m_pimpl->expressionServer->baseLinearVelocity());
 
-    levi::Expression baseVelocityDerivative = baseVelocity.getColumnDerivative(0, *(m_pimpl->expressionServer->baseQuaternion()));
+    levi::Expression baseVelocityDerivative = baseVelocity.getColumnDerivative(0, (m_pimpl->expressionServer->baseQuaternion()));
 
     Eigen::Matrix<double, 1, 4> quaternionHessian;
 
     for (unsigned int i = 0; i < 4; ++i) {
         quaternionHessian = iDynTree::toEigen(m_pimpl->lambda(m_pimpl->basePositionRange)).transpose() *
-            baseVelocityDerivative.getColumnDerivative(i, *(m_pimpl->expressionServer->baseQuaternion())).evaluate();
+            baseVelocityDerivative.getColumnDerivative(i, (m_pimpl->expressionServer->baseQuaternion())).evaluate();
 
         hessianMap.block<1,4>(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionRange.offset) = quaternionHessian;
 
@@ -497,11 +497,11 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControl(double
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
-    levi::Expression baseRotation = *(m_pimpl->expressionServer->baseRotation());
+    levi::Expression baseRotation = (m_pimpl->expressionServer->baseRotation());
 
     for (unsigned int i = 0; i < 3; ++i) {
         hessianMap.block<4,1>(m_pimpl->baseQuaternionRange.offset, m_pimpl->baseLinearVelocityRange.offset + i) =
-            (baseRotation.getColumnDerivative(i, *(m_pimpl->expressionServer->baseQuaternion())).evaluate()).transpose() *
+            (baseRotation.getColumnDerivative(i, (m_pimpl->expressionServer->baseQuaternion())).evaluate()).transpose() *
             iDynTree::toEigen(m_pimpl->lambda(m_pimpl->basePositionRange));
     }
 
