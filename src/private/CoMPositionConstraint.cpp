@@ -242,7 +242,7 @@ bool CoMPositionConstraint::constraintSecondPartialDerivativeWRTState(double tim
 
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
-    m_pimpl->updateRobotState();
+    m_pimpl->updateVariables();
     m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);

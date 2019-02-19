@@ -354,6 +354,30 @@ void validateRelativeVelocityExpression(std::shared_ptr<TimelySharedKinDynComput
 
     iDynTree::toEigen(relVelocityEval) = relativeVelocityExpression.getColumnDerivative(0, *expressionServer.jointsVelocity()).evaluate() * expressionServer.jointsVelocity()->evaluate();
     ASSERT_EQUAL_VECTOR(relVelocityEval, checkRelativeVelocity);
+
+    double perturbation = 1e-3;
+    Eigen::VectorXd originalJoints, jointsPerturbation, firstOrderTaylor(3);
+    iDynTree::Twist perturbedVelocity;
+
+    Eigen::MatrixXd jacobian(6, robotState.s.size());
+
+    jacobian = relativeVelocityExpression.getColumnDerivative(0, *expressionServer.jointsPosition()).evaluate();
+
+    originalJoints = iDynTree::toEigen(robotState.s);
+
+    for (unsigned int joint = 0; joint < robotState.s.size(); ++joint) {
+
+        iDynTree::toEigen(robotState.s) = originalJoints;
+        robotState.s(joint) += perturbation;
+
+        perturbedVelocity = kinDyn->getFrameVel(robotState, "r_sole", iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION) -
+            kinDyn->getRelativeTransform(robotState, "r_sole", "root_link") * iDynTree::Twist(baseLinVelocity, baseAngVelocity);
+
+        firstOrderTaylor = iDynTree::toEigen(checkRelativeVelocity) + jacobian * (iDynTree::toEigen(robotState.s) - originalJoints);
+
+        ASSERT_EQUAL_VECTOR_TOL(perturbedVelocity, firstOrderTaylor, perturbation/1000.0);
+
+    }
 }
 
 void validateQuaternionError(std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn, double time) {

@@ -176,8 +176,7 @@ bool MeanPointPositionCost::costSecondPartialDerivativeWRTState(double time, con
     for (size_t i = 0; i < m_pimpl->pointRanges.size(); ++i) {
         for (size_t j = i; j < m_pimpl->pointRanges.size(); ++j) {
             hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset).setIdentity();
-            hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset) *= timeWeight * numberOfPointsInverse *
-                timeWeight * numberOfPointsInverse;
+            hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset) *= timeWeight * numberOfPointsInverse * numberOfPointsInverse;
 
             if (i != j) {
                 hessianMap.block<3,3>(m_pimpl->pointRanges[j].offset, m_pimpl->pointRanges[i].offset) =
