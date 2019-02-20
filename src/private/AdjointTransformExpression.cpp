@@ -115,7 +115,7 @@ public:
 
     }
 
-    const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
             m_evaluationBuffer = m_expressionsServer->adjointTransform(m_baseFrameName, m_parentFrameName).evaluate() *
@@ -257,7 +257,7 @@ public:
 
     }
 
-    const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
             m_evaluationBuffer = m_expressionsServer->adjointTransformWrench(m_baseFrameName, m_parentFrameName).evaluate() *

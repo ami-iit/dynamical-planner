@@ -79,7 +79,7 @@ public:
 
     }
 
-    const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 

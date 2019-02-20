@@ -92,7 +92,7 @@ public:
 
     }
 
-    const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
@@ -145,7 +145,7 @@ public:
         m_derivative = levi::ExpressionComponent<CoMInBaseJacobianEvaluable>(expressionsServer);
     }
 
-    const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 

@@ -51,7 +51,7 @@ public:
         m_relativeJacobian = expressionsServer->relativeLeftJacobian(baseFrame, targetFrame).block(3, 0, 3, expressionsServer->jointsPosition().rows());
     }
 
-    const LEVI_DEFAULT_MATRIX_TYPE& evaluate() {
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
