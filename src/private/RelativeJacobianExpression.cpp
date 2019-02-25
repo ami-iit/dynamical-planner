@@ -79,6 +79,14 @@ public:
 
     }
 
+    virtual levi::ColumnExpression col(Eigen::Index col) final {
+        return m_columns[static_cast<size_t>(col)];
+    }
+
+    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
+        return m_columns[static_cast<size_t>(col)](row, 0);
+    }
+
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
