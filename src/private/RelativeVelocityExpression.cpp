@@ -26,6 +26,8 @@ class DynamicalPlanner::Private::RelativeLeftVelocityEvaluable : public levi::De
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
     levi::Expression m_thisExpression;
 
+    levi::Variable m_jointsVariable, m_jointsVelocityVariable;
+
 public:
 
     RelativeLeftVelocityEvaluable(ExpressionsServer* expressionsServer,
@@ -35,6 +37,8 @@ public:
           , m_expressionsServer(expressionsServer)
           , m_baseFrameName(baseFrame)
           , m_targetFrameName(targetFrame)
+          , m_jointsVariable(expressionsServer->jointsPosition())
+          , m_jointsVelocityVariable(expressionsServer->jointsVelocity())
     {
         const iDynTree::Model& model = expressionsServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
@@ -51,6 +55,9 @@ public:
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
+        m_jointsVariable.evaluate(); //To notify we used the variable
+        m_jointsVelocityVariable.evaluate(); //to notify we used the variable
+
         iDynTree::Twist velocityInInertial = kinDyn->getFrameVel(m_expressionsServer->currentState(), m_targetFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
         iDynTree::Twist baseVelocity = kinDyn->getFrameVel(m_expressionsServer->currentState(), m_baseFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
         iDynTree::Transform relativeTransform = kinDyn->getRelativeTransform(m_expressionsServer->currentState(), m_targetFrame, m_baseFrame);
@@ -61,7 +68,7 @@ public:
     }
 
     virtual bool isNew(size_t callerID) final {
-        if (m_expressionsServer->jointsPosition().isNew() || m_expressionsServer->jointsVelocity().isNew()) {
+        if (m_jointsVariable.isNew() || m_jointsVelocityVariable.isNew()) {
             resetEvaluationRegister();
         }
 

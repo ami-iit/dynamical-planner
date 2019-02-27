@@ -29,6 +29,8 @@ class DynamicalPlanner::Private::QuaternionErrorEvaluable : public levi::Default
     iDynTree::FrameIndex m_desiredFrameIndex;
     iDynTree::Rotation m_desiredRotation;
     std::string m_baseFrame;
+    levi::Variable m_jointsVariable;
+    levi::Variable m_baseQuaternion;
 
 public:
 
@@ -37,6 +39,8 @@ public:
           , m_desiredFrameName(desiredFrame)
           , m_expressionsServer(expressionsServer)
           , m_desiredQuaternion(desiredQuaternion)
+          , m_jointsVariable(expressionsServer->jointsPosition())
+          , m_baseQuaternion(expressionsServer->baseQuaternion())
     {
         m_desiredFrameIndex = expressionsServer->model().getFrameIndex(desiredFrame);
         m_baseFrame = expressionsServer->getFloatingBase();
@@ -51,15 +55,16 @@ public:
         iDynTree::toEigen(desiredQuaternion_iDyn) = m_desiredQuaternion.evaluate();
         m_desiredRotation.fromQuaternion(desiredQuaternion_iDyn);
 
+        m_jointsVariable.evaluate(); //This is just to notify we used this variable
+        m_baseQuaternion.evaluate(); //This is just to notify we used this variable
 
         m_evaluationBuffer = iDynTree::toEigen(ErrorQuaternion(frameTransform.getRotation(), m_desiredRotation));
-
 
         return m_evaluationBuffer;
     }
 
     virtual bool isNew(size_t callerID) final {
-        if (m_expressionsServer->jointsPosition().isNew() || m_expressionsServer->baseQuaternion().isNew() || m_desiredQuaternion.isNew()) {
+        if (m_jointsVariable.isNew() || m_baseQuaternion.isNew() || m_desiredQuaternion.isNew()) {
             resetEvaluationRegister();
         }
 

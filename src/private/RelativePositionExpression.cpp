@@ -54,6 +54,8 @@ public:
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
+        m_expression.evaluate(); //to notify we used the variable
+
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
         m_evaluationBuffer = iDynTree::toEigen(kinDyn->getRelativeTransform(m_expressionsServer->currentState(), m_baseFrame, m_targetFrame).getPosition());

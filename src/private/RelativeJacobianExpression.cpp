@@ -89,6 +89,8 @@ public:
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
+        m_expression.evaluate(); //to notify we used the variable
+
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
         bool ok = kinDyn->getRelativeJacobian(m_expressionsServer->currentState(), m_baseFrame, m_targetFrame, m_jacobian, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);

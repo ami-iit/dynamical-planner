@@ -104,6 +104,7 @@ public:
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
+        m_expression.evaluate(); //to notify we used the variable
 
         iDynTree::Vector4 normalizedQuaternion;
         iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_expressionsServer->currentState().base_quaternion).normalized();
@@ -157,6 +158,7 @@ public:
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
+        m_expression.evaluate(); //to notify we used the variable
 
         iDynTree::Vector4 normalizedQuaternion;
         iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_expressionsServer->currentState().base_quaternion).normalized();

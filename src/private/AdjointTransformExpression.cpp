@@ -33,6 +33,9 @@ class DynamicalPlanner::Private::AdjointTransformEvaluable : public levi::Defaul
     iDynTree::Transform m_linkToTargetTransform;
     bool m_isConstant = false;
 
+    levi::Variable m_jointsVariable;
+    iDynTree::VectorDynSize m_jointsBuffer;
+
     std::vector<levi::Expression> m_jointsDerivative;
     levi::Expression m_thisMotionSubspace;
     size_t m_parentJointIndex;
@@ -47,6 +50,7 @@ public:
         , m_expressionsServer(expressionsServer)
         , m_baseFrameName(baseFrame)
         , m_targetFrameName(targetFrame)
+        , m_jointsVariable(expressionsServer->jointsPosition())
     {
         assert(expressionsServer);
         const iDynTree::Model& model = expressionsServer->model();
@@ -62,8 +66,9 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, m_baseLink);
         assert(ok);
 
-        m_jointsDerivative.resize(static_cast<size_t>(expressionsServer->jointsPosition().rows()), levi::Null(6,6));
-        m_colsDerivatives.resize(static_cast<size_t>(expressionsServer->jointsPosition().rows()), levi::Null(6,1));
+        m_jointsDerivative.resize(static_cast<size_t>(m_jointsVariable.rows()), levi::Null(6,6));
+        m_colsDerivatives.resize(static_cast<size_t>(m_jointsVariable.rows()), levi::Null(6,1));
+        m_jointsBuffer.resize(static_cast<unsigned int>(m_jointsVariable.rows()));
 
         m_targetLink = model.getFrameLink(m_targetFrame);
 
@@ -118,7 +123,8 @@ public:
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
-            m_evaluationBuffer = m_expressionsServer->adjointTransform(m_baseFrameName, m_parentFrameName).evaluate() *
+            iDynTree::toEigen(m_jointsBuffer) = m_jointsVariable.evaluate();
+            m_evaluationBuffer = m_expressionsServer->adjointTransform(m_baseFrameName, m_parentFrameName).evaluate(false) *
                 iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
                                    m_linkToTargetTransform).asAdjointTransform());
         }
@@ -127,7 +133,7 @@ public:
     }
 
     virtual bool isNew(size_t callerID) final {
-        if (!m_isConstant && (m_expressionsServer->jointsPosition().isNew())) {
+        if (!m_isConstant && (m_jointsVariable.isNew())) {
             resetEvaluationRegister();
         }
 
@@ -135,7 +141,7 @@ public:
     }
 
     virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable) final {
-        return (!m_isConstant && (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()));
+        return (!m_isConstant && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()));
     }
 
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
@@ -145,7 +151,7 @@ public:
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
 AdjointTransformEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    if (!m_isConstant && (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows())) {
+    if (!m_isConstant && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows())) {
 
         m_jointsDerivative[m_parentJointIndex] =
             /**m_expressionsServer->adjointTransform(m_baseFrameName, m_targetFrameName)*/AdjointTransformExpression(m_expressionsServer, m_baseFrameName, m_targetFrameName) *
@@ -175,6 +181,9 @@ class DynamicalPlanner::Private::AdjointTransformWrenchEvaluable : public levi::
     iDynTree::Transform m_linkToTargetTransform;
     bool m_isConstant = false;
 
+    levi::Variable m_jointsVariable;
+    iDynTree::VectorDynSize m_jointsBuffer;
+
     std::vector<levi::Expression> m_jointsDerivative;
     levi::Expression m_thisMotionSubspace;
     size_t m_parentJointIndex;
@@ -189,6 +198,7 @@ public:
           , m_expressionsServer(expressionsServer)
           , m_baseFrameName(baseFrame)
           , m_targetFrameName(targetFrame)
+          , m_jointsVariable(expressionsServer->jointsPosition())
     {
         assert(expressionsServer);
         const iDynTree::Model& model = expressionsServer->model();
@@ -204,8 +214,9 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, m_baseLink);
         assert(ok);
 
-        m_jointsDerivative.resize(static_cast<size_t>(expressionsServer->jointsPosition().rows()), levi::Null(6,6));
-        m_colsDerivatives.resize(static_cast<size_t>(expressionsServer->jointsPosition().rows()), levi::Null(6,1));
+        m_jointsDerivative.resize(static_cast<size_t>(m_jointsVariable.rows()), levi::Null(6,6));
+        m_colsDerivatives.resize(static_cast<size_t>(m_jointsVariable.rows()), levi::Null(6,1));
+        m_jointsBuffer.resize(static_cast<unsigned int>(m_jointsVariable.rows()));
 
         m_targetLink = model.getFrameLink(m_targetFrame);
 
@@ -260,8 +271,9 @@ public:
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
-            m_evaluationBuffer = m_expressionsServer->adjointTransformWrench(m_baseFrameName, m_parentFrameName).evaluate() *
-                iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
+            iDynTree::toEigen(m_jointsBuffer) = m_jointsVariable.evaluate();
+            m_evaluationBuffer = m_expressionsServer->adjointTransformWrench(m_baseFrameName, m_parentFrameName).evaluate(false) *
+                iDynTree::toEigen((m_parentJoint->getTransform(m_jointsBuffer, m_parentLink, m_targetLink) *
                                    m_linkToTargetTransform).asAdjointTransformWrench());
         }
 
@@ -269,7 +281,7 @@ public:
     }
 
     virtual bool isNew(size_t callerID) final {
-        if (!m_isConstant && (m_expressionsServer->jointsPosition().isNew())) {
+        if (!m_isConstant && (m_jointsVariable.isNew())) {
             resetEvaluationRegister();
         }
 
@@ -277,7 +289,7 @@ public:
     }
 
     virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable) final {
-        return (!m_isConstant && (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()));
+        return (!m_isConstant && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()));
     }
 
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
@@ -287,7 +299,7 @@ public:
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
 AdjointTransformWrenchEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    if (!m_isConstant && (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows())) {
+    if (!m_isConstant && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows())) {
 
         m_jointsDerivative[m_parentJointIndex] =
             /**m_expressionsServer->adjointTransform(m_baseFrameName, m_targetFrameName)*/AdjointTransformWrenchExpression(m_expressionsServer, m_baseFrameName, m_targetFrameName) *
