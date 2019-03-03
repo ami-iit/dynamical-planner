@@ -103,7 +103,7 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     HyperbolicSecant forceActivation;
     forceActivation.setScaling(1.0);
 
-    for (size_t i = 0; i < leftPositions.size(); ++i) {
+    for (size_t i = 0; i < leftPositions.size()*0+1; ++i) {
         std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Left", i);
         ok = ocProblem.addLagrangeTerm(1.0, forceCost);
         ASSERT_IS_TRUE(ok);
@@ -140,11 +140,11 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     ok = ocProblem.addLagrangeTerm(0.5, orientationCost);
     ASSERT_IS_TRUE(ok);
 
-    iDynTree::FrameIndex leftFrame = timelySharedKinDyn->model().getFrameIndex("l_sole"),
-            rightFrame = timelySharedKinDyn->model().getFrameIndex("r_sole");
-    staticTorquesCost = std::make_shared<StaticTorquesCost>(stateVariables, controlVariables, timelySharedKinDyn, leftFrame, rightFrame, leftPositions, rightPositions);
-    ok = ocProblem.addLagrangeTerm(0.5, staticTorquesCost);
-    ASSERT_IS_TRUE(ok);
+//    iDynTree::FrameIndex leftFrame = timelySharedKinDyn->model().getFrameIndex("l_sole"),
+//            rightFrame = timelySharedKinDyn->model().getFrameIndex("r_sole");
+//    staticTorquesCost = std::make_shared<StaticTorquesCost>(stateVariables, controlVariables, timelySharedKinDyn, leftFrame, rightFrame, leftPositions, rightPositions);
+//    ok = ocProblem.addLagrangeTerm(0.5, staticTorquesCost);
+//    ASSERT_IS_TRUE(ok);
 
     std::shared_ptr<MeanPointPositionCost> meanPositionCost = std::make_shared<MeanPointPositionCost>(stateVariables, controlVariables);
     meanPositionCost->setTimeVaryingWeight(std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(15.0));
@@ -154,7 +154,7 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
 }
 
 void checkCostsDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
-                                double perturbation, iDynTree::optimalcontrol::OptimalControlProblem &ocProblem) {
+                          double perturbation, iDynTree::optimalcontrol::OptimalControlProblem &ocProblem) {
     double originalCost, perturbedCost, firstOrderTaylor;
 
     iDynTree::VectorDynSize perturbedState, perturbedControl;
@@ -337,6 +337,96 @@ void checkStaticForcesJacobian(double time, const iDynTree::VectorDynSize& origi
     }
 }
 
+void checkCostsHessian(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,
+                       double perturbation, iDynTree::optimalcontrol::OptimalControlProblem &ocProblem) {
+    iDynTree::VectorDynSize perturbedState, perturbedControl, firstOrderTaylor;
+    iDynTree::VectorDynSize originalStateGradient(originalStateVector.size()),
+        originalControlGradient(originalControlVector.size());
+    originalStateGradient.zero();
+    originalControlGradient.zero();
+
+    iDynTree::VectorDynSize perturbedStateGradient, perturbedControlGradient;
+    perturbedStateGradient = originalStateGradient;
+    perturbedControlGradient = originalControlGradient;
+
+    iDynTree::MatrixDynSize stateHessian(originalStateVector.size(), originalStateVector.size()),
+        controlHessian(originalControlVector.size(), originalControlVector.size()),
+        mixedHessian(originalStateVector.size(), originalControlVector.size());
+
+    stateHessian.zero();
+    controlHessian.zero();
+    mixedHessian.zero();
+    bool ok;
+    ok = ocProblem.costsFirstPartialDerivativeWRTState(time, originalStateVector, originalControlVector, originalStateGradient);
+    ASSERT_IS_TRUE(ok);
+
+    ok = ocProblem.costsFirstPartialDerivativeWRTControl(time, originalStateVector, originalControlVector, originalControlGradient);
+    ASSERT_IS_TRUE(ok);
+
+    stateHessian.zero();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    ok = ocProblem.costsSecondPartialDerivativeWRTState(time, originalStateVector, originalControlVector, stateHessian);
+    ASSERT_IS_TRUE(ok);
+    std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+    std::cout << "Elapsed time ms state hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+
+    firstOrderTaylor = perturbedStateGradient;
+
+    for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
+        std::cerr << "Variable: " << i << std::endl;
+
+        perturbedState = originalStateVector;
+        perturbedState(i) = perturbedState(i) + perturbation;
+
+        ok = ocProblem.costsFirstPartialDerivativeWRTState(time, perturbedState, originalControlVector, perturbedStateGradient);
+        ASSERT_IS_TRUE(ok);
+
+        iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalStateGradient) +
+            iDynTree::toEigen(stateHessian) * (iDynTree::toEigen(perturbedState) - iDynTree::toEigen(originalStateVector));
+        ASSERT_EQUAL_VECTOR_TOL(perturbedStateGradient, firstOrderTaylor, perturbation/10);
+    }
+
+    mixedHessian.zero();
+    begin = std::chrono::steady_clock::now();
+    ok = ocProblem.costsSecondPartialDerivativeWRTStateControl(time, originalStateVector, originalControlVector, mixedHessian);
+    ASSERT_IS_TRUE(ok);
+    end= std::chrono::steady_clock::now();
+    std::cout << "Elapsed time ms mixed hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+
+    for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
+        perturbedControl = originalControlVector;
+        perturbedControl(i) = perturbedControl(i) + perturbation;
+
+        ok = ocProblem.costsFirstPartialDerivativeWRTState(time, originalStateVector, perturbedControl, perturbedStateGradient);
+        ASSERT_IS_TRUE(ok);
+
+        iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalStateGradient) +
+            iDynTree::toEigen(mixedHessian) * (iDynTree::toEigen(perturbedControl) - iDynTree::toEigen(originalControlVector));
+        ASSERT_EQUAL_VECTOR_TOL(perturbedStateGradient, firstOrderTaylor, perturbation/10);
+    }
+
+    begin = std::chrono::steady_clock::now();
+    ok = ocProblem.costsSecondPartialDerivativeWRTControl(time, originalStateVector, originalControlVector, controlHessian);
+    ASSERT_IS_TRUE(ok);
+    end= std::chrono::steady_clock::now();
+    std::cout << "Elapsed time ms control hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+
+    firstOrderTaylor = perturbedControlGradient;
+
+    for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
+        perturbedControl = originalControlVector;
+        perturbedControl(i) = perturbedControl(i) + perturbation;
+
+        ok = ocProblem.costsFirstPartialDerivativeWRTControl(time, originalStateVector, originalControlVector, perturbedControlGradient);
+        ASSERT_IS_TRUE(ok);
+
+        iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalControlGradient) +
+            iDynTree::toEigen(controlHessian) * (iDynTree::toEigen(perturbedControl) - iDynTree::toEigen(originalControlVector));
+        ASSERT_EQUAL_VECTOR_TOL(perturbedControlGradient, firstOrderTaylor, perturbation/10);
+    }
+
+
+}
 
 int main() {
     VariablesLabeller stateVariables, controlVariables;
@@ -371,7 +461,7 @@ int main() {
     controlVector.resize(static_cast<unsigned int>(controlVariables.size()));
     iDynTree::getRandomVector(controlVector);
 
-    checkStaticForcesJacobian(0.0, stateVector, controlVector, 0.001, staticTorquesPtr, 0);
+//    checkStaticForcesJacobian(0.0, stateVector, controlVector, 0.001, staticTorquesPtr, 0);
 
     checkCostsDerivative(0.0, stateVector, controlVector, 0.0001, ocProblem);
     checkCostsDerivative(1.0, stateVector, controlVector, 0.0001, ocProblem);
@@ -382,4 +472,8 @@ int main() {
     iDynTree::Rotation desiredRotation = iDynTree::getRandomRotation();//iDynTree::Rotation::Identity();
 
     checkFrameOrientationDerivative(desiredRotation, 0, 0.01, timelySharedKinDyn->get(0.0), stateVariables);
+
+    checkCostsHessian(0.0, stateVector, controlVector, 0.0001, ocProblem);
+
+    return 0;
 }
