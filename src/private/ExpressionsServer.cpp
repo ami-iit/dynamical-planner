@@ -73,7 +73,7 @@ ExpressionsServer::ExpressionsServer(std::shared_ptr<TimelySharedKinDynComputati
     m_pimpl->s_dot = levi::Variable(timelySharedKinDyn->model().getNrOfDOFs(), "s_dot");
 
     m_pimpl->baseTwist = BodyTwistFromQuaternionVelocity(m_pimpl->baseLinearVelocity, m_pimpl->baseQuaternionVelocity,
-                                                         m_pimpl->quaternionNormalized.asVariable(), "baseTwist");
+                                                         m_pimpl->quaternionNormalized, "baseTwist");
     m_pimpl->worldToBase = TransformExpression(m_pimpl->basePositionExpr, m_pimpl->baseRotation);
     m_pimpl->comInBase = CoMInBaseExpression(this);
 
@@ -269,7 +269,7 @@ levi::Expression ExpressionsServer::relativeRotation(const std::string &baseFram
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RotationExpression(relativeQuaternion(baseFrame, targetFrame).asVariable());
+        newElement.second = RotationExpression(relativeQuaternion(baseFrame, targetFrame));
         auto result = m_pimpl->relativeRotationsMap.insert(newElement);
         assert(result.second);
         return (result.first->second);

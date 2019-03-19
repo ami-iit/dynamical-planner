@@ -76,13 +76,13 @@ public:
         levi::unused(column);
 
         if (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()) {
-            return 0.5 * G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion).asVariable()).transpose() *
+            return 0.5 * G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)).transpose() *
                 m_expressionsServer->relativeLeftJacobian(m_baseFrame, m_desiredFrameName).block(3, 0, 3, m_expressionsServer->jointsPosition().rows());
         }
 
         if (variable->variableName() == m_expressionsServer->baseQuaternion().name() && variable->dimension() == m_expressionsServer->baseQuaternion().rows()) {
-            return G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion).asVariable()).transpose() *
-                m_expressionsServer->relativeRotation(m_desiredFrameName, m_baseFrame) * G_Expression(m_expressionsServer->normalizedBaseQuaternion().asVariable()) *
+            return G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)).transpose() *
+                m_expressionsServer->relativeRotation(m_desiredFrameName, m_baseFrame) * G_Expression(m_expressionsServer->normalizedBaseQuaternion()) *
                 m_expressionsServer->normalizedBaseQuaternion().getColumnDerivative(0, m_expressionsServer->baseQuaternion());
         }
 

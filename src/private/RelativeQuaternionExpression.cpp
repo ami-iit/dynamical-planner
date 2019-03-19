@@ -77,7 +77,7 @@ RelativeQuaternionEvaluable::getNewColumnDerivative(Eigen::Index column, std::sh
 
         levi::Expression thisQuaternion = m_expressionsServer->relativeQuaternion(m_baseName, m_targetName);
 
-        levi::Expression leftQuaternionMap = 0.5 * G_Expression(thisQuaternion.asVariable()).transpose();
+        levi::Expression leftQuaternionMap = 0.5 * G_Expression(thisQuaternion).transpose();
 
         return leftQuaternionMap * m_relativeJacobian;
     } else {

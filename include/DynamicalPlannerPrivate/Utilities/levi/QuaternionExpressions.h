@@ -16,14 +16,14 @@ namespace DynamicalPlanner {
 
         levi::Expression NormalizedQuaternion(const levi::Variable& notNormalizedQuaternion);
 
-        levi::Expression RotationExpression(const levi::Variable& normalizedQuaternion);
+        levi::Expression RotationExpression(const levi::Expression& normalizedQuaternion);
 
         levi::Expression E_Expression(const levi::Variable& normalizedQuaternion);
 
-        levi::Expression G_Expression(const levi::Variable& quaternionVariable);
+        levi::Expression G_Expression(const levi::Expression &quaternionVariable);
 
         levi::Expression BodyTwistFromQuaternionVelocity(const levi::Variable& linearVelocity, const levi::Variable& quaternionVelocity,
-                                                         const levi::Variable &normalizedQuaternion, const std::string &name);
+                                                         const levi::Expression &normalizedQuaternion, const std::string &name);
     }
 }
 
