@@ -19,9 +19,19 @@ namespace DynamicalPlanner {
                                                     const std::string& baseFrame,
                                                     const std::string &targetFrame);
 
+        levi::Expression AdjointTransformExpressionJointsDerivative(ExpressionsServer* expressionsServer,
+                                                                    const std::string& baseFrame,
+                                                                    const std::string &targetFrame,
+                                                                    long column);
+
         levi::Expression AdjointTransformWrenchExpression(ExpressionsServer* expressionServer,
                                                           const std::string& baseFrame,
                                                           const std::string &targetFrame);
+
+        levi::Expression AdjointTransformWrenchExpressionJointsDerivative(ExpressionsServer* expressionServer,
+                                                                          const std::string& baseFrame,
+                                                                          const std::string &targetFrame,
+                                                                          long column);
 
     }
 }

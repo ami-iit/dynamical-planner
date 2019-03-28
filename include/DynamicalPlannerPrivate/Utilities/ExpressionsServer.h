@@ -63,8 +63,16 @@ public:
     levi::Expression adjointTransform(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
+    levi::Expression adjointTransformJointsDerivative(const std::string& baseFrame,
+                                                      const std::string &targetFrame,
+                                                      long column);
+
     levi::Expression adjointTransformWrench(const std::string& baseFrame,
                                              const std::string &targetFrame);
+
+    levi::Expression adjointTransformWrenchJointsDerivative(const std::string& baseFrame,
+                                                            const std::string &targetFrame,
+                                                            long column);
 
     levi::Expression relativePosition(const std::string& baseFrame,
                                        const std::string &targetFrame);
@@ -86,6 +94,12 @@ public:
 
     levi::Expression quaternionError(const std::string &desiredFrame,
                                       const levi::Variable& desiredQuaternion);
+
+    levi::Expression motionSubSpaceAsCrossProduct(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink, iDynTree::LinkIndex childLink);
+
+    levi::Expression motionSubSpaceAsCrossProductWrench(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink,
+                                                        iDynTree::LinkIndex childLink);
+
 
 };
 
