@@ -68,7 +68,7 @@ public:
             resetEvaluationRegister();
         }
 
-        return !m_evaluationRegister[callerID];
+        return this->m_evaluationRegister[callerID] != this->m_isNewCounter;
     }
 
     virtual levi::ExpressionComponent<derivative_evaluable> getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final {
