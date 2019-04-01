@@ -162,8 +162,7 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
     m_pimpl->expressionsServer = expressionsServer;
     m_pimpl->jointsHessianBuffer.resize(static_cast<unsigned int>(m_pimpl->jointsPositionRange.size));
 
-    levi::Constant positionInFootExpr(3,1, footName + "_p_" + std::to_string(contactIndex));
-    positionInFootExpr = iDynTree::toEigen(positionInFoot);
+    levi::Constant positionInFootExpr(iDynTree::toEigen(positionInFoot), footName + "_p_" + std::to_string(contactIndex));
 
     std::string frameName = timelySharedKinDyn->model().getFrameName(footFrame);
     m_pimpl->asExpression = m_pimpl->expressionsServer->worldToBase() *

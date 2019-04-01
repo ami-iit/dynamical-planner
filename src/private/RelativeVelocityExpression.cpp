@@ -50,13 +50,12 @@ public:
 
         levi::Expression jacobian = expressionsServer->relativeLeftJacobian(baseFrame, targetFrame);
         m_thisExpression = jacobian * expressionsServer->jointsVelocity();
+
+        addDependencies(m_jointsVariable, m_jointsVelocityVariable);
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
-
-        m_jointsVariable.evaluate(); //To notify we used the variable
-        m_jointsVelocityVariable.evaluate(); //to notify we used the variable
 
         iDynTree::Twist velocityInInertial = kinDyn->getFrameVel(m_expressionsServer->currentState(), m_targetFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
         iDynTree::Twist baseVelocity = kinDyn->getFrameVel(m_expressionsServer->currentState(), m_baseFrame, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
@@ -67,29 +66,13 @@ public:
         return m_evaluationBuffer;
     }
 
-    virtual bool isNew(size_t callerID) final {
-        if (m_jointsVariable.isNew() || m_jointsVelocityVariable.isNew()) {
-            resetEvaluationRegister();
-        }
-
-        return this->m_evaluationRegister[callerID] != this->m_isNewCounter;
-    }
-
-    virtual levi::ExpressionComponent<derivative_evaluable> getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final {
-        assert(column == 0);
-        levi::unused(column);
-        return m_thisExpression.getColumnDerivative(0, variable);
-    }
-
-    virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable);
-
+    virtual levi::Expression getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
 };
 
-bool RelativeLeftVelocityEvaluable::isDependentFrom(std::shared_ptr<levi::VariableBase> variable) {
-    return ((variable->variableName() == m_expressionsServer->jointsPosition().name() &&
-             variable->dimension() == m_expressionsServer->jointsPosition().rows()) ||
-            (variable->variableName() == m_expressionsServer->jointsVelocity().name() &&
-             variable->dimension() == m_expressionsServer->jointsVelocity().rows()));
+levi::Expression DynamicalPlanner::Private::RelativeLeftVelocityEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) {
+    assert(column == 0);
+    levi::unused(column);
+    return m_thisExpression.getColumnDerivative(0, variable);
 }
 
 levi::Expression DynamicalPlanner::Private::RelativeLeftVelocityExpression(ExpressionsServer *expressionsServer, const std::string &baseFrame,

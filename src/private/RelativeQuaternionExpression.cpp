@@ -22,25 +22,25 @@ namespace DynamicalPlanner {
 
 using namespace DynamicalPlanner::Private;
 
-class DynamicalPlanner::Private::RelativeQuaternionEvaluable :
-    public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
+class DynamicalPlanner::Private::RelativeQuaternionEvaluable : public levi::DefaultEvaluable {
 
     ExpressionsServer* m_expressionsServer;
     std::string m_baseName, m_targetName;
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
 
     levi::Expression m_relativeJacobian;
+    levi::Variable m_jointsVariable;
 
 public:
 
     RelativeQuaternionEvaluable(ExpressionsServer* expressionsServer,
                                 const std::string& baseFrame,
                                 const std::string &targetFrame)
-        : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (expressionsServer->jointsPosition(), 4, 1, baseFrame + "_rho_" + targetFrame)
+        : levi::DefaultEvaluable(4, 1, baseFrame + "_rho_" + targetFrame)
           , m_expressionsServer(expressionsServer)
           , m_baseName(baseFrame)
           , m_targetName(targetFrame)
+          , m_jointsVariable(expressionsServer->jointsPosition())
     {
         const iDynTree::Model& model = expressionsServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
@@ -49,11 +49,11 @@ public:
         assert(m_targetFrame != iDynTree::FRAME_INVALID_INDEX);
 
         m_relativeJacobian = expressionsServer->relativeLeftJacobian(baseFrame, targetFrame).block(3, 0, 3, expressionsServer->jointsPosition().rows());
+        addDependencies(m_jointsVariable);
+
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
-
-        m_expression.evaluate(); //to notify we used the variable
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
@@ -69,7 +69,7 @@ public:
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
 RelativeQuaternionEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    if (variable->variableName() == m_expression.name()) { //m_expression contains the jointsVariable specified in the constructor
+    if (variable->variableName() == m_jointsVariable.name()) { //m_expression contains the jointsVariable specified in the constructor
 
         assert(column == 0);
 

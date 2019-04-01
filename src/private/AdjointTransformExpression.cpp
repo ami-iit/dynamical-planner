@@ -24,7 +24,7 @@ namespace DynamicalPlanner {
 
 using namespace DynamicalPlanner::Private;
 
-class DynamicalPlanner::Private::AdjointTransformEvaluable : public levi::DefaultEvaluable { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
+class DynamicalPlanner::Private::AdjointTransformEvaluable : public levi::DefaultEvaluable {
 
     ExpressionsServer* m_expressionsServer;
     std::string m_baseFrameName, m_targetFrameName, m_parentFrameName;
@@ -34,7 +34,6 @@ class DynamicalPlanner::Private::AdjointTransformEvaluable : public levi::Defaul
     bool m_isConstant = false;
 
     levi::Variable m_jointsVariable;
-    iDynTree::VectorDynSize m_jointsBuffer;
 
 public:
 
@@ -60,7 +59,6 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, baseLink);
         assert(ok);
 
-        m_jointsBuffer.resize(static_cast<unsigned int>(m_jointsVariable.rows()));
 
         m_targetLink = model.getFrameLink(targetFrameIndex);
 
@@ -78,30 +76,21 @@ public:
             m_evaluationBuffer = iDynTree::toEigen((model.getFrameTransform(baseFrameIndex).inverse() * model.getFrameTransform(targetFrameIndex)).asAdjointTransform());
         }
 
+        if (!m_isConstant) {
+            addDependencies(m_jointsVariable);
+        }
+
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
-            iDynTree::toEigen(m_jointsBuffer) = m_jointsVariable.evaluate();
             m_evaluationBuffer = m_expressionsServer->adjointTransform(m_baseFrameName, m_parentFrameName).evaluate() *
                 iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
                                    m_linkToTargetTransform).asAdjointTransform());
         }
 
         return m_evaluationBuffer;
-    }
-
-    virtual bool isNew(size_t callerID) final {
-        if (!m_isConstant && (m_jointsVariable.isNew())) {
-            resetEvaluationRegister();
-        }
-
-        return this->m_evaluationRegister[callerID] != this->m_isNewCounter;
-    }
-
-    virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable) final {
-        return (!m_isConstant && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()));
     }
 
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
@@ -122,7 +111,7 @@ AdjointTransformEvaluable::getColumnDerivative(Eigen::Index column, std::shared_
 }
 
 
-class DynamicalPlanner::Private::AdjointTransformWrenchEvaluable : public levi::DefaultEvaluable { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
+class DynamicalPlanner::Private::AdjointTransformWrenchEvaluable : public levi::DefaultEvaluable {
 
     ExpressionsServer* m_expressionsServer;
     std::string m_baseFrameName, m_targetFrameName, m_parentFrameName;
@@ -132,7 +121,6 @@ class DynamicalPlanner::Private::AdjointTransformWrenchEvaluable : public levi::
     bool m_isConstant = false;
 
     levi::Variable m_jointsVariable;
-    iDynTree::VectorDynSize m_jointsBuffer;
 
 public:
 
@@ -158,8 +146,6 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, baseLink);
         assert(ok);
 
-        m_jointsBuffer.resize(static_cast<unsigned int>(m_jointsVariable.rows()));
-
         m_targetLink = model.getFrameLink(targetFrameIndex);
 
         if (baseLink != m_targetLink) {
@@ -176,30 +162,20 @@ public:
             m_evaluationBuffer = iDynTree::toEigen((model.getFrameTransform(baseFrameIndex).inverse() * model.getFrameTransform(targetFrameIndex)).asAdjointTransformWrench());
         }
 
+        if (!m_isConstant) {
+            addDependencies(m_jointsVariable);
+        }
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
-            iDynTree::toEigen(m_jointsBuffer) = m_jointsVariable.evaluate();
             m_evaluationBuffer = m_expressionsServer->adjointTransformWrench(m_baseFrameName, m_parentFrameName).evaluate() *
-                iDynTree::toEigen((m_parentJoint->getTransform(m_jointsBuffer, m_parentLink, m_targetLink) *
+                iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
                                    m_linkToTargetTransform).asAdjointTransformWrench());
         }
 
         return m_evaluationBuffer;
-    }
-
-    virtual bool isNew(size_t callerID) final {
-        if (!m_isConstant && (m_jointsVariable.isNew())) {
-            resetEvaluationRegister();
-        }
-
-        return this->m_evaluationRegister[callerID] != this->m_isNewCounter;
-    }
-
-    virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable) final {
-        return (!m_isConstant && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()));
     }
 
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
@@ -299,6 +275,8 @@ public:
 
         }
 
+        addDependencies(m_jointsVariable);
+
     }
 
     virtual levi::ColumnExpression col(Eigen::Index col) final {
@@ -316,18 +294,6 @@ public:
         }
 
         return m_evaluationBuffer;
-    }
-
-    virtual bool isNew(size_t callerID) final {
-        if (m_nonZeros.size() && (m_jointsVariable.isNew())) {
-            resetEvaluationRegister();
-        }
-
-        return this->m_evaluationRegister[callerID] != this->m_isNewCounter;
-    }
-
-    virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable) final {
-        return (m_nonZeros.size() && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()));
     }
 
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
@@ -428,6 +394,8 @@ public:
 
         }
 
+        addDependencies(m_jointsVariable);
+
     }
 
     virtual levi::ColumnExpression col(Eigen::Index col) final {
@@ -445,18 +413,6 @@ public:
         }
 
         return m_evaluationBuffer;
-    }
-
-    virtual bool isNew(size_t callerID) final {
-        if (m_nonZeros.size() && (m_jointsVariable.isNew())) {
-            resetEvaluationRegister();
-        }
-
-        return this->m_evaluationRegister[callerID] != this->m_isNewCounter;
-    }
-
-    virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable) final {
-        return (m_nonZeros.size() && (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()));
     }
 
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>

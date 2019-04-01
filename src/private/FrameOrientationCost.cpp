@@ -124,8 +124,7 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
     std::string desiredFrameName = timelySharedKinDyn->model().getFrameName(desiredFrame);
     m_pimpl->desiredQuaternion = levi::Variable(4, "quat_desired");
     m_pimpl->quaternionErrorExpression = expressionsServer->quaternionError(desiredFrameName, m_pimpl->desiredQuaternion);
-    levi::Constant identityQuat_expr(4,1,"quaternionIdentity");
-    identityQuat_expr = iDynTree::toEigen(m_pimpl->identityQuaternion);
+    levi::Constant identityQuat_expr(iDynTree::toEigen(m_pimpl->identityQuaternion),"quaternionIdentity");
 
     levi::Expression quaternionDifference = m_pimpl->quaternionErrorExpression - identityQuat_expr;
     m_pimpl->asExpression = 0.5 * quaternionDifference.transpose() * quaternionDifference;

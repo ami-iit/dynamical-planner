@@ -21,12 +21,12 @@ namespace DynamicalPlanner {
 
 using namespace DynamicalPlanner::Private;
 
-class DynamicalPlanner::Private::RelativeLeftJacobianEvaluable :
-    public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
+class DynamicalPlanner::Private::RelativeLeftJacobianEvaluable : public levi::DefaultEvaluable {
 
     ExpressionsServer* m_expressionsServer;
     iDynTree::MatrixDynSize m_jacobian;
     iDynTree::FrameIndex m_baseFrame, m_targetFrame;
+    levi::Variable m_jointsVariable;
 
     std::vector<levi::Expression> m_columns;
 
@@ -35,9 +35,9 @@ public:
     RelativeLeftJacobianEvaluable(ExpressionsServer* expressionsServer,
                                   const std::string& baseFrame,
                                   const std::string &targetFrame)
-        : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (expressionsServer->jointsPosition(), 6, expressionsServer->jointsPosition().rows(), baseFrame + "_J_" + targetFrame)
+        : levi::DefaultEvaluable(6, expressionsServer->jointsPosition().rows(), baseFrame + "_J_" + targetFrame)
           , m_expressionsServer(expressionsServer)
+          , m_jointsVariable(expressionsServer->jointsPosition())
     {
         const iDynTree::Model& model = expressionsServer->model();
         m_baseFrame = model.getFrameIndex(baseFrame);
@@ -77,6 +77,8 @@ public:
             visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
         }
 
+        addDependencies(m_jointsVariable);
+
     }
 
     virtual levi::ColumnExpression col(Eigen::Index col) final {
@@ -88,8 +90,6 @@ public:
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
-
-        m_expression.evaluate(); //to notify we used the variable
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
 
@@ -108,7 +108,7 @@ public:
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
 RelativeLeftJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    if (variable->variableName() == m_expression.name()) { //m_expression contains the jointsVariable specified in the constructor
+    if (variable->variableName() == m_jointsVariable.name()) { //m_expression contains the jointsVariable specified in the constructor
 
         return m_columns[static_cast<size_t>(column)].getColumnDerivative(0, variable);
 

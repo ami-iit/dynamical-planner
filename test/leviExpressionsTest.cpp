@@ -228,8 +228,7 @@ void validateTransform(std::shared_ptr<TimelySharedKinDynComputations> timelySha
 
     iDynTree::Position testPosition = iDynTree::getRandomPosition();
 
-    levi::Constant testExpr(3,1,"pos");
-    testExpr = iDynTree::toEigen(testPosition);
+    levi::Constant testExpr(iDynTree::toEigen(testPosition),"pos");
 
     levi::Expression transformedPos = newTransform * testExpr;
 

@@ -19,11 +19,10 @@ namespace DynamicalPlanner {
 
 using namespace DynamicalPlanner::Private;
 
-class DynamicalPlanner::Private::CoMInBaseJacobianEvaluable :
-    public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
-
+class DynamicalPlanner::Private::CoMInBaseJacobianEvaluable : public levi::DefaultEvaluable {
     ExpressionsServer* m_expressionsServer;
     iDynTree::MatrixDynSize m_jacobian;
+    levi::Variable m_jointsVariable;
 
 
     std::vector<levi::Expression> m_columns;
@@ -31,9 +30,9 @@ class DynamicalPlanner::Private::CoMInBaseJacobianEvaluable :
 public:
 
     CoMInBaseJacobianEvaluable(ExpressionsServer* expressionsServer)
-        : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (expressionsServer->jointsPosition(), 3, expressionsServer->jointsPosition().rows(), "B_J_[B, CoM]")
+        : levi::DefaultEvaluable(3, expressionsServer->jointsPosition().rows(), "B_J_[B, CoM]")
           , m_expressionsServer(expressionsServer)
+          , m_jointsVariable(expressionsServer->jointsPosition())
     {
         const iDynTree::Model& model = expressionsServer->model();
 
@@ -90,6 +89,7 @@ public:
             }
         }
 
+        addDependencies(m_jointsVariable);
     }
 
     virtual levi::ColumnExpression column(Eigen::Index col) final {
@@ -103,8 +103,6 @@ public:
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
-
-        m_expression.evaluate(); //to notify we used the variable
 
         iDynTree::Vector4 normalizedQuaternion;
         iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_expressionsServer->currentState().base_quaternion).normalized();
@@ -126,7 +124,7 @@ public:
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
 CoMInBaseJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    if (variable->variableName() == m_expression.name()) { //m_expression contains the jointsVariable specified in the constructor
+    if (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()) { //m_expression contains the jointsVariable specified in the constructor
 
         return (m_columns[static_cast<size_t>(column)]).getColumnDerivative(0, variable);
 
@@ -136,29 +134,28 @@ CoMInBaseJacobianEvaluable::getNewColumnDerivative(Eigen::Index column, std::sha
 
 }
 
-class DynamicalPlanner::Private::CoMInBasePositionEvaluable :
-    public levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable> { //Using UnaryOperator as base class, since the transform only depends on joints values. This allows to reuse some buffer mechanism for derivatives and the definition of isNew()
+class DynamicalPlanner::Private::CoMInBasePositionEvaluable : public levi::DefaultEvaluable {
 
     ExpressionsServer* m_expressionsServer;
-
     levi::Expression m_derivative;
+    levi::Variable m_jointsVariable;
 
 public:
 
     CoMInBasePositionEvaluable(ExpressionsServer* expressionsServer)
-        : levi::UnaryOperator<LEVI_DEFAULT_MATRIX_TYPE, levi::DefaultVariableEvaluable>
-          (expressionsServer->jointsPosition(), 3, 1, "b_p_CoM")
+        : levi::DefaultEvaluable( 3, 1, "b_p_CoM")
           , m_expressionsServer(expressionsServer)
+          , m_jointsVariable(expressionsServer->jointsPosition())
     {
 
         m_derivative = levi::ExpressionComponent<CoMInBaseJacobianEvaluable>(expressionsServer);
+        addDependencies(m_jointsVariable);
+
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         SharedKinDynComputationsPointer kinDyn = m_expressionsServer->currentKinDyn();
-
-        m_expression.evaluate(); //to notify we used the variable
 
         iDynTree::Vector4 normalizedQuaternion;
         iDynTree::toEigen(normalizedQuaternion) = iDynTree::toEigen(m_expressionsServer->currentState().base_quaternion).normalized();
@@ -185,7 +182,7 @@ public:
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
 CoMInBasePositionEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    if (variable->variableName() == m_expression.name()) { //m_expression contains the jointsVariable specified in the constructor
+    if (variable->variableName() == m_jointsVariable.name() && variable->dimension() == m_jointsVariable.rows()) { //m_expression contains the jointsVariable specified in the constructor
 
         assert(column == 0);
 

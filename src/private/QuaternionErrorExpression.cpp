@@ -44,6 +44,7 @@ public:
     {
         m_desiredFrameIndex = expressionsServer->model().getFrameIndex(desiredFrame);
         m_baseFrame = expressionsServer->getFloatingBase();
+        addDependencies(m_jointsVariable, m_baseQuaternion, m_desiredQuaternion);
     }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
@@ -55,54 +56,38 @@ public:
         iDynTree::toEigen(desiredQuaternion_iDyn) = m_desiredQuaternion.evaluate();
         m_desiredRotation.fromQuaternion(desiredQuaternion_iDyn);
 
-        m_jointsVariable.evaluate(); //This is just to notify we used this variable
-        m_baseQuaternion.evaluate(); //This is just to notify we used this variable
-
         m_evaluationBuffer = iDynTree::toEigen(ErrorQuaternion(frameTransform.getRotation(), m_desiredRotation));
 
         return m_evaluationBuffer;
     }
 
-    virtual bool isNew(size_t callerID) final {
-        if (m_jointsVariable.isNew() || m_baseQuaternion.isNew() || m_desiredQuaternion.isNew()) {
-            resetEvaluationRegister();
-        }
-
-        return this->m_evaluationRegister[callerID] != this->m_isNewCounter;
-    }
-
-    virtual levi::ExpressionComponent<derivative_evaluable> getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final {
-        assert(column == 0);
-        levi::unused(column);
-
-        if (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()) {
-            return 0.5 * G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)).transpose() *
-                m_expressionsServer->relativeLeftJacobian(m_baseFrame, m_desiredFrameName).block(3, 0, 3, m_expressionsServer->jointsPosition().rows());
-        }
-
-        if (variable->variableName() == m_expressionsServer->baseQuaternion().name() && variable->dimension() == m_expressionsServer->baseQuaternion().rows()) {
-            return G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)).transpose() *
-                m_expressionsServer->relativeRotation(m_desiredFrameName, m_baseFrame) * G_Expression(m_expressionsServer->normalizedBaseQuaternion()) *
-                m_expressionsServer->normalizedBaseQuaternion().getColumnDerivative(0, m_expressionsServer->baseQuaternion());
-        }
-
-        if (variable->variableName() == m_desiredQuaternion.name() && variable->dimension() == m_desiredQuaternion.rows()) {
-            return levi::ExpressionComponent<derivative_evaluable>(); //this derivative is not provided
-        }
-
-        return levi::Null(4, variable->dimension());
-
-    }
-
-    virtual bool isDependentFrom(std::shared_ptr<levi::VariableBase> variable);
+    virtual levi::Expression getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
 
 };
 
-bool QuaternionErrorEvaluable::isDependentFrom(std::shared_ptr<levi::VariableBase> variable) {
-    return ((variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()) ||
-            (variable->variableName() == m_expressionsServer->baseQuaternion().name() && variable->dimension() == m_expressionsServer->baseQuaternion().rows()) ||
-            (variable->variableName() == m_desiredQuaternion.name() && variable->dimension() == m_desiredQuaternion.rows()));
+levi::Expression DynamicalPlanner::Private::QuaternionErrorEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) {
+    assert(column == 0);
+    levi::unused(column);
+
+    if (variable->variableName() == m_expressionsServer->jointsPosition().name() && variable->dimension() == m_expressionsServer->jointsPosition().rows()) {
+        return 0.5 * G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)).transpose() *
+            m_expressionsServer->relativeLeftJacobian(m_baseFrame, m_desiredFrameName).block(3, 0, 3, m_expressionsServer->jointsPosition().rows());
+    }
+
+    if (variable->variableName() == m_expressionsServer->baseQuaternion().name() && variable->dimension() == m_expressionsServer->baseQuaternion().rows()) {
+        return G_Expression(m_expressionsServer->quaternionError(m_desiredFrameName, m_desiredQuaternion)).transpose() *
+            m_expressionsServer->relativeRotation(m_desiredFrameName, m_baseFrame) * G_Expression(m_expressionsServer->normalizedBaseQuaternion()) *
+            m_expressionsServer->normalizedBaseQuaternion().getColumnDerivative(0, m_expressionsServer->baseQuaternion());
+    }
+
+    if (variable->variableName() == m_desiredQuaternion.name() && variable->dimension() == m_desiredQuaternion.rows()) {
+        return levi::ExpressionComponent<derivative_evaluable>(); //this derivative is not provided
+    }
+
+    return levi::Null(4, variable->dimension());
+
 }
+
 
 levi::Expression DynamicalPlanner::Private::QuaternionError(const std::string &desiredFrame, ExpressionsServer *expressionsServer, const levi::Variable &desiredQuaternion)
 {
