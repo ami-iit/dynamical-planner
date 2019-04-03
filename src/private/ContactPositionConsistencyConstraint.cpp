@@ -308,7 +308,7 @@ bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTS
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateVariables();
-    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionsServer->updateRobotState(time);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);
     iDynTree::iDynTreeEigenConstVector lambdaMap = iDynTree::toEigen(lambda);

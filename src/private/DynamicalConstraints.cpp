@@ -454,7 +454,7 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTState(double time, 
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
-    m_pimpl->expressionServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionServer->updateRobotState(time);
 
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
@@ -493,7 +493,7 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControl(double
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
-    m_pimpl->expressionServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionServer->updateRobotState(time);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 

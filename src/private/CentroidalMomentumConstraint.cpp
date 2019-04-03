@@ -187,8 +187,8 @@ public:
         levi::Expression worldToBaseRotation = expressionsServer->baseRotation();
         levi::Expression comInBasePosition = expressionsServer->comInBase();
 
-        levi::Expression mixedAdjointBottomRows =
-            levi::Expression::Horzcat(worldToBaseRotation * (-1.0 * comInBasePosition).skew(), worldToBaseRotation, "G_bar_X_b");
+        levi::Expression mixedAdjointBottomRows = worldToBaseRotation *
+            levi::Expression::Horzcat((-comInBasePosition).skew(), levi::Identity(3,3), "G[b]_X_b");
 
         asExpression = mixedAdjointBottomRows * asExpression;
 
@@ -454,7 +454,7 @@ bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTState(dou
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateVariables();
-    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionsServer->updateRobotState(time);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);
     iDynTree::iDynTreeEigenConstVector lambdaMap = iDynTree::toEigen(lambda);
@@ -528,7 +528,7 @@ bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTStateCont
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateVariables();
-    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionsServer->updateRobotState(time);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(hessian);
     iDynTree::iDynTreeEigenConstVector lambdaMap = iDynTree::toEigen(lambda);

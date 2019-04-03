@@ -30,6 +30,8 @@ public:
 
     bool updateRobotState(double time, const RobotState &currentState);
 
+    bool updateRobotState(double time);
+
     const RobotState &currentState() const;
 
     SharedKinDynComputationsPointer currentKinDyn();

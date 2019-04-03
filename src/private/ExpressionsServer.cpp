@@ -65,16 +65,24 @@ ExpressionsServer::ExpressionsServer(std::shared_ptr<TimelySharedKinDynComputati
     m_pimpl->timelySharedKinDyn = timelySharedKinDyn;
 
     m_pimpl->quaternionNormalized = m_pimpl->quaternion/(m_pimpl->quaternion.transpose() * m_pimpl->quaternion).pow(0.5);
-    levi::Expression skewQuaternion = m_pimpl->quaternionNormalized.block(1,0,3,1).skew();
+    levi::Expression quaternionReal = m_pimpl->quaternionNormalized(0,0);
+    levi::Expression quaternionImaginary = m_pimpl->quaternionNormalized.block(1,0,3,1);
+    levi::Expression skewQuaternion = quaternionImaginary.skew();
     levi::Expression twoSkewQuaternion = 2.0 * skewQuaternion;
-    m_pimpl->baseRotation = levi::Identity(3,3) + m_pimpl->quaternionNormalized(0,0) * twoSkewQuaternion + twoSkewQuaternion * skewQuaternion;
+    m_pimpl->baseRotation = levi::Identity(3,3) + quaternionReal * twoSkewQuaternion + twoSkewQuaternion * skewQuaternion;
 
     m_pimpl->time = 0.0;
     m_pimpl->s = levi::Variable(timelySharedKinDyn->model().getNrOfDOFs(), "s");
     m_pimpl->s_dot = levi::Variable(timelySharedKinDyn->model().getNrOfDOFs(), "s_dot");
 
-    m_pimpl->baseTwist = BodyTwistFromQuaternionVelocity(m_pimpl->baseLinearVelocity, m_pimpl->baseQuaternionVelocity,
-                                                         m_pimpl->quaternionNormalized, "baseTwist");
+    levi::Expression minusQuaternion = -quaternionImaginary;
+    levi::Expression angularVelocity = 2.0 * (minusQuaternion * m_pimpl->baseQuaternionVelocity(0,0) + (quaternionReal(0,0) * levi::Identity(3,3) - minusQuaternion.skew()) * m_pimpl->baseQuaternionVelocity.block(1,0,3,1));
+
+    m_pimpl->baseTwist = levi::Expression::Vertcat(m_pimpl->baseLinearVelocity, angularVelocity, "baseTwist");
+
+//    m_pimpl->baseTwist = BodyTwistFromQuaternionVelocity(m_pimpl->baseLinearVelocity, m_pimpl->baseQuaternionVelocity,
+//                                                         m_pimpl->quaternionNormalized, "baseTwist");
+
     m_pimpl->worldToBase = TransformExpression(m_pimpl->basePositionExpr, m_pimpl->baseRotation);
     m_pimpl->comInBase = CoMInBaseExpression(this);
 
@@ -113,6 +121,28 @@ bool ExpressionsServer::updateRobotState(double time, const RobotState &currentS
         m_pimpl->s_dot = iDynTree::toEigen(currentState.s_dot);
         m_pimpl->baseLinearVelocity = iDynTree::toEigen(currentState.base_linearVelocity);
         m_pimpl->baseQuaternionVelocity = iDynTree::toEigen(currentState.base_quaternionVelocity);
+
+        m_pimpl->robotState = m_pimpl->kinDyn->currentState();
+
+        m_pimpl->first = false;
+    }
+
+    return true;
+}
+
+bool ExpressionsServer::updateRobotState(double time)
+{
+    m_pimpl->time = time;
+    m_pimpl->kinDyn = m_pimpl->timelySharedKinDyn->get(time);
+
+    if (m_pimpl->first || !(m_pimpl->kinDyn->sameState(m_pimpl->robotState))) {
+
+        m_pimpl->quaternion = iDynTree::toEigen(m_pimpl->kinDyn->currentState().base_quaternion);
+        m_pimpl->basePositionExpr = iDynTree::toEigen(m_pimpl->kinDyn->currentState().base_position);
+        m_pimpl->s = iDynTree::toEigen(m_pimpl->kinDyn->currentState().s);
+        m_pimpl->s_dot = iDynTree::toEigen(m_pimpl->kinDyn->currentState().s_dot);
+        m_pimpl->baseLinearVelocity = iDynTree::toEigen(m_pimpl->kinDyn->currentState().base_linearVelocity);
+        m_pimpl->baseQuaternionVelocity = iDynTree::toEigen(m_pimpl->kinDyn->currentState().base_quaternionVelocity);
 
         m_pimpl->robotState = m_pimpl->kinDyn->currentState();
 

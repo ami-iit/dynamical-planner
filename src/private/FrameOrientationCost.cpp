@@ -274,7 +274,7 @@ bool FrameOrientationCost::costSecondPartialDerivativeWRTState(double time, cons
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
-    m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionsServer->updateRobotState(time);
 
     bool isValid = false;
     const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
