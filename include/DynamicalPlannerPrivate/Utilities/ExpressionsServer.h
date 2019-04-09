@@ -94,6 +94,13 @@ public:
     levi::Expression relativeVelocity(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
+    levi::Expression absoluteVelocity(const std::string &targetFrame,
+                                      const levi::Variable &baseTwist);
+
+    levi::Expression absoluteVelocityJointsDerivative(const std::string &targetFrame,
+                                                      const levi::Variable &baseTwist);
+
+
     levi::Expression quaternionError(const std::string &desiredFrame,
                                       const levi::Variable& desiredQuaternion);
 

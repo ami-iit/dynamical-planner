@@ -59,6 +59,7 @@ public:
     levi::DefaultMultipleCompiledOutputPointer stateHessianPointer;
     levi::DefaultMultipleSqueezedOutputPointer stateHessianSqueezedPointer;
 
+    levi::Variable normalizedQuaternion;
 
     void getRanges() {
 
@@ -165,26 +166,30 @@ public:
         iDynTree::LinkConstPtr baseLink = model.getLink(baseIndex);
         levi::Constant baseInertia(iDynTree::toEigen(baseLink->getInertia().asMatrix()),"I_b");
 
-        levi::Expression baseTwist = expressionsServer->baseTwist();
+        normalizedQuaternion = expressionsServer->normalizedBaseQuaternion().asIndependentVariable();
+
+        levi::Expression baseTwist = BodyTwistFromQuaternionVelocity(expressionsServer->baseLinearVelocity(),
+                                                                     expressionsServer->baseQuaternionVelocity(),
+                                                                     normalizedQuaternion, "baseTwist");
 
         asExpression = baseInertia * baseTwist;
         std::string linkName;
 
-        levi::Expression adjointWrench, adjoint, relativeVelocity;
+        levi::Expression adjointWrench, adjoint, absoluteVelocity;
 
         for (iDynTree::LinkIndex l = 0; l < static_cast<int>(model.getNrOfLinks()); ++l) {
             if (l != baseIndex) {
                 linkName = model.getLinkName(l);
                 adjoint = expressionsServer->adjointTransform(linkName, baseFrame);
                 adjointWrench = expressionsServer->adjointTransformWrench(baseFrame, linkName);
-                relativeVelocity = expressionsServer->relativeVelocity(baseFrame, linkName);
                 levi::Constant inertia(iDynTree::toEigen(model.getLink(l)->getInertia().asMatrix()),"I_" + linkName);
 
-                asExpression = asExpression +  (adjointWrench * inertia) * (relativeVelocity + adjoint * baseTwist);
+                asExpression = asExpression +  (adjointWrench * inertia) * (expressionsServer->absoluteVelocity(linkName, baseTwist.asVariable()));
             }
         }
 
-        levi::Expression worldToBaseRotation = expressionsServer->baseRotation();
+        levi::Expression worldToBaseRotation = RotationExpression(normalizedQuaternion);
+
         levi::Expression comInBasePosition = expressionsServer->comInBase();
 
         levi::Expression mixedAdjointBottomRows = worldToBaseRotation *
@@ -192,33 +197,62 @@ public:
 
         asExpression = mixedAdjointBottomRows * asExpression;
 
-        quaternionDerivative = asExpression.getColumnDerivative(0, expressionsServer->baseQuaternion());
+        levi::Expression notNormalizedQuaternionMapExpr =
+            expressionsServer->normalizedBaseQuaternion().getColumnDerivative(0, expressionsServer->baseQuaternion());
+
+        quaternionDerivative = asExpression.getColumnDerivative(0, normalizedQuaternion) * notNormalizedQuaternionMapExpr;
+
         jointsDerivative = asExpression.getColumnDerivative(0, expressionsServer->jointsPosition());
 
         levi::MultipleExpressionsMap<LEVI_DEFAULT_MATRIX_TYPE> stateHessian;
 
         for (Eigen::Index i = 0; i < 4; ++i) {
             //        std::cerr << "State hessian: quaternion col " << i << std::endl;
-            quaternionQuaternionDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, (expressionsServer->baseQuaternion()))/*.squeeze("quaternionDoubleDerivative" + std::to_string(i))*/);
-            stateHessian["quaternionDoubleDerivative" + std::to_string(i)] = quaternionDerivative.getColumnDerivative(i, (expressionsServer->baseQuaternion()));
-            quaternionJointsDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, (expressionsServer->jointsPosition()))/*.squeeze("quaternionJointsDerivative" + std::to_string(i))*/);
-            stateHessian["quaternionJointsDerivative" + std::to_string(i)] = quaternionDerivative.getColumnDerivative(i, (expressionsServer->jointsPosition()));
-            quaternionLinearVelDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, expressionsServer->baseLinearVelocity()).squeeze("quaternionLinearVelocityDerivative" + std::to_string(i)));
-            quaternionQuaternionVelDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, expressionsServer->baseQuaternionVelocity()).squeeze("quaternionQuaternionVelocityDerivative" + std::to_string(i)));
-            quaternionJointsVelDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, expressionsServer->jointsVelocity()).squeeze("quaternionJointsVelocityDerivative" + std::to_string(i)));
+            levi::Expression quaternionDoubleDerivative = quaternionDerivative.getColumnDerivative(i, expressionsServer->baseQuaternion()) +
+                quaternionDerivative.getColumnDerivative(i, normalizedQuaternion) * notNormalizedQuaternionMapExpr;
+            quaternionQuaternionDerivatives.push_back(quaternionDoubleDerivative);
+            stateHessian["quaternionDoubleDerivative" + std::to_string(i)] = quaternionDoubleDerivative;
+            levi::Expression quaternionJointDerivative = quaternionDerivative.getColumnDerivative(i, expressionsServer->jointsPosition());
+            quaternionJointsDerivatives.push_back(quaternionJointDerivative);
+            stateHessian["quaternionJointsDerivative" + std::to_string(i)] = quaternionJointDerivative;
+            quaternionLinearVelDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, expressionsServer->baseLinearVelocity()));
+            quaternionQuaternionVelDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, expressionsServer->baseQuaternionVelocity()));
+            quaternionJointsVelDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, expressionsServer->jointsVelocity()));
         }
 
         for (Eigen::Index i = 0; i < jointsPositionRange.size; ++i) {
             //        std::cerr << "State hessian: joints col " << i << std::endl;
-            jointsJointsDerivative.push_back(jointsDerivative.getColumnDerivative(i, (expressionsServer->jointsPosition()))/*.squeeze("JointsJointsDerivative" + std::to_string(i))*/);
-            stateHessian["JointsJointsDerivative" + std::to_string(i)] = jointsDerivative.getColumnDerivative(i, (expressionsServer->jointsPosition()));
-            jointsLinearVelDerivatives.push_back(jointsDerivative.getColumnDerivative(i, expressionsServer->baseLinearVelocity()).squeeze("jointsLinearVelocityDerivative" + std::to_string(i)));
-            jointsQuaternionVelDerivatives.push_back(jointsDerivative.getColumnDerivative(i, expressionsServer->baseQuaternionVelocity()).squeeze("jointsQuaternionVelocityDerivative" + std::to_string(i)));
-            jointsJointsVelDerivatives.push_back(jointsDerivative.getColumnDerivative(i, expressionsServer->jointsVelocity()).squeeze("jointsJointsVelocityDerivative" + std::to_string(i)));
+            levi::Expression jointsDoubleDerivative = jointsDerivative.getColumnDerivative(i, expressionsServer->jointsPosition());
+            jointsJointsDerivative.push_back(jointsDoubleDerivative);
+            stateHessian["JointsJointsDerivative" + std::to_string(i)] = jointsDoubleDerivative;
+            jointsLinearVelDerivatives.push_back(jointsDerivative.getColumnDerivative(i, expressionsServer->baseLinearVelocity()));
+            jointsQuaternionVelDerivatives.push_back(jointsDerivative.getColumnDerivative(i, expressionsServer->baseQuaternionVelocity()));
+            jointsJointsVelDerivatives.push_back(jointsDerivative.getColumnDerivative(i, expressionsServer->jointsVelocity()));
         }
 
 //        stateHessianPointer = levi::CompileMultipleExpressions(stateHessian, "CentroidalMomentumStateHessian");
 //        stateHessianSqueezedPointer = levi::SqueezeMultipleExpressions(stateHessian);
+    }
+
+    void clearDerivativesCache(std::vector<levi::Expression>& vector) {
+        for (auto& expr : vector) {
+            expr.clearDerivativesCache();
+        }
+    }
+
+    ~Implementation() {
+        asExpression.clearDerivativesCache();
+        quaternionDerivative.clearDerivativesCache();
+        jointsDerivative.clearDerivativesCache();
+        clearDerivativesCache(quaternionQuaternionDerivatives);
+        clearDerivativesCache(quaternionJointsDerivatives);
+        clearDerivativesCache(jointsJointsDerivative);
+        clearDerivativesCache(quaternionLinearVelDerivatives);
+        clearDerivativesCache(quaternionQuaternionVelDerivatives);
+        clearDerivativesCache(quaternionJointsVelDerivatives);
+        clearDerivativesCache(jointsLinearVelDerivatives);
+        clearDerivativesCache(jointsQuaternionVelDerivatives);
+        clearDerivativesCache(jointsJointsVelDerivatives);
     }
 
 };
@@ -281,7 +315,9 @@ void CentroidalMomentumConstraint::setEqualityTolerance(double tolerance)
 }
 
 CentroidalMomentumConstraint::~CentroidalMomentumConstraint()
-{ }
+{
+    m_pimpl->asExpression.clearDerivativesCache();
+}
 
 bool CentroidalMomentumConstraint::evaluateConstraint(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
 {
@@ -380,7 +416,7 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTState(double time, const
                  iDynTree::toEigen(normalizedQuaternionDerivative));
 
 
-//        m_pimpl->expressionsServer->updateRobotState(time, m_pimpl->robotState);
+//        m_pimpl->expressionsServer->updateRobotState(time);
 //        jacobianMap.block<3,4>(3, m_pimpl->baseQuaternionRange.offset) = m_pimpl->quaternionDerivative.evaluate();
 //        jacobianMap.block(3, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size) = m_pimpl->jointsDerivative.evaluate();
 

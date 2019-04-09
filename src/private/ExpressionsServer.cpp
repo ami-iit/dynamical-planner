@@ -15,6 +15,7 @@
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeQuaternionExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/QuaternionErrorExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/AbsoluteVelocityExpression.h>
 #include <initializer_list>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
@@ -43,7 +44,7 @@ public:
     levi::Expression comInBase;
     ExpressionMap adjointMap, adjointWrenchMap, velocitiesMap, relativePositionsMap,
         relativeQuaternionsMap, relativeRotationsMap, relativeJacobiansMap, quaternionsErrorsMap, motionSubspacesMap,
-        motionSubspacesWrenchMap, adjointDerivativeMap, adjointWrenchDerivativeMap;
+        motionSubspacesWrenchMap, adjointDerivativeMap, adjointWrenchDerivativeMap, absoluteVelocitiesMap, absoluteVelocitiesDerivativeMap;
     TransformsMap transformsMap;
     RobotState robotState;
 
@@ -96,12 +97,16 @@ ExpressionsServer::~ExpressionsServer()
     //that all the expressions will be deleted
     m_pimpl->clearDerivatives(m_pimpl->adjointMap);
     m_pimpl->clearDerivatives(m_pimpl->adjointWrenchMap);
+    m_pimpl->clearDerivatives(m_pimpl->adjointDerivativeMap);
+    m_pimpl->clearDerivatives(m_pimpl->adjointWrenchDerivativeMap);
     m_pimpl->clearDerivatives(m_pimpl->velocitiesMap);
     m_pimpl->clearDerivatives(m_pimpl->relativePositionsMap);
     m_pimpl->clearDerivatives(m_pimpl->relativeQuaternionsMap);
     m_pimpl->clearDerivatives(m_pimpl->relativeRotationsMap);
     m_pimpl->clearDerivatives(m_pimpl->relativeJacobiansMap);
     m_pimpl->clearDerivatives(m_pimpl->quaternionsErrorsMap);
+    m_pimpl->clearDerivatives(m_pimpl->absoluteVelocitiesMap);
+    m_pimpl->clearDerivatives(m_pimpl->absoluteVelocitiesDerivativeMap);
     m_pimpl->comInBase.clearDerivativesCache();
 }
 
@@ -236,7 +241,11 @@ levi::Expression ExpressionsServer::adjointTransform(const std::string &baseFram
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = AdjointTransformExpression(this, baseFrame, targetFrame);
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Identity(6,6);
+        } else {
+            newElement.second = AdjointTransformExpression(this, baseFrame, targetFrame);
+        }
         auto result = m_pimpl->adjointMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -245,7 +254,7 @@ levi::Expression ExpressionsServer::adjointTransform(const std::string &baseFram
 
 levi::Expression ExpressionsServer::adjointTransformJointsDerivative(const std::string &baseFrame, const std::string &targetFrame, long column)
 {
-    std::string label = baseFrame + targetFrame + std::to_string(column);
+    std::string label = baseFrame + targetFrame + "__" + std::to_string(column);
 
     ExpressionMap::iterator element = m_pimpl->adjointDerivativeMap.find(label);
 
@@ -253,8 +262,12 @@ levi::Expression ExpressionsServer::adjointTransformJointsDerivative(const std::
         return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
-        newElement.first = baseFrame + targetFrame + std::to_string(column);
-        newElement.second = AdjointTransformExpressionJointsDerivative(this, baseFrame, targetFrame, column);
+        newElement.first = label;
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Null(6, m_pimpl->s.rows());
+        } else {
+            newElement.second = AdjointTransformExpressionJointsDerivative(this, baseFrame, targetFrame, column);
+        }
         auto result = m_pimpl->adjointDerivativeMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -270,7 +283,11 @@ levi::Expression ExpressionsServer::adjointTransformWrench(const std::string &ba
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = AdjointTransformWrenchExpression(this, baseFrame, targetFrame);
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Identity(6, 6);
+        } else {
+            newElement.second = AdjointTransformWrenchExpression(this, baseFrame, targetFrame);
+        }
         auto result = m_pimpl->adjointWrenchMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -279,7 +296,7 @@ levi::Expression ExpressionsServer::adjointTransformWrench(const std::string &ba
 
 levi::Expression ExpressionsServer::adjointTransformWrenchJointsDerivative(const std::string &baseFrame, const std::string &targetFrame, long column)
 {
-    std::string label = baseFrame + targetFrame + std::to_string(column);
+    std::string label = baseFrame + targetFrame + "__" + std::to_string(column);
 
     ExpressionMap::iterator element = m_pimpl->adjointWrenchDerivativeMap.find(label);
 
@@ -287,8 +304,12 @@ levi::Expression ExpressionsServer::adjointTransformWrenchJointsDerivative(const
         return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
-        newElement.first = baseFrame + targetFrame + std::to_string(column);
-        newElement.second = AdjointTransformWrenchExpressionJointsDerivative(this, baseFrame, targetFrame, column);
+        newElement.first = label;
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Null(6, m_pimpl->s.rows());
+        } else {
+            newElement.second = AdjointTransformWrenchExpressionJointsDerivative(this, baseFrame, targetFrame, column);
+        }
         auto result = m_pimpl->adjointWrenchDerivativeMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -304,7 +325,11 @@ levi::Expression ExpressionsServer::relativePosition(const std::string &baseFram
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativePositionExpression(this, baseFrame, targetFrame);
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Null(3, 1);
+        } else {
+            newElement.second = RelativePositionExpression(this, baseFrame, targetFrame);
+        }
         auto result = m_pimpl->relativePositionsMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -320,7 +345,11 @@ levi::Expression ExpressionsServer::relativeQuaternion(const std::string &baseFr
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativeQuaternionExpression(this, baseFrame, targetFrame);
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Identity(4,4).col(0);
+        } else {
+            newElement.second = RelativeQuaternionExpression(this, baseFrame, targetFrame);
+        }
         auto result = m_pimpl->relativeQuaternionsMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -336,7 +365,11 @@ levi::Expression ExpressionsServer::relativeRotation(const std::string &baseFram
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RotationExpression(relativeQuaternion(baseFrame, targetFrame));
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Identity(3, 3);
+        } else {
+            newElement.second = RotationExpression(relativeQuaternion(baseFrame, targetFrame));
+        }
         auto result = m_pimpl->relativeRotationsMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -368,7 +401,11 @@ levi::Expression ExpressionsServer::relativeLeftJacobian(const std::string &base
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativeLeftJacobianExpression(this, baseFrame, targetFrame);
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Null(6, m_pimpl->s.rows());
+        } else {
+            newElement.second = RelativeLeftJacobianExpression(this, baseFrame, targetFrame);
+        }
         auto result = m_pimpl->relativeJacobiansMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
@@ -384,8 +421,54 @@ levi::Expression ExpressionsServer::relativeVelocity(const std::string &baseFram
     } else {
         std::pair<std::string, levi::Expression> newElement;
         newElement.first = baseFrame + targetFrame;
-        newElement.second = RelativeLeftVelocityExpression(this, baseFrame, targetFrame);
+        if (baseFrame == targetFrame) {
+            newElement.second = levi::Null(6, 1);
+        } else {
+            newElement.second = RelativeLeftVelocityExpression(this, baseFrame, targetFrame);
+        }
         auto result = m_pimpl->velocitiesMap.insert(newElement);
+        assert(result.second);
+        return (result.first->second);
+    }
+}
+
+levi::Expression ExpressionsServer::absoluteVelocity(const std::string &targetFrame, const levi::Variable &baseTwist)
+{
+    ExpressionMap::iterator element = m_pimpl->absoluteVelocitiesMap.find(targetFrame);
+
+    if (element != m_pimpl->absoluteVelocitiesMap.end()) {
+        return (element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = targetFrame;
+        if (targetFrame == getFloatingBase()) {
+            newElement.second = baseTwist;
+        } else {
+            newElement.second = AbsoluteLeftVelocityExpression(this, baseTwist, targetFrame);
+        }
+        auto result = m_pimpl->absoluteVelocitiesMap.insert(newElement);
+        assert(result.second);
+        return (result.first->second);
+    }
+}
+
+levi::Expression ExpressionsServer::absoluteVelocityJointsDerivative(const std::string &targetFrame, const levi::Variable &baseTwist)
+{
+    std::string label = targetFrame;
+
+    ExpressionMap::iterator element = m_pimpl->absoluteVelocitiesDerivativeMap.find(label);
+
+    if (element != m_pimpl->absoluteVelocitiesDerivativeMap.end()) {
+        return (element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = label;
+        if (targetFrame == getFloatingBase()) {
+            newElement.second = levi::Null(6, m_pimpl->s.rows());
+        } else {
+            newElement.second = AbsoluteLeftVelocityJointsDerivativeExpression(this, baseTwist, targetFrame);
+        }
+        auto result = m_pimpl->absoluteVelocitiesDerivativeMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
     }

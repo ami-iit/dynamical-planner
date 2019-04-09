@@ -448,7 +448,7 @@ void validateQuaternionError(std::shared_ptr<TimelySharedKinDynComputations> tim
 
         iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(quaternion_iDyn) + derivativeBase * (iDynTree::toEigen(robotState.base_quaternion) - iDynTree::toEigen(originalQuaternion));
 
-        ASSERT_EQUAL_VECTOR_TOL(perturbedQuaternion, firstOrderTaylor, perturbation/1000.0);
+        ASSERT_EQUAL_VECTOR_TOL(perturbedQuaternion, firstOrderTaylor, perturbation/100.0);
 
     }
 
