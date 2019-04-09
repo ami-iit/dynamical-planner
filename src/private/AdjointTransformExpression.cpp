@@ -197,7 +197,6 @@ AdjointTransformWrenchEvaluable::getColumnDerivative(Eigen::Index column, std::s
 
 class DynamicalPlanner::Private::AdjointTransformDerivativeEvaluable : public levi::DefaultEvaluable {
 
-    std::vector<levi::Expression> m_jointsDerivative;
     std::vector<levi::ExpressionComponent<
         typename levi::Evaluable<typename levi::DefaultEvaluable::derivative_evaluable::col_type>>> m_cols;
 
@@ -229,7 +228,8 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, m_baseLink);
         assert(ok);
 
-        m_jointsDerivative.resize(model.getNrOfDOFs(), levi::Null(6,6));
+        std::vector<levi::Expression> jointsDerivative;
+        jointsDerivative.resize(model.getNrOfDOFs(), levi::Null(6,6));
         m_cols.resize(model.getNrOfDOFs(), levi::Null(6,1));
 
         iDynTree::LinkIndex targetLink = model.getFrameLink(targetFrameIndex);
@@ -246,7 +246,7 @@ public:
             jointIndex = static_cast<size_t>(jointPtr->getIndex());
             parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
 
-            m_jointsDerivative[jointIndex] =
+            jointsDerivative[jointIndex] =
                 expressionsServer->adjointTransform(baseFrame, targetFrame) * expressionsServer->motionSubSpaceAsCrossProduct(jointPtr->getIndex(), parentLink, targetLink);
 
             m_nonZeros.push_back(jointIndex);
@@ -260,7 +260,7 @@ public:
 
                 parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
 
-                m_jointsDerivative[jointIndex] = expressionsServer->adjointTransform(baseFrame, model.getLinkName(visitedLink)) *
+                jointsDerivative[jointIndex] = expressionsServer->adjointTransform(baseFrame, model.getLinkName(visitedLink)) *
                     expressionsServer->motionSubSpaceAsCrossProduct(jointPtr->getIndex(), parentLink, visitedLink) *
                     expressionsServer->adjointTransform(model.getLinkName(visitedLink), targetFrame);
 
@@ -269,8 +269,8 @@ public:
                 visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
             }
 
-            for (size_t i = 0; i < m_jointsDerivative.size(); ++i) {
-                m_cols[i] = m_jointsDerivative[i].col(static_cast<Eigen::Index>(column));
+            for (size_t i = 0; i < jointsDerivative.size(); ++i) {
+                m_cols[i] = jointsDerivative[i].col(static_cast<Eigen::Index>(column));
             }
 
         }
@@ -299,6 +299,13 @@ public:
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
     getColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
 
+    virtual void clearDerivativesCache() final {
+        this->m_derivativeBuffer.clear();
+        for (auto& expression : m_cols) {
+            expression.clearDerivativesCache();
+        }
+    }
+
 };
 
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
@@ -316,7 +323,6 @@ AdjointTransformDerivativeEvaluable::getColumnDerivative(Eigen::Index column, st
 
 class DynamicalPlanner::Private::AdjointTransformWrenchDerivativeEvaluable : public levi::DefaultEvaluable {
 
-    std::vector<levi::Expression> m_jointsDerivative;
     std::vector<levi::ExpressionComponent<
         typename levi::Evaluable<typename levi::DefaultEvaluable::derivative_evaluable::col_type>>> m_cols;
 
@@ -348,7 +354,8 @@ public:
         bool ok = model.computeFullTreeTraversal(traversal, m_baseLink);
         assert(ok);
 
-        m_jointsDerivative.resize(model.getNrOfDOFs(), levi::Null(6,6));
+        std::vector<levi::Expression> jointsDerivative;
+        jointsDerivative.resize(model.getNrOfDOFs(), levi::Null(6,6));
         m_cols.resize(model.getNrOfDOFs(), levi::Null(6,1));
 
         iDynTree::LinkIndex targetLink = model.getFrameLink(targetFrameIndex);
@@ -365,7 +372,7 @@ public:
             jointIndex = static_cast<size_t>(jointPtr->getIndex());
             parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
 
-            m_jointsDerivative[jointIndex] =
+            jointsDerivative[jointIndex] =
                 expressionsServer->adjointTransformWrench(baseFrame, targetFrame) * expressionsServer->motionSubSpaceAsCrossProductWrench(jointPtr->getIndex(), parentLink, targetLink);
 
             m_nonZeros.push_back(jointIndex);
@@ -379,7 +386,7 @@ public:
 
                 parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
 
-                m_jointsDerivative[jointIndex] = expressionsServer->adjointTransformWrench(baseFrame, model.getLinkName(visitedLink)) *
+                jointsDerivative[jointIndex] = expressionsServer->adjointTransformWrench(baseFrame, model.getLinkName(visitedLink)) *
                     expressionsServer->motionSubSpaceAsCrossProductWrench(jointPtr->getIndex(), parentLink, visitedLink) *
                     expressionsServer->adjointTransformWrench(model.getLinkName(visitedLink), targetFrame);
 
@@ -388,8 +395,8 @@ public:
                 visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
             }
 
-            for (size_t i = 0; i < m_jointsDerivative.size(); ++i) {
-                m_cols[i] = m_jointsDerivative[i].col(static_cast<Eigen::Index>(column));
+            for (size_t i = 0; i < jointsDerivative.size(); ++i) {
+                m_cols[i] = jointsDerivative[i].col(static_cast<Eigen::Index>(column));
             }
 
         }
@@ -417,6 +424,13 @@ public:
 
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
     getColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
+
+    virtual void clearDerivativesCache() final {
+        this->m_derivativeBuffer.clear();
+        for (auto& expression : m_cols) {
+            expression.clearDerivativesCache();
+        }
+    }
 
 };
 

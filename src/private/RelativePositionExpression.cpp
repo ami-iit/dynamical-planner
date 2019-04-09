@@ -63,6 +63,11 @@ public:
         return m_evaluationBuffer;
     }
 
+    virtual void clearDerivativesCache() final {
+        this->m_derivativeBuffer.clear();
+        m_derivative.clearDerivativesCache();
+    }
+
     virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
     getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
 };
