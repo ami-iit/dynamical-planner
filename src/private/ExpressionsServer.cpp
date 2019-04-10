@@ -44,7 +44,8 @@ public:
     levi::Expression comInBase;
     ExpressionMap adjointMap, adjointWrenchMap, velocitiesMap, relativePositionsMap,
         relativeQuaternionsMap, relativeRotationsMap, relativeJacobiansMap, quaternionsErrorsMap, motionSubspacesMap,
-        motionSubspacesWrenchMap, adjointDerivativeMap, adjointWrenchDerivativeMap, absoluteVelocitiesMap, absoluteVelocitiesDerivativeMap;
+        motionSubspacesWrenchMap, adjointDerivativeMap, adjointWrenchDerivativeMap, absoluteVelocitiesMap, absoluteVelocitiesDerivativeMap,
+        linkInertiaMap;
     TransformsMap transformsMap;
     RobotState robotState;
 
@@ -531,6 +532,24 @@ levi::Expression ExpressionsServer::motionSubSpaceAsCrossProductWrench(iDynTree:
 
         newElement.second = levi::Constant(motionSubSpaceAsCrossProductWrench, "s_" + std::to_string(joint) + "x*");
         auto result = m_pimpl->motionSubspacesWrenchMap.insert(newElement);
+        assert(result.second);
+        return (result.first->second);
+    }
+}
+
+levi::Expression ExpressionsServer::linkInertia(iDynTree::LinkIndex link)
+{
+    std::string label = model().getLinkName(link);
+    ExpressionMap::iterator element = m_pimpl->linkInertiaMap.find(label);
+
+    if (element != m_pimpl->linkInertiaMap.end()) {
+        return (element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = label;
+
+        newElement.second = levi::Constant(iDynTree::toEigen(model().getLink(link)->getInertia().asMatrix()),"I_" + model().getLinkName(link));
+        auto result = m_pimpl->linkInertiaMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
     }

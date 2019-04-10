@@ -109,6 +109,7 @@ public:
     levi::Expression motionSubSpaceAsCrossProductWrench(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink,
                                                         iDynTree::LinkIndex childLink);
 
+    levi::Expression linkInertia(iDynTree::LinkIndex link);
 
 };
 

@@ -14,6 +14,7 @@
 #include <DynamicalPlannerPrivate/Utilities/levi/AdjointTransformExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/QuaternionExpressions.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeVelocityExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/MomentumInBaseExpression.h>
 #include <cassert>
 
 using namespace DynamicalPlanner::Private;
@@ -172,22 +173,6 @@ public:
                                                                      expressionsServer->baseQuaternionVelocity(),
                                                                      normalizedQuaternion, "baseTwist");
 
-        asExpression = baseInertia * baseTwist;
-        std::string linkName;
-
-        levi::Expression adjointWrench, adjoint, absoluteVelocity;
-
-        for (iDynTree::LinkIndex l = 0; l < static_cast<int>(model.getNrOfLinks()); ++l) {
-            if (l != baseIndex) {
-                linkName = model.getLinkName(l);
-                adjoint = expressionsServer->adjointTransform(linkName, baseFrame);
-                adjointWrench = expressionsServer->adjointTransformWrench(baseFrame, linkName);
-                levi::Constant inertia(iDynTree::toEigen(model.getLink(l)->getInertia().asMatrix()),"I_" + linkName);
-
-                asExpression = asExpression +  (adjointWrench * inertia) * (expressionsServer->absoluteVelocity(linkName, baseTwist.asVariable()));
-            }
-        }
-
         levi::Expression worldToBaseRotation = RotationExpression(normalizedQuaternion);
 
         levi::Expression comInBasePosition = expressionsServer->comInBase();
@@ -195,7 +180,7 @@ public:
         levi::Expression mixedAdjointBottomRows = worldToBaseRotation *
             levi::Expression::Horzcat((-comInBasePosition).skew(), levi::Identity(3,3), "G[b]_X_b");
 
-        asExpression = mixedAdjointBottomRows * asExpression;
+        asExpression = mixedAdjointBottomRows * DynamicalPlanner::Private::MomentumInBaseExpression(expressionsServer.get(), baseTwist.asVariable());
 
         levi::Expression notNormalizedQuaternionMapExpr =
             expressionsServer->normalizedBaseQuaternion().getColumnDerivative(0, expressionsServer->baseQuaternion());
