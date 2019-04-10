@@ -111,6 +111,8 @@ public:
 
     levi::Expression linkInertia(iDynTree::LinkIndex link);
 
+    levi::Expression linkInertiaInBase(iDynTree::LinkIndex link);
+
 };
 
 #endif // DPLANNER_EXPRESSIONSSERVER_H

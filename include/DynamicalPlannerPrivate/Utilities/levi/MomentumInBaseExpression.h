@@ -21,6 +21,9 @@ namespace DynamicalPlanner {
         levi::Expression MomentumInBaseExpressionJointsDerivativeExpression(ExpressionsServer* expressionsServer,
                                                                             const levi::Variable& baseTwist);
 
+        levi::Expression MomentumInBaseExpressionBaseTwistDerivativeExpression(ExpressionsServer* expressionsServer,
+                                                                               const levi::Expression& baseTwistJacobian);
+
     }
 }
 
