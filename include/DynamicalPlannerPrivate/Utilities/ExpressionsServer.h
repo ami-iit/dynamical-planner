@@ -113,6 +113,10 @@ public:
 
     levi::Expression linkInertiaInBase(iDynTree::LinkIndex link);
 
+    levi::Expression compositeRigidBodyInertia();
+
+    levi::Expression momentumInBaseJointsDoubleDerivative(const levi::Variable& baseTwist, long column);
+
 };
 
 #endif // DPLANNER_EXPRESSIONSSERVER_H

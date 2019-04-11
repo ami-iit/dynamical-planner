@@ -16,6 +16,7 @@
 #include <DynamicalPlannerPrivate/Utilities/levi/RelativeJacobianExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/QuaternionErrorExpression.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/AbsoluteVelocityExpression.h>
+#include <DynamicalPlannerPrivate/Utilities/levi/MomentumInBaseExpression.h>
 #include <initializer_list>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <cassert>
@@ -42,10 +43,11 @@ public:
     levi::Expression baseTwist;
     TransformExpression worldToBase;
     levi::Expression comInBase;
+    levi::Expression crbi;
     ExpressionMap adjointMap, adjointWrenchMap, velocitiesMap, relativePositionsMap,
         relativeQuaternionsMap, relativeRotationsMap, relativeJacobiansMap, quaternionsErrorsMap, motionSubspacesMap,
-        motionSubspacesWrenchMap, adjointDerivativeMap, adjointWrenchDerivativeMap, absoluteVelocitiesMap, absoluteVelocitiesDerivativeMap,
-        linkInertiaMap, linkInertiaInBaseMap;
+        motionSubspacesWrenchMap, adjointDerivativeMap, adjointWrenchDerivativeMap, absoluteVelocitiesMap,
+        absoluteVelocitiesDerivativeMap, linkInertiaMap, linkInertiaInBaseMap, momentumDoubleDerivativeMap;
     TransformsMap transformsMap;
     RobotState robotState;
 
@@ -88,6 +90,12 @@ ExpressionsServer::ExpressionsServer(std::shared_ptr<TimelySharedKinDynComputati
     m_pimpl->worldToBase = TransformExpression(m_pimpl->basePositionExpr, m_pimpl->baseRotation);
     m_pimpl->comInBase = CoMInBaseExpression(this);
 
+    m_pimpl->crbi = levi::Null(6,6);
+
+    for (iDynTree::LinkIndex l = 0; l < static_cast<int>(model().getNrOfLinks()); ++l) {
+        m_pimpl->crbi = m_pimpl->crbi + linkInertiaInBase(l) * adjointTransform(model().getLinkName(l), getFloatingBase());
+    }
+
     m_pimpl->first = true;
 
 }
@@ -109,7 +117,9 @@ ExpressionsServer::~ExpressionsServer()
     m_pimpl->clearDerivatives(m_pimpl->absoluteVelocitiesMap);
     m_pimpl->clearDerivatives(m_pimpl->absoluteVelocitiesDerivativeMap);
     m_pimpl->clearDerivatives(m_pimpl->linkInertiaInBaseMap);
+    m_pimpl->clearDerivatives(m_pimpl->momentumDoubleDerivativeMap);
     m_pimpl->comInBase.clearDerivativesCache();
+    m_pimpl->crbi.clearDerivativesCache();
 }
 
 bool ExpressionsServer::updateRobotState(double time, const RobotState &currentState)
@@ -569,6 +579,29 @@ levi::Expression ExpressionsServer::linkInertiaInBase(iDynTree::LinkIndex link)
 
         newElement.second = adjointTransformWrench(getFloatingBase(), model().getLinkName(link)) * linkInertia(link);
         auto result = m_pimpl->linkInertiaInBaseMap.insert(newElement);
+        assert(result.second);
+        return (result.first->second);
+    }
+}
+
+levi::Expression ExpressionsServer::compositeRigidBodyInertia()
+{
+    return m_pimpl->crbi;
+}
+
+levi::Expression ExpressionsServer::momentumInBaseJointsDoubleDerivative(const levi::Variable &baseTwist, long column)
+{
+    std::string label = std::to_string(column);
+
+    ExpressionMap::iterator element = m_pimpl->momentumDoubleDerivativeMap.find(label);
+
+    if (element != m_pimpl->momentumDoubleDerivativeMap.end()) {
+        return (element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = label;
+        newElement.second = MomentumInBaseExpressionJointsDoubleDerivativeExpression(this, baseTwist, column);
+        auto result = m_pimpl->momentumDoubleDerivativeMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
     }
