@@ -7,6 +7,7 @@
 
 #include <levi/levi.h>
 #include <DynamicalPlannerPrivate/Utilities/levi/MomentumInBaseExpression.h>
+#include <iDynTree/Core/MatrixDynSize.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <unordered_set>
 #include <cassert>
@@ -17,6 +18,8 @@ namespace DynamicalPlanner {
         class MomentumInBaseEvaluable;
         class MomentumInBaseJointsDerivativeEvaluable;
         class MomentumInBaseBaseTwistDerivativeEvaluable;
+        class MomentumInBaseJointsVelocityDerivativeEvaluable;
+        class MomentumInBaseBaseTwistJointsDerivativeEvaluable;
         class MomentumInBaseJointsDoubleDerivativeEvaluable;
     }
 }
@@ -91,10 +94,12 @@ levi::Expression DynamicalPlanner::Private::MomentumInBaseEvaluable::getNewColum
 
     if (variable->dimension() == m_jointsVariable.rows() && variable->variableName() == m_jointsVariable.name()) {
         return MomentumInBaseExpressionJointsDerivativeExpression(m_expressionsServer, m_baseTwist);
+    } else if (variable->dimension() == m_jointsVelocityVariable.rows() && variable->variableName() == m_jointsVelocityVariable.name()) {
+        return MomentumInBaseJointsVelocityDerivativeExpression(m_expressionsServer);
     } else if (m_baseTwist.isDependentFrom(variable)) {
         return MomentumInBaseExpressionBaseTwistDerivativeExpression(m_expressionsServer, m_baseTwist.getColumnDerivative(0, variable));
     } else {
-        return m_thisExpression.getColumnDerivative(0, variable);
+        return levi::Null(6, variable->dimension());
     }
 }
 
@@ -105,6 +110,8 @@ class DynamicalPlanner::Private::MomentumInBaseJointsDerivativeEvaluable : publi
 
     std::vector<levi::ExpressionComponent<
         typename levi::Evaluable<typename levi::DefaultEvaluable::derivative_evaluable::col_type>>> m_cols;
+
+    iDynTree::MatrixDynSize m_derivativeiDyn;
 
     ExpressionsServer* m_expressionsServer;
 
@@ -138,6 +145,9 @@ public:
 
         bool ok = model.computeFullTreeTraversal(traversal, baseLink);
         assert(ok);
+
+        m_derivativeiDyn.resize(6, static_cast<unsigned int>(model.getNrOfDOFs()));
+        m_derivativeiDyn.zero();
 
         m_cols.resize(model.getNrOfDOFs(), levi::Null(6,1));
 
@@ -199,9 +209,11 @@ public:
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
-        for (size_t j = 0; j < m_cols.size(); ++j) {
-            m_evaluationBuffer.col(static_cast<Eigen::Index>(j)) = m_cols[j].evaluate();
-        }
+        bool ok = m_expressionsServer->currentKinDyn()->getLinearAngularMomentumJointsDerivative(m_expressionsServer->currentState(),
+                                                                                                 m_derivativeiDyn);
+        assert(ok);
+
+        m_evaluationBuffer = iDynTree::toEigen(m_derivativeiDyn);
 
         return m_evaluationBuffer;
     }
@@ -240,12 +252,16 @@ MomentumInBaseJointsDerivativeEvaluable::getNewColumnDerivative(Eigen::Index col
 class DynamicalPlanner::Private::MomentumInBaseBaseTwistDerivativeEvaluable : public levi::DefaultEvaluable {
 
     levi::Expression m_thisExpression;
+    levi::Expression m_baseTwistJacobian;
+    ExpressionsServer* m_expressionsServer;
 
 public:
 
     MomentumInBaseBaseTwistDerivativeEvaluable(ExpressionsServer* expressionsServer,
                                                const levi::Expression &baseTwistJacobian)
         : levi::DefaultEvaluable(6, baseTwistJacobian.cols(), "d(h_B)/d.nu_base * " + baseTwistJacobian.name())
+          , m_baseTwistJacobian(baseTwistJacobian)
+          , m_expressionsServer(expressionsServer)
     {
 
         assert(expressionsServer);
@@ -276,9 +292,224 @@ public:
 levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
 MomentumInBaseBaseTwistDerivativeEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
 {
-    return m_thisExpression.getColumnDerivative(column, variable);
+    if (variable->dimension() == m_expressionsServer->jointsPosition().rows() &&
+        variable->variableName() == m_expressionsServer->jointsPosition().name()) {
+        return MomentumInBaseBaseTwistJointsDerivativeExpression(m_expressionsServer, m_baseTwistJacobian, column);
+    } else {
+        return m_thisExpression.getColumnDerivative(column, variable);
+    }
 }
 
+/*-------------------------- Momentum Joints Velocity Derivative ---------------------------------------------*/
+
+
+    class DynamicalPlanner::Private::MomentumInBaseJointsVelocityDerivativeEvaluable : public levi::DefaultEvaluable {
+
+    std::vector<levi::ExpressionComponent<
+        typename levi::Evaluable<typename levi::DefaultEvaluable::derivative_evaluable::col_type>>> m_cols;
+
+public:
+
+    MomentumInBaseJointsVelocityDerivativeEvaluable(ExpressionsServer* expressionsServer)
+        : levi::DefaultEvaluable(6, expressionsServer->jointsPosition().rows(), "d(h_B)/dqdot")
+    {
+
+        assert(expressionsServer);
+        std::string baseFrame = expressionsServer->getFloatingBase();
+        const iDynTree::Model& model = expressionsServer->model();
+        iDynTree::FrameIndex baseFrameIndex = model.getFrameIndex(expressionsServer->getFloatingBase());
+        assert(baseFrameIndex != iDynTree::FRAME_INVALID_INDEX);
+        iDynTree::LinkIndex baseLink = model.getFrameLink(baseFrameIndex);
+        assert(baseLink != iDynTree::LINK_INVALID_INDEX);
+
+        iDynTree::Traversal traversal;
+
+        bool ok = model.computeFullTreeTraversal(traversal, baseLink);
+        assert(ok);
+
+        m_cols.resize(model.getNrOfDOFs(), levi::Null(6,1));
+
+        iDynTree::LinkConstPtr linkPtr;
+        iDynTree::IJointConstPtr jointPtr;
+        iDynTree::LinkIndex visitedLink, childLink, parentLink;
+        size_t jointIndex;
+        Eigen::Matrix<double, 6,1> motionSubSpaceVector;
+
+        for (iDynTree::LinkIndex l = 0; l < static_cast<int>(model.getNrOfLinks()); ++l) {
+
+            assert(model.isValidLinkIndex(l));
+            linkPtr = model.getLink(l);
+            visitedLink = l;
+
+            while(visitedLink != baseLink) {
+                jointPtr = traversal.getParentJointFromLinkIndex(visitedLink);
+                jointIndex = static_cast<size_t>(jointPtr->getIndex());
+
+                childLink =  traversal.getChildLinkIndexFromJointIndex(model, jointPtr->getIndex());
+                parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
+
+                motionSubSpaceVector = iDynTree::toEigen(jointPtr->getMotionSubspaceVector(0,
+                                                                                           childLink,
+                                                                                           parentLink));
+
+                m_cols[jointIndex] = m_cols[jointIndex] + expressionsServer->linkInertiaInBase(l) *
+                        expressionsServer->adjointTransform(model.getLinkName(l), model.getLinkName(childLink)) *
+                                        levi::Constant(motionSubSpaceVector, "s_" + std::to_string(jointIndex));
+
+                visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
+            }
+        }
+
+        addDependencies(expressionsServer->jointsPosition());
+
+    }
+
+    virtual levi::ColumnExpression col(Eigen::Index col) final {
+        return m_cols[static_cast<size_t>(col)];
+    }
+
+    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
+        return m_cols[static_cast<size_t>(col)](row, 0);
+    }
+
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
+
+        for (size_t j = 0; j < m_cols.size(); ++j) {
+            m_evaluationBuffer.col(static_cast<Eigen::Index>(j)) = m_cols[j].evaluate();
+        }
+
+        return m_evaluationBuffer;
+    }
+
+    virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
+    getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
+
+    virtual void clearDerivativesCache() final {
+        this->m_derivativeBuffer.clear();
+        for (auto& expression : m_cols) {
+            expression.clearDerivativesCache();
+        }
+    }
+
+};
+
+levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
+MomentumInBaseJointsVelocityDerivativeEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
+{
+    return m_cols[static_cast<size_t>(column)].getColumnDerivative(0, variable);
+}
+
+/*-------------------------- Momentum Derivative wrt base twist and joints----------------------------------------*/
+
+
+class DynamicalPlanner::Private::MomentumInBaseBaseTwistJointsDerivativeEvaluable : public levi::DefaultEvaluable {
+
+    std::vector<levi::ExpressionComponent<
+        typename levi::Evaluable<typename levi::DefaultEvaluable::derivative_evaluable::col_type>>> m_cols;
+
+public:
+
+    MomentumInBaseBaseTwistJointsDerivativeEvaluable(ExpressionsServer* es,
+                                                     const levi::Expression& baseTwistJacobian,
+                                                     long column)
+        : levi::DefaultEvaluable(6, es->jointsPosition().rows(),
+                                 "d^2(h_B)/(d.nu_base ds)* (" + baseTwistJacobian.name()
+                                     + ")[:, " + std::to_string(column) + "]")
+    {
+
+        levi::Expression baseTwistJacobianColumn = baseTwistJacobian.col(column);
+
+        assert(es);
+        std::string baseFrame = es->getFloatingBase();
+        const iDynTree::Model& model = es->model();
+        iDynTree::FrameIndex baseFrameIndex = model.getFrameIndex(es->getFloatingBase());
+        assert(baseFrameIndex != iDynTree::FRAME_INVALID_INDEX);
+        iDynTree::LinkIndex baseLink = model.getFrameLink(baseFrameIndex);
+        assert(baseLink != iDynTree::LINK_INVALID_INDEX);
+
+        iDynTree::Traversal traversal;
+
+        bool ok = model.computeFullTreeTraversal(traversal, baseLink);
+        assert(ok);
+
+        m_cols.resize(model.getNrOfDOFs(), levi::Null(6,1));
+        std::vector<levi::Expression> adjointDerivatives(model.getNrOfDOFs(), levi::Null(6,6));
+
+        iDynTree::LinkConstPtr linkPtr;
+        iDynTree::IJointConstPtr jointPtr;
+        iDynTree::LinkIndex visitedLink, childLink, parentLink;
+        size_t jointIndex;
+
+        for (iDynTree::LinkIndex l = 0; l < static_cast<int>(model.getNrOfLinks()); ++l) {
+
+            assert(model.isValidLinkIndex(l));
+            linkPtr = model.getLink(l);
+            visitedLink = l;
+            std::string linkName = model.getLinkName(l);
+            levi::Expression linkInertia = es->linkInertia(l);
+
+            while(visitedLink != baseLink) {
+                jointPtr = traversal.getParentJointFromLinkIndex(visitedLink);
+                jointIndex = static_cast<size_t>(jointPtr->getIndex());
+
+                childLink =  traversal.getChildLinkIndexFromJointIndex(model, jointPtr->getIndex());
+                std::string childLinkName = model.getLinkName(childLink);
+                parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
+
+                adjointDerivatives[jointIndex] = adjointDerivatives[jointIndex] + es->adjointTransformWrench(baseFrame, childLinkName) *
+                        es->motionSubSpaceAsCrossProductWrench(jointPtr->getIndex(), parentLink, childLink) *
+                        es->adjointTransformWrench(childLinkName, linkName) *
+                        linkInertia * es->adjointTransform(linkName, baseFrame) -
+                    es->adjointTransformWrench(baseFrame, linkName) * linkInertia *
+                        es->adjointTransform(linkName, childLinkName) *
+                        es->motionSubSpaceAsCrossProduct(jointPtr->getIndex(), parentLink, childLink) *
+                        es->adjointTransform(childLinkName, baseFrame);
+
+                visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
+            }
+        }
+
+        for (size_t col = 0; col < m_cols.size(); ++col) {
+            m_cols[col] = adjointDerivatives[col] * baseTwistJacobianColumn;
+        }
+
+        addDependencies(es->jointsPosition(), baseTwistJacobianColumn);
+
+    }
+
+    virtual levi::ColumnExpression col(Eigen::Index col) final {
+        return m_cols[static_cast<size_t>(col)];
+    }
+
+    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
+        return m_cols[static_cast<size_t>(col)](row, 0);
+    }
+
+    virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
+
+        for (size_t col = 0; col < m_cols.size(); ++col) {
+            m_evaluationBuffer.col(static_cast<Eigen::Index>(col)) = m_cols[col].evaluate();
+        }
+        return m_evaluationBuffer;
+    }
+
+    virtual levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
+    getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable) final;
+
+    virtual void clearDerivativesCache() final {
+        this->m_derivativeBuffer.clear();
+        for (auto& expression : m_cols) {
+            expression.clearDerivativesCache();
+        }
+    }
+
+};
+
+levi::ExpressionComponent<typename levi::DefaultEvaluable::derivative_evaluable>
+MomentumInBaseBaseTwistJointsDerivativeEvaluable::getNewColumnDerivative(Eigen::Index column, std::shared_ptr<levi::VariableBase> variable)
+{
+    return m_cols[static_cast<size_t>(column)].getColumnDerivative(0, variable);
+}
 
 /*-------------------------- Momentum Base Joints Double Derivative ---------------------------------------------*/
 
@@ -294,7 +525,7 @@ public:
 
     MomentumInBaseJointsDoubleDerivativeEvaluable(ExpressionsServer* es,
                                                   const levi::Variable &baseTwist, long column)
-        : levi::DefaultEvaluable(6, es->jointsPosition().rows(), "d(h_B)/dq")
+        : levi::DefaultEvaluable(6, es->jointsPosition().rows(), "d^2(h_B)/(dq)^2")
     {
 
         assert(es);
@@ -451,6 +682,18 @@ levi::Expression DynamicalPlanner::Private::MomentumInBaseExpressionJointsDeriva
 levi::Expression DynamicalPlanner::Private::MomentumInBaseExpressionBaseTwistDerivativeExpression(ExpressionsServer *expressionsServer, const levi::Expression& baseTwistJacobian)
 {
     return levi::ExpressionComponent<MomentumInBaseBaseTwistDerivativeEvaluable>(expressionsServer, baseTwistJacobian);
+}
+
+levi::Expression DynamicalPlanner::Private::MomentumInBaseJointsVelocityDerivativeExpression(ExpressionsServer *expressionsServer)
+{
+    return levi::ExpressionComponent<MomentumInBaseJointsVelocityDerivativeEvaluable>(expressionsServer);
+}
+
+levi::Expression DynamicalPlanner::Private::MomentumInBaseBaseTwistJointsDerivativeExpression(ExpressionsServer* expressionsServer,
+                                                                                              const levi::Expression& baseTwistJacobian,
+                                                                                              long column)
+{
+    return levi::ExpressionComponent<MomentumInBaseBaseTwistJointsDerivativeEvaluable>(expressionsServer, baseTwistJacobian, column);
 }
 
 levi::Expression DynamicalPlanner::Private::MomentumInBaseExpressionJointsDoubleDerivativeExpression(ExpressionsServer *expressionsServer, const levi::Variable &baseTwist, long column)
