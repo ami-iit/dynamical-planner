@@ -85,9 +85,10 @@ public:
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
-            m_evaluationBuffer = m_expressionsServer->adjointTransform(m_baseFrameName, m_parentFrameName).evaluate() *
-                iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
-                                   m_linkToTargetTransform).asAdjointTransform());
+//            m_evaluationBuffer = m_expressionsServer->adjointTransform(m_baseFrameName, m_parentFrameName).evaluate() *
+//                iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
+//                                   m_linkToTargetTransform).asAdjointTransform());
+            m_evaluationBuffer = iDynTree::toEigen(m_expressionsServer->currentKinDyn()->getRelativeTransform(m_expressionsServer->currentState(), m_baseFrameName, m_targetFrameName).asAdjointTransform());
         }
 
         return m_evaluationBuffer;
@@ -170,9 +171,12 @@ public:
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
         if (!m_isConstant) {
-            m_evaluationBuffer = m_expressionsServer->adjointTransformWrench(m_baseFrameName, m_parentFrameName).evaluate() *
-                iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
-                                   m_linkToTargetTransform).asAdjointTransformWrench());
+//            m_evaluationBuffer = m_expressionsServer->adjointTransformWrench(m_baseFrameName, m_parentFrameName).evaluate() *
+//                iDynTree::toEigen((m_parentJoint->getTransform(m_expressionsServer->currentState().s, m_parentLink, m_targetLink) *
+//                                   m_linkToTargetTransform).asAdjointTransformWrench());
+
+            m_evaluationBuffer = iDynTree::toEigen(m_expressionsServer->currentKinDyn()->getRelativeTransform(m_expressionsServer->currentState(), m_baseFrameName, m_targetFrameName).asAdjointTransformWrench());
+
         }
 
         return m_evaluationBuffer;

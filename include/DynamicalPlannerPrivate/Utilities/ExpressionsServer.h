@@ -62,6 +62,8 @@ public:
 
     levi::Expression comInBase();
 
+    levi::Expression comInBaseHessian(long column);
+
     levi::Expression adjointTransform(const std::string& baseFrame,
                                        const std::string &targetFrame);
 
@@ -103,6 +105,8 @@ public:
 
     levi::Expression quaternionError(const std::string &desiredFrame,
                                       const levi::Variable& desiredQuaternion);
+
+    levi::Expression motionSubSpaceVector(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink, iDynTree::LinkIndex childLink);
 
     levi::Expression motionSubSpaceAsCrossProduct(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink, iDynTree::LinkIndex childLink);
 

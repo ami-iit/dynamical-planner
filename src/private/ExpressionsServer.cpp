@@ -45,9 +45,9 @@ public:
     levi::Expression comInBase;
     levi::Expression crbi;
     ExpressionMap adjointMap, adjointWrenchMap, velocitiesMap, relativePositionsMap,
-        relativeQuaternionsMap, relativeRotationsMap, relativeJacobiansMap, quaternionsErrorsMap, motionSubspacesMap,
+        relativeQuaternionsMap, relativeRotationsMap, relativeJacobiansMap, quaternionsErrorsMap, motionSubspacesMap, motionSubspacesMatrixMap,
         motionSubspacesWrenchMap, adjointDerivativeMap, adjointWrenchDerivativeMap, absoluteVelocitiesMap,
-        absoluteVelocitiesDerivativeMap, linkInertiaMap, linkInertiaInBaseMap, momentumDoubleDerivativeMap;
+        absoluteVelocitiesDerivativeMap, linkInertiaMap, linkInertiaInBaseMap, momentumDoubleDerivativeMap, comHessianMap;
     TransformsMap transformsMap;
     RobotState robotState;
 
@@ -118,6 +118,7 @@ ExpressionsServer::~ExpressionsServer()
     m_pimpl->clearDerivatives(m_pimpl->absoluteVelocitiesDerivativeMap);
     m_pimpl->clearDerivatives(m_pimpl->linkInertiaInBaseMap);
     m_pimpl->clearDerivatives(m_pimpl->momentumDoubleDerivativeMap);
+    m_pimpl->clearDerivatives(m_pimpl->comHessianMap);
     m_pimpl->comInBase.clearDerivativesCache();
     m_pimpl->crbi.clearDerivativesCache();
 }
@@ -242,6 +243,24 @@ TransformExpression ExpressionsServer::worldToBase()
 levi::Expression ExpressionsServer::comInBase()
 {
     return (m_pimpl->comInBase);
+}
+
+levi::Expression ExpressionsServer::comInBaseHessian(long column)
+{
+    std::string label = std::to_string(column);
+
+    ExpressionMap::iterator element = m_pimpl->comHessianMap.find(label);
+
+    if (element != m_pimpl->comHessianMap.end()) {
+        return (element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = label;
+        newElement.second = CoMInBaseJointsDoubleDerivative(this, column);
+        auto result = m_pimpl->comHessianMap.insert(newElement);
+        assert(result.second);
+        return (result.first->second);
+    }
 }
 
 levi::Expression ExpressionsServer::adjointTransform(const std::string &baseFrame, const std::string &targetFrame)
@@ -502,12 +521,34 @@ levi::Expression ExpressionsServer::quaternionError(const std::string &desiredFr
     }
 }
 
-levi::Expression ExpressionsServer::motionSubSpaceAsCrossProduct(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink, iDynTree::LinkIndex childLink)
+levi::Expression ExpressionsServer::motionSubSpaceVector(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink, iDynTree::LinkIndex childLink)
 {
     std::string label = model().getJointName(joint) + std::to_string(parentLink) + std::to_string(childLink);
     ExpressionMap::iterator element = m_pimpl->motionSubspacesMap.find(label);
 
     if (element != m_pimpl->motionSubspacesMap.end()) {
+        return (element->second);
+    } else {
+        std::pair<std::string, levi::Expression> newElement;
+        newElement.first = label;
+
+        Eigen::Matrix<double, 6,1> motionSubSpace = iDynTree::toEigen(model().getJoint(joint)->getMotionSubspaceVector(0,
+                                                                                                                        childLink,
+                                                                                                                        parentLink));
+
+        newElement.second = levi::Constant(motionSubSpace, "s_" + std::to_string(joint));
+        auto result = m_pimpl->motionSubspacesMap.insert(newElement);
+        assert(result.second);
+        return (result.first->second);
+    }
+}
+
+levi::Expression ExpressionsServer::motionSubSpaceAsCrossProduct(iDynTree::JointIndex joint, iDynTree::LinkIndex parentLink, iDynTree::LinkIndex childLink)
+{
+    std::string label = model().getJointName(joint) + std::to_string(parentLink) + std::to_string(childLink);
+    ExpressionMap::iterator element = m_pimpl->motionSubspacesMatrixMap.find(label);
+
+    if (element != m_pimpl->motionSubspacesMatrixMap.end()) {
         return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
@@ -519,7 +560,7 @@ levi::Expression ExpressionsServer::motionSubSpaceAsCrossProduct(iDynTree::Joint
                                                                                parentLink).asCrossProductMatrix());
 
         newElement.second = levi::Constant(motionSubSpaceAsCrossProduct, "s_" + std::to_string(joint) + "x");
-        auto result = m_pimpl->motionSubspacesMap.insert(newElement);
+        auto result = m_pimpl->motionSubspacesMatrixMap.insert(newElement);
         assert(result.second);
         return (result.first->second);
     }

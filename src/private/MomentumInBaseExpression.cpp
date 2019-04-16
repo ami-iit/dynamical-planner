@@ -199,13 +199,13 @@ public:
 
     }
 
-    virtual levi::ColumnExpression col(Eigen::Index col) final {
-        return m_cols[static_cast<size_t>(col)];
-    }
+//    virtual levi::ColumnExpression col(Eigen::Index col) final {
+//        return m_cols[static_cast<size_t>(col)];
+//    }
 
-    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
-        return m_cols[static_cast<size_t>(col)](row, 0);
-    }
+//    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
+//        return m_cols[static_cast<size_t>(col)](row, 0);
+//    }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
@@ -333,7 +333,6 @@ public:
         iDynTree::IJointConstPtr jointPtr;
         iDynTree::LinkIndex visitedLink, childLink, parentLink;
         size_t jointIndex;
-        Eigen::Matrix<double, 6,1> motionSubSpaceVector;
 
         for (iDynTree::LinkIndex l = 0; l < static_cast<int>(model.getNrOfLinks()); ++l) {
 
@@ -348,13 +347,9 @@ public:
                 childLink =  traversal.getChildLinkIndexFromJointIndex(model, jointPtr->getIndex());
                 parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
 
-                motionSubSpaceVector = iDynTree::toEigen(jointPtr->getMotionSubspaceVector(0,
-                                                                                           childLink,
-                                                                                           parentLink));
-
                 m_cols[jointIndex] = m_cols[jointIndex] + expressionsServer->linkInertiaInBase(l) *
                         expressionsServer->adjointTransform(model.getLinkName(l), model.getLinkName(childLink)) *
-                                        levi::Constant(motionSubSpaceVector, "s_" + std::to_string(jointIndex));
+                        expressionsServer->motionSubSpaceVector(jointPtr->getIndex(), parentLink, childLink);
 
                 visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
             }
@@ -364,13 +359,13 @@ public:
 
     }
 
-    virtual levi::ColumnExpression col(Eigen::Index col) final {
-        return m_cols[static_cast<size_t>(col)];
-    }
+//    virtual levi::ColumnExpression col(Eigen::Index col) final {
+//        return m_cols[static_cast<size_t>(col)];
+//    }
 
-    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
-        return m_cols[static_cast<size_t>(col)](row, 0);
-    }
+//    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
+//        return m_cols[static_cast<size_t>(col)](row, 0);
+//    }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
@@ -477,13 +472,13 @@ public:
 
     }
 
-    virtual levi::ColumnExpression col(Eigen::Index col) final {
-        return m_cols[static_cast<size_t>(col)];
-    }
+//    virtual levi::ColumnExpression col(Eigen::Index col) final {
+//        return m_cols[static_cast<size_t>(col)];
+//    }
 
-    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
-        return m_cols[static_cast<size_t>(col)](row, 0);
-    }
+//    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
+//        return m_cols[static_cast<size_t>(col)](row, 0);
+//    }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 
@@ -525,7 +520,7 @@ public:
 
     MomentumInBaseJointsDoubleDerivativeEvaluable(ExpressionsServer* es,
                                                   const levi::Variable &baseTwist, long column)
-        : levi::DefaultEvaluable(6, es->jointsPosition().rows(), "d^2(h_B)/(dq)^2")
+        : levi::DefaultEvaluable(6, es->jointsPosition().rows(), "d^2(h_B)/dq^2")
     {
 
         assert(es);
@@ -638,9 +633,9 @@ public:
         return m_cols[static_cast<size_t>(col)];
     }
 
-    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
-        return m_cols[static_cast<size_t>(col)](row, 0);
-    }
+//    virtual levi::ScalarExpression element(Eigen::Index row, Eigen::Index col) final {
+//        return m_cols[static_cast<size_t>(col)](row, 0);
+//    }
 
     virtual const LEVI_DEFAULT_MATRIX_TYPE& evaluate() final {
 

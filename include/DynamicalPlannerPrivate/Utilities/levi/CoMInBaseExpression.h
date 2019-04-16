@@ -18,6 +18,8 @@ namespace DynamicalPlanner {
 
         levi::Expression CoMInBaseExpression(ExpressionsServer* expressionsServer);
 
+        levi::Expression CoMInBaseJointsDoubleDerivative(ExpressionsServer* expressionsServer, long column);
+
         levi::Expression CoMAdjointTransformWrench(const levi::Expression& worldToBaseRotation, const levi::Expression& comInBasePosition);
     }
 }

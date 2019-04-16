@@ -58,7 +58,6 @@ public:
         size_t jointIndex;
         iDynTree::LinkIndex childLink, parentLink;
         iDynTree::LinkIndex visitedLink = model.getFrameLink(m_targetFrame);
-        Eigen::Matrix<double, 6,1> motionSubSpaceVector;
 
         while (visitedLink != baseLink) {
             jointPtr = traversal.getParentJointFromLinkIndex(visitedLink);
@@ -67,12 +66,8 @@ public:
             childLink =  traversal.getChildLinkIndexFromJointIndex(model, jointPtr->getIndex());
             parentLink = traversal.getParentLinkIndexFromJointIndex(model, jointPtr->getIndex());
 
-            motionSubSpaceVector = iDynTree::toEigen(jointPtr->getMotionSubspaceVector(0,
-                                                                                       childLink,
-                                                                                       parentLink));
-
             m_columns[jointIndex] = m_expressionsServer->adjointTransform(targetFrame, model.getLinkName(childLink)) *
-                levi::Constant(motionSubSpaceVector, "s_" + std::to_string(jointIndex));
+                m_expressionsServer->motionSubSpaceVector(jointPtr->getIndex(), parentLink, childLink);
 
             visitedLink = traversal.getParentLinkFromLinkIndex(visitedLink)->getIndex();
         }
