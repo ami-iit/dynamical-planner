@@ -48,6 +48,7 @@ public:
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 
     levi::Expression asExpression, quaternionDerivative, jointsDerivative;
+    std::vector<levi::Expression> quaternionQuaternionDerivatives, quaternionJointsDerivatives, jointsJointsDerivatives;
     iDynTree::VectorDynSize jointsHessianBuffer;
 
     void getRanges() {
@@ -110,6 +111,21 @@ public:
         stateSparsity.addIdentityBlock(0, static_cast<size_t>(positionPointRange.offset), 3);
 
     }
+
+    void clearDerivativesCache(std::vector<levi::Expression>& vector) {
+        for (auto& expr : vector) {
+            expr.clearDerivativesCache();
+        }
+    }
+
+    ~Implementation() {
+        asExpression.clearDerivativesCache();
+        quaternionDerivative.clearDerivativesCache();
+        jointsDerivative.clearDerivativesCache();
+        clearDerivativesCache(quaternionQuaternionDerivatives);
+        clearDerivativesCache(quaternionJointsDerivatives);
+        clearDerivativesCache(jointsJointsDerivatives);
+    }
 };
 
 
@@ -170,6 +186,17 @@ ContactPositionConsistencyConstraint::ContactPositionConsistencyConstraint(const
 
     m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, (m_pimpl->expressionsServer->baseQuaternion()));
     m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, (m_pimpl->expressionsServer->jointsPosition()));
+
+    for (Eigen::Index i = 0; i < 4; ++i) {
+
+        m_pimpl->quaternionQuaternionDerivatives.push_back(m_pimpl->quaternionDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->baseQuaternion())));
+        m_pimpl->quaternionJointsDerivatives.push_back(m_pimpl->quaternionDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())));
+
+    }
+
+    for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
+        m_pimpl->jointsJointsDerivatives.push_back(m_pimpl->jointsDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())));
+    }
 
 }
 
@@ -319,12 +346,12 @@ bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTS
     for (Eigen::Index i = 0; i < 4; ++i) {
 
         quaternionHessian = lambdaMap.transpose() *
-            m_pimpl->quaternionDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->baseQuaternion())).evaluate();
+            m_pimpl->quaternionQuaternionDerivatives[static_cast<size_t>(i)].evaluate();
 
         hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->baseQuaternionRange.offset, 1, 4) = quaternionHessian;
 
         jointsMap =
-            (m_pimpl->quaternionDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+            (m_pimpl->quaternionJointsDerivatives[static_cast<size_t>(i)].evaluate()).transpose() *
             lambdaMap;
 
         hessianMap.block(m_pimpl->baseQuaternionRange.offset + i, m_pimpl->jointsPositionRange.offset, 1, m_pimpl->jointsPositionRange.size) =
@@ -335,7 +362,7 @@ bool ContactPositionConsistencyConstraint::constraintSecondPartialDerivativeWRTS
     }
 
     for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
-        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+        jointsMap = (m_pimpl->jointsJointsDerivatives[static_cast<size_t>(i)].evaluate()).transpose() *
             lambdaMap;
 
         hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =

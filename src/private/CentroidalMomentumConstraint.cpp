@@ -62,6 +62,9 @@ public:
 
     levi::Variable normalizedQuaternion;
 
+    levi::Variable comPositionVariable;
+
+
     void getRanges() {
 
         momentumRange = stateVariables.getIndexRange("Momentum");
@@ -168,6 +171,7 @@ public:
         levi::Constant baseInertia(iDynTree::toEigen(baseLink->getInertia().asMatrix()),"I_b");
 
         normalizedQuaternion = expressionsServer->normalizedBaseQuaternion().asIndependentVariable();
+        comPositionVariable = expressionsServer->comInBase().asIndependentVariable();
 
         levi::Expression baseTwist = BodyTwistFromQuaternionVelocity(expressionsServer->baseLinearVelocity(),
                                                                      expressionsServer->baseQuaternionVelocity(),
@@ -175,7 +179,7 @@ public:
 
         levi::Expression worldToBaseRotation = RotationExpression(normalizedQuaternion);
 
-        levi::Expression comInBasePosition = expressionsServer->comInBase();
+        levi::Expression comInBasePosition = comPositionVariable;
 
         levi::Expression mixedAdjointBottomRows = worldToBaseRotation *
             levi::Expression::Horzcat((-comInBasePosition).skew(), levi::Identity(3,3), "G[b]_X_b");
@@ -187,7 +191,10 @@ public:
 
         quaternionDerivative = asExpression.getColumnDerivative(0, normalizedQuaternion) * notNormalizedQuaternionMapExpr;
 
-        jointsDerivative = asExpression.getColumnDerivative(0, expressionsServer->jointsPosition());
+        levi::Expression comJacobian = expressionsServer->comInBase().getColumnDerivative(0, expressionsServer->jointsPosition());
+
+        jointsDerivative = asExpression.getColumnDerivative(0, expressionsServer->jointsPosition())
+            + asExpression.getColumnDerivative(0, comPositionVariable) * comJacobian;
 
         levi::MultipleExpressionsMap<LEVI_DEFAULT_MATRIX_TYPE> stateHessian;
 
@@ -197,7 +204,8 @@ public:
                 quaternionDerivative.getColumnDerivative(i, normalizedQuaternion) * notNormalizedQuaternionMapExpr;
             quaternionQuaternionDerivatives.push_back(quaternionDoubleDerivative);
             stateHessian["quaternionDoubleDerivative" + std::to_string(i)] = quaternionDoubleDerivative;
-            levi::Expression quaternionJointDerivative = quaternionDerivative.getColumnDerivative(i, expressionsServer->jointsPosition());
+            levi::Expression quaternionJointDerivative = quaternionDerivative.getColumnDerivative(i, expressionsServer->jointsPosition()) +
+                quaternionDerivative.getColumnDerivative(i, comPositionVariable) * comJacobian;
             quaternionJointsDerivatives.push_back(quaternionJointDerivative);
             stateHessian["quaternionJointsDerivative" + std::to_string(i)] = quaternionJointDerivative;
             quaternionLinearVelDerivatives.push_back(quaternionDerivative.getColumnDerivative(i, expressionsServer->baseLinearVelocity()));
@@ -207,7 +215,8 @@ public:
 
         for (Eigen::Index i = 0; i < jointsPositionRange.size; ++i) {
             //        std::cerr << "State hessian: joints col " << i << std::endl;
-            levi::Expression jointsDoubleDerivative = jointsDerivative.getColumnDerivative(i, expressionsServer->jointsPosition());
+            levi::Expression jointsDoubleDerivative = jointsDerivative.getColumnDerivative(i, expressionsServer->jointsPosition()) +
+                jointsDerivative.getColumnDerivative(i, comPositionVariable) * comJacobian;
             jointsJointsDerivative.push_back(jointsDoubleDerivative);
             stateHessian["JointsJointsDerivative" + std::to_string(i)] = jointsDoubleDerivative;
             jointsLinearVelDerivatives.push_back(jointsDerivative.getColumnDerivative(i, expressionsServer->baseLinearVelocity()));
@@ -300,9 +309,7 @@ void CentroidalMomentumConstraint::setEqualityTolerance(double tolerance)
 }
 
 CentroidalMomentumConstraint::~CentroidalMomentumConstraint()
-{
-    m_pimpl->asExpression.clearDerivativesCache();
-}
+{ }
 
 bool CentroidalMomentumConstraint::evaluateConstraint(double time, const iDynTree::VectorDynSize &state, const iDynTree::VectorDynSize &control, iDynTree::VectorDynSize &constraint)
 {

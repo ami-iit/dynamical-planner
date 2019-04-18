@@ -9,6 +9,7 @@
 #include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Costs.h>
+#include <DynamicalPlannerPrivate/Constraints/DynamicalConstraints.h>
 #include <DynamicalPlannerPrivate/Utilities/QuaternionUtils.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
@@ -102,8 +103,15 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     bool ok = false;
     HyperbolicSecant forceActivation;
     forceActivation.setScaling(1.0);
+    HyperbolicTangent velocityActivationXY;
+    velocityActivationXY.setScaling(0.1);
 
-    for (size_t i = 0; i < leftPositions.size()*0+1; ++i) {
+
+    auto dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, velocityActivationXY);
+    ok = ocProblem.setDynamicalSystemConstraint(dynamical);
+    ASSERT_IS_TRUE(ok);
+
+    for (size_t i = 0; i < leftPositions.size(); ++i) {
         std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Left", i);
         ok = ocProblem.addLagrangeTerm(1.0, forceCost);
         ASSERT_IS_TRUE(ok);
@@ -373,7 +381,7 @@ void checkCostsHessian(double time, const iDynTree::VectorDynSize& originalState
     firstOrderTaylor = perturbedStateGradient;
 
     for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
-        std::cerr << "Variable: " << i << std::endl;
+//        std::cerr << "Variable: " << i << std::endl;
 
         perturbedState = originalStateVector;
         perturbedState(i) = perturbedState(i) + perturbation;
@@ -473,6 +481,7 @@ int main() {
 
     checkFrameOrientationDerivative(desiredRotation, 0, 0.01, timelySharedKinDyn->get(0.0), stateVariables);
 
+    iDynTree::getRandomVector(stateVector, -0.1, 0.1);
     checkCostsHessian(0.0, stateVector, controlVector, 0.0001, ocProblem);
 
     return 0;
