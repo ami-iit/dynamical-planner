@@ -37,6 +37,7 @@ public:
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
 
     levi::Expression asExpression, jointsDerivative;
+    std::vector<levi::Expression> columnsHessian;
     iDynTree::VectorDynSize jointsHessianBuffer;
 
     void updateRobotState() {
@@ -116,11 +117,22 @@ FeetLateralDistanceConstraint::FeetLateralDistanceConstraint(const VariablesLabe
 
     m_pimpl->asExpression = (m_pimpl->expressionsServer->relativePosition(referenceFrameName, otherFootName)).row(lateralIndex);
     m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, (m_pimpl->expressionsServer->jointsPosition()));
+    for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
+        m_pimpl->columnsHessian.push_back(m_pimpl->jointsDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())));
+    }
 
 }
 
 FeetLateralDistanceConstraint::~FeetLateralDistanceConstraint()
-{ }
+{
+    m_pimpl->asExpression.clearDerivativesCache();
+    m_pimpl->jointsDerivative.clearDerivativesCache();
+
+    for (auto& expression: m_pimpl->columnsHessian) {
+        expression.clearDerivativesCache();
+    }
+
+}
 
 bool FeetLateralDistanceConstraint::setMinimumDistance(double minDistance)
 {
@@ -226,7 +238,7 @@ bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTState(do
     Eigen::Matrix<double, 1, 4> quaternionHessian;
 
     for (Eigen::Index i = 0; i < m_pimpl->jointsPositionRange.size; ++i) {
-        jointsMap = (m_pimpl->jointsDerivative.getColumnDerivative(i, (m_pimpl->expressionsServer->jointsPosition())).evaluate()).transpose() *
+        jointsMap = (m_pimpl->columnsHessian[static_cast<size_t>(i)].evaluate()).transpose() *
             lambdaMap;
 
         hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset + i, m_pimpl->jointsPositionRange.size, 1) =

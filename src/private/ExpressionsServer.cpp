@@ -399,7 +399,7 @@ levi::Expression ExpressionsServer::relativeRotation(const std::string &baseFram
         if (baseFrame == targetFrame) {
             newElement.second = levi::Identity(3, 3);
         } else {
-            newElement.second = RotationExpression(relativeQuaternion(baseFrame, targetFrame));
+            newElement.second = adjointTransform(baseFrame, targetFrame).block(0, 0, 3 ,3);
         }
         auto result = m_pimpl->relativeRotationsMap.insert(newElement);
         assert(result.second);

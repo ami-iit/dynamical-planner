@@ -80,7 +80,7 @@ RelativeQuaternionEvaluable::getNewColumnDerivative(Eigen::Index column, std::sh
 
         levi::unused(column);
 
-        levi::Expression thisQuaternion = m_expressionsServer->relativeQuaternion(m_baseName, m_targetName);
+        levi::Expression thisQuaternion = RelativeQuaternionExpression(m_expressionsServer, m_baseName, m_targetName);
 
         levi::Expression leftQuaternionMap = 0.5 * G_Expression(thisQuaternion).transpose();
 
