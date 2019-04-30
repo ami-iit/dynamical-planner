@@ -208,6 +208,8 @@ public:
         robotState.base_quaternionVelocity = baseQuaternionVelocity;
 
         iDynTree::toEigen(comPosition) = iDynTree::toEigen(stateVariables(comPositionRange));
+
+        sharedKinDyn->updateRobotState(robotState);
     }
 
     void setFootRelatedStateSparsity(const FootRanges& foot) {

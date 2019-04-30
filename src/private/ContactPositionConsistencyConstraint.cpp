@@ -80,6 +80,7 @@ public:
         robotState.base_position = basePosition;
 
         robotState.s = stateVariables(jointsPositionRange);
+        sharedKinDyn->updateRobotState(robotState);
     }
 
     void updateVariables (){
@@ -239,6 +240,7 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double tim
 
 //        m_pimpl->updateDoneOnceStateJacobian = true;
         m_pimpl->updateVariables();
+        m_pimpl->expressionsServer->updateRobotState(time);
 
         bool ok = m_pimpl->sharedKinDyn->getFrameFreeFloatingJacobian(m_pimpl->robotState, m_pimpl->footFrame, m_pimpl->footJacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
         assert(ok);
@@ -276,14 +278,14 @@ bool ContactPositionConsistencyConstraint::constraintJacobianWRTState(double tim
         jacobianMap.block<3, 3>(0, m_pimpl->basePositionRange.offset).setIdentity();
 
         jacobianMap.block<3, 4>(0, m_pimpl->baseQuaternionRange.offset) =
-                iDynTree::toEigen(RotatedVectorQuaternionJacobian(expectedPointPositionInBase, m_pimpl->baseQuaternionNormalized)) *
-                iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion));
+                /*iDynTree::toEigen(RotatedVectorQuaternionJacobian(expectedPointPositionInBase, m_pimpl->baseQuaternionNormalized)) *
+                iDynTree::toEigen(NormalizedQuaternionDerivative(m_pimpl->baseQuaternion))*/ m_pimpl->quaternionDerivative.evaluate();
 
-        jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size) =
+        jacobianMap.block(0, m_pimpl->jointsPositionRange.offset, 3, m_pimpl->jointsPositionRange.size) =/*
                     footJacobianMap.topRightCorner(3, m_pimpl->jointsPositionRange.size) +
                     (iDynTree::toEigen(RotatedVectorQuaternionJacobian(m_pimpl->positionInFoot, footQuaternion)) *
                      iDynTree::toEigen(iDynTree::Rotation::QuaternionRightTrivializedDerivative(footQuaternion)) *
-                     footJacobianMap.bottomRightCorner(3, m_pimpl->jointsPositionRange.size));
+                     footJacobianMap.bottomRightCorner(3, m_pimpl->jointsPositionRange.size))*/ m_pimpl->jointsDerivative.evaluate();
 
 
         jacobianMap.block<3,3>(0, m_pimpl->positionPointRange.offset).setIdentity();

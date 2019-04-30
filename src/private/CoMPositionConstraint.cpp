@@ -60,6 +60,9 @@ public:
         robotState.base_position = basePosition;
 
         robotState.s = stateVariables(jointsPositionRange);
+
+        sharedKinDyn->updateRobotState(robotState);
+
     }
 
     void updateVariables (){

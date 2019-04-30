@@ -117,6 +117,8 @@ public:
         robotState.base_linearVelocity = controlVariables(baseLinearVelocityRange);
         robotState.base_quaternionVelocity = baseQuaternionVelocity;
 
+        sharedKinDyn->updateRobotState(robotState);
+
     }
 
     void updateVariables (){

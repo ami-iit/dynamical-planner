@@ -45,6 +45,8 @@ public:
         robotState = sharedKinDyn->currentState();
 
         robotState.s = stateVariables(jointsPositionRange);
+        sharedKinDyn->updateRobotState(robotState);
+
     }
 
     bool sameVariables(bool updateDoneOnce) {
