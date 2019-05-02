@@ -391,7 +391,7 @@ bool DynamicalConstraints::dynamicsStateFirstDerivative(const iDynTree::VectorDy
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
-    m_pimpl->expressionServer->updateRobotState(time, m_pimpl->robotState);
+//    m_pimpl->expressionServer->updateRobotState(time);
 //    m_pimpl->comPosition = m_pimpl->sharedKinDyn->getCenterOfMassPosition(m_pimpl->robotState);
 //    bool ok = m_pimpl->sharedKinDyn->getCenterOfMassJacobian(m_pimpl->robotState, m_pimpl->comjacobianBuffer, iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
 
@@ -468,7 +468,7 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTState(double time, 
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
-    m_pimpl->expressionServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionServer->updateRobotState(time);
 
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
@@ -502,7 +502,7 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControl(double
     m_pimpl->sharedKinDyn = m_pimpl->timedSharedKinDyn->get(time);
 
     m_pimpl->updateRobotState();
-    m_pimpl->expressionServer->updateRobotState(time, m_pimpl->robotState);
+    m_pimpl->expressionServer->updateRobotState(time);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
