@@ -97,7 +97,7 @@ class DynamicalPlanner::Private::AbsoluteLeftVelocityJointsDerivativeEvaluable :
 
     std::vector<size_t> m_nonZeros;
 
-    levi::Variable m_jointsVariable;
+    levi::Variable m_jointsVariable, m_jointsVelocities, m_baseTwist;
 
 public:
 
@@ -106,6 +106,8 @@ public:
                                                   const std::string &targetFrame)
         : levi::DefaultEvaluable(6, expressionsServer->jointsPosition().rows(), "d(" + targetFrame + "_V_A," + targetFrame + ")/dq")
           , m_jointsVariable(expressionsServer->jointsPosition())
+          , m_jointsVelocities(expressionsServer->jointsVelocity())
+          , m_baseTwist(baseTwist)
     {
 
         assert(expressionsServer);
@@ -151,7 +153,7 @@ public:
             }
         }
 
-        addDependencies(m_jointsVariable, expressionsServer->jointsVelocity(), baseTwist);
+        addDependencies(m_jointsVariable, m_jointsVelocities, m_baseTwist);
 
     }
 

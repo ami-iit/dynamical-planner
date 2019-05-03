@@ -115,8 +115,6 @@ class DynamicalPlanner::Private::MomentumInBaseJointsDerivativeEvaluable : publi
 
     ExpressionsServer* m_expressionsServer;
 
-    levi::Variable m_baseTwist;
-
     struct JointsInfo {
         levi::Expression adjointWrenchTimesMotionVector;
         levi::Expression motionVectorTimesChildVelocity;
@@ -124,14 +122,18 @@ class DynamicalPlanner::Private::MomentumInBaseJointsDerivativeEvaluable : publi
 
     std::unordered_map<size_t, JointsInfo> m_jointsInfo;
 
+    levi::Variable m_jointsVariable, m_jointsVelocities, m_baseTwist;
+
+
 public:
 
     MomentumInBaseJointsDerivativeEvaluable(ExpressionsServer* expressionsServer,
                                             const levi::Variable &baseTwist)
         : levi::DefaultEvaluable(6, expressionsServer->jointsPosition().rows(), "d(h_B)/dq")
           , m_expressionsServer(expressionsServer)
-          , m_baseTwist(baseTwist)
-    {
+          , m_jointsVariable(expressionsServer->jointsPosition())
+          , m_jointsVelocities(expressionsServer->jointsVelocity())
+          , m_baseTwist(baseTwist)    {
 
         assert(expressionsServer);
         std::string baseFrame = expressionsServer->getFloatingBase();
@@ -195,7 +197,7 @@ public:
             }
         }
 
-        addDependencies(expressionsServer->jointsPosition(), expressionsServer->jointsVelocity(), baseTwist);
+        addDependencies(m_jointsVariable, m_jointsVelocities, m_baseTwist);
 
     }
 
@@ -308,10 +310,13 @@ MomentumInBaseBaseTwistDerivativeEvaluable::getNewColumnDerivative(Eigen::Index 
     std::vector<levi::ExpressionComponent<
         typename levi::Evaluable<typename levi::DefaultEvaluable::derivative_evaluable::col_type>>> m_cols;
 
+    levi::Variable m_jointsPosition;
+
 public:
 
     MomentumInBaseJointsVelocityDerivativeEvaluable(ExpressionsServer* expressionsServer)
         : levi::DefaultEvaluable(6, expressionsServer->jointsPosition().rows(), "d(h_B)/dqdot")
+          , m_jointsPosition(expressionsServer->jointsPosition())
     {
 
         assert(expressionsServer);
@@ -355,7 +360,7 @@ public:
             }
         }
 
-        addDependencies(expressionsServer->jointsPosition());
+        addDependencies(m_jointsPosition);
 
     }
 
@@ -402,6 +407,8 @@ class DynamicalPlanner::Private::MomentumInBaseBaseTwistJointsDerivativeEvaluabl
     std::vector<levi::ExpressionComponent<
         typename levi::Evaluable<typename levi::DefaultEvaluable::derivative_evaluable::col_type>>> m_cols;
 
+    levi::Variable m_jointsPosition;
+
 public:
 
     MomentumInBaseBaseTwistJointsDerivativeEvaluable(ExpressionsServer* es,
@@ -410,6 +417,7 @@ public:
         : levi::DefaultEvaluable(6, es->jointsPosition().rows(),
                                  "d^2(h_B)/(d.nu_base ds)* (" + baseTwistJacobian.name()
                                      + ")[:, " + std::to_string(column) + "]")
+          , m_jointsPosition(es->jointsPosition())
     {
 
         levi::Expression baseTwistJacobianColumn = baseTwistJacobian.col(column);
@@ -468,7 +476,7 @@ public:
             m_cols[col] = adjointDerivatives[col] * baseTwistJacobianColumn;
         }
 
-        addDependencies(es->jointsPosition(), baseTwistJacobianColumn);
+        addDependencies(m_jointsPosition, baseTwistJacobianColumn);
 
     }
 
@@ -516,11 +524,16 @@ class DynamicalPlanner::Private::MomentumInBaseJointsDoubleDerivativeEvaluable :
 
     std::unordered_set<size_t> m_nonZeros;
 
+    levi::Variable m_jointsVariable, m_jointsVelocities, m_baseTwist;
+
 public:
 
     MomentumInBaseJointsDoubleDerivativeEvaluable(ExpressionsServer* es,
                                                   const levi::Variable &baseTwist, long column)
         : levi::DefaultEvaluable(6, es->jointsPosition().rows(), "d^2(h_B)/dq^2")
+          , m_jointsVariable(es->jointsPosition())
+          , m_jointsVelocities(es->jointsVelocity())
+          , m_baseTwist(baseTwist)
     {
 
         assert(es);
@@ -625,7 +638,7 @@ public:
                                                                                                                                //s_k is closer to the base than s_j
         }
 
-        addDependencies(es->jointsPosition(), es->jointsVelocity(), baseTwist);
+        addDependencies(m_jointsVariable, m_jointsVelocities, m_baseTwist);
 
     }
 

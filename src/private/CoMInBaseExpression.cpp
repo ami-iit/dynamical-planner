@@ -28,10 +28,13 @@ class DynamicalPlanner::Private::ComInBaseHessianEvaluable : public levi::Defaul
 
     std::unordered_set<size_t> m_nonZeros;
 
+    levi::Variable m_jointsPosition;
+
 public:
 
     ComInBaseHessianEvaluable(ExpressionsServer* es, long column)
         : levi::DefaultEvaluable(3, es->jointsPosition().rows(), "d^2(CoM_B)/d(q^2)[:," + std::to_string(column) + "]")
+          , m_jointsPosition(es->jointsPosition())
     {
 
         assert(es);
@@ -130,7 +133,7 @@ public:
                                                                                                 //s_k is closer to the base than s_j
         }
 
-        addDependencies(es->jointsPosition());
+        addDependencies(m_jointsPosition);
 
     }
 
