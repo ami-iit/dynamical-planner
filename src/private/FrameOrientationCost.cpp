@@ -63,6 +63,7 @@ public:
         robotState.base_position = basePosition;
 
         robotState.s = stateVariables(jointsPositionRange);
+        sharedKinDyn->updateRobotState(robotState);
 
     }
 
@@ -129,17 +130,23 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
     levi::Expression quaternionDifference = m_pimpl->quaternionErrorExpression - identityQuat_expr;
     m_pimpl->asExpression = 0.5 * quaternionDifference.transpose() * quaternionDifference;
 
-    m_pimpl->quaternionDerivative = m_pimpl->asExpression.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
-    m_pimpl->jointsDerivative = m_pimpl->asExpression.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
+    m_pimpl->quaternionDerivative = (quaternionDifference.transpose() * quaternionDifference.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion())).transpose();
+    m_pimpl->jointsDerivative = (quaternionDifference.transpose() * quaternionDifference.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition())).transpose();
 
-    m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
-    m_pimpl->jointsHessian = m_pimpl->jointsDerivative.transpose().getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
-    m_pimpl->quaternionJointsHessian = m_pimpl->quaternionDerivative.transpose().getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
+    m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
+    m_pimpl->jointsHessian = m_pimpl->jointsDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
+    m_pimpl->quaternionJointsHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
 
 }
 
 FrameOrientationCost::~FrameOrientationCost()
-{ }
+{
+    m_pimpl->quaternionDerivative.clearDerivativesCache();
+    m_pimpl->jointsDerivative.clearDerivativesCache();
+    m_pimpl->quaternionHessian.clearDerivativesCache();
+    m_pimpl->quaternionJointsHessian.clearDerivativesCache();
+    m_pimpl->jointsHessian.clearDerivativesCache();
+}
 
 void FrameOrientationCost::setDesiredRotation(const iDynTree::Rotation &desiredRotation)
 {
@@ -280,7 +287,7 @@ bool FrameOrientationCost::costSecondPartialDerivativeWRTState(double time, cons
     const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
 
     if (!isValid) {
-        std::cerr << "[ERROR][FrameOrientationCost::costFirstPartialDerivativeWRTState] Unable to retrieve a valid rotation at time " << time
+        std::cerr << "[ERROR][FrameOrientationCost::costSecondPartialDerivativeWRTState] Unable to retrieve a valid rotation at time " << time
                   << "." << std::endl;
         return false;
     }
@@ -295,12 +302,12 @@ bool FrameOrientationCost::costSecondPartialDerivativeWRTState(double time, cons
     hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->jointsPositionRange.size) =
         m_pimpl->jointsHessian.evaluate();
 
-    hessianMap.block(m_pimpl->baseQuaternionRange.offset, m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.size, m_pimpl->jointsPositionRange.size) =
-        m_pimpl->quaternionJointsHessian.evaluate();
 
-    hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->baseQuaternionRange.size) =
-        m_pimpl->quaternionJointsHessian.evaluate().transpose();
+    const Eigen::MatrixXd& mixedHessian = m_pimpl->quaternionJointsHessian.evaluate();
 
+    hessianMap.block(m_pimpl->baseQuaternionRange.offset, m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.size, m_pimpl->jointsPositionRange.size) = mixedHessian;
+
+    hessianMap.block(m_pimpl->jointsPositionRange.offset, m_pimpl->baseQuaternionRange.offset, m_pimpl->jointsPositionRange.size, m_pimpl->baseQuaternionRange.size) = mixedHessian.transpose();
 
     return true;
 }
