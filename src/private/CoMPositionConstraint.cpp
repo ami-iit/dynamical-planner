@@ -42,7 +42,9 @@ public:
     bool updateDoneOnceStateJacobian = false;
     double tolerance;
 
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
+
     levi::Expression asExpression, quaternionDerivative, jointsDerivative;
     iDynTree::VectorDynSize jointsHessianBuffer;
 
@@ -80,17 +82,24 @@ public:
     }
 
     void setSparsity() {
-        stateSparsity.clear();
-        controlSparsity.clear();
+        stateJacobianSparsity.clear();
+        controlJacobianSparsity.clear();
 
         iDynTree::IndexRange fullRange;
         fullRange.offset = 0;
         fullRange.size = 3;
 
-        stateSparsity.addIdentityBlock(0, static_cast<size_t>(basePositionRange.offset), 3);
-        stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
-        stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
-        stateSparsity.addIdentityBlock(0, static_cast<size_t>(comPositionRange.offset), 3);
+        stateJacobianSparsity.addIdentityBlock(0, static_cast<size_t>(basePositionRange.offset), 3);
+        stateJacobianSparsity.addDenseBlock(fullRange, baseQuaternionRange);
+        stateJacobianSparsity.addDenseBlock(fullRange, jointsPositionRange);
+        stateJacobianSparsity.addIdentityBlock(0, static_cast<size_t>(comPositionRange.offset), 3);
+
+        stateHessianSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
+        stateHessianSparsity.addDenseBlock(baseQuaternionRange, jointsPositionRange);
+        stateHessianSparsity.addDenseBlock(jointsPositionRange, baseQuaternionRange);
+        stateHessianSparsity.addDenseBlock(jointsPositionRange, jointsPositionRange);
+        controlHessianSparsity.clear();
+        mixedHessianSparsity.clear();
     }
 
 };
@@ -226,13 +235,13 @@ size_t CoMPositionConstraint::expectedControlSpaceSize() const
 
 bool CoMPositionConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool CoMPositionConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -296,5 +305,23 @@ bool CoMPositionConstraint::constraintSecondPartialDerivativeWRTStateControl(dou
                                                                              const iDynTree::VectorDynSize &/*lambda*/,
                                                                              iDynTree::MatrixDynSize &/*hessian*/)
 {
+    return true;
+}
+
+bool CoMPositionConstraint::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool CoMPositionConstraint::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool CoMPositionConstraint::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

@@ -52,7 +52,8 @@ public:
     iDynTree::IndexRange baseLinearVelocityRange, baseQuaternionDerivativeRange;
 
     //iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 
     void checkFootVariables(const std::string& footName, size_t numberOfPoints, FootRanges& foot) {
         foot.positionPoints.resize(numberOfPoints);
@@ -215,37 +216,64 @@ public:
     void setFootRelatedStateSparsity(const FootRanges& foot) {
 
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
-            stateSparsity.addIdentityBlock(static_cast<size_t>(momentumRange.offset), static_cast<size_t>(foot.forcePoints[i].offset), 3);
-            stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(foot.forcePoints[i].offset), 3, 3);
-            stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(foot.positionPoints[i].offset), 3, 3);
-            stateSparsity.addDenseBlock(static_cast<size_t>(foot.positionPoints[i].offset), static_cast<size_t>(foot.positionPoints[i].offset) + 2, 2, 1);
+            stateJacobianSparsity.addIdentityBlock(static_cast<size_t>(momentumRange.offset), static_cast<size_t>(foot.forcePoints[i].offset), 3);
+            stateJacobianSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3,
+                                                static_cast<size_t>(foot.forcePoints[i].offset), 3, 3);
+            stateJacobianSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3,
+                                                static_cast<size_t>(foot.positionPoints[i].offset), 3, 3);
+            stateJacobianSparsity.addDenseBlock(static_cast<size_t>(foot.positionPoints[i].offset),
+                                                static_cast<size_t>(foot.positionPoints[i].offset) + 2, 2, 1);
+
+            stateHessianSparsity.addDenseBlock(comPositionRange, foot.forcePoints[i]);
+            stateHessianSparsity.addDenseBlock(foot.forcePoints[i], comPositionRange);
+            stateHessianSparsity.addDenseBlock(foot.positionPoints[i], foot.forcePoints[i]);
+            stateHessianSparsity.addDenseBlock(foot.forcePoints[i], foot.positionPoints[i]);
+            stateHessianSparsity.add(static_cast<size_t>(foot.positionPoints[i].offset + 2),
+                                     static_cast<size_t>(foot.positionPoints[i].offset + 2));
+
+            mixedHessianSparsity.add(static_cast<size_t>(foot.positionPoints[i].offset + 2),
+                                     static_cast<size_t>(foot.velocityControlPoints[i].offset));
+            mixedHessianSparsity.add(static_cast<size_t>(foot.positionPoints[i].offset + 2),
+                                     static_cast<size_t>(foot.velocityControlPoints[i].offset + 1));
+
         }
     }
 
     void setFootRelatedControlSparsity(const FootRanges& foot) {
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
-            controlSparsity.addIdentityBlock(static_cast<size_t>(foot.forcePoints[i].offset), static_cast<size_t>(foot.forceControlPoints[i].offset), 3);
-            controlSparsity.addIdentityBlock(static_cast<size_t>(foot.positionPoints[i].offset), static_cast<size_t>(foot.velocityControlPoints[i].offset), 3);
+            controlJacobianSparsity.addIdentityBlock(static_cast<size_t>(foot.forcePoints[i].offset),
+                                                     static_cast<size_t>(foot.forceControlPoints[i].offset), 3);
+            controlJacobianSparsity.addIdentityBlock(static_cast<size_t>(foot.positionPoints[i].offset),
+                                                     static_cast<size_t>(foot.velocityControlPoints[i].offset), 3);
         }
     }
 
     void setSparsity() {
-        stateSparsity.clear();
-        controlSparsity.clear();
+        stateJacobianSparsity.clear();
+        controlJacobianSparsity.clear();
 
         setFootRelatedStateSparsity(leftRanges);
         setFootRelatedStateSparsity(rightRanges);
-        stateSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(comPositionRange.offset), 3, 3);
-        stateSparsity.addIdentityBlock(static_cast<size_t>(comPositionRange.offset), static_cast<size_t>(momentumRange.offset), 3);
-        stateSparsity.addDenseBlock(basePositionRange, baseQuaternionRange);
-        stateSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
+        stateJacobianSparsity.addDenseBlock(static_cast<size_t>(momentumRange.offset) + 3, static_cast<size_t>(comPositionRange.offset), 3, 3);
+        stateJacobianSparsity.addIdentityBlock(static_cast<size_t>(comPositionRange.offset), static_cast<size_t>(momentumRange.offset), 3);
+        stateJacobianSparsity.addDenseBlock(basePositionRange, baseQuaternionRange);
+        stateJacobianSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
 
         setFootRelatedControlSparsity(leftRanges);
         setFootRelatedControlSparsity(rightRanges);
-        controlSparsity.addDenseBlock(basePositionRange, baseLinearVelocityRange);
+        controlJacobianSparsity.addDenseBlock(basePositionRange, baseLinearVelocityRange);
 //        controlSparsity.addDenseBlock(static_cast<size_t>(baseQuaternionRange.offset), static_cast<size_t>(baseVelocityRange.offset) + 3, 4, 3);
-        controlSparsity.addIdentityBlock(static_cast<size_t>(baseQuaternionRange.offset), static_cast<size_t>(baseQuaternionDerivativeRange.offset), 4);
-        controlSparsity.addIdentityBlock(static_cast<size_t>(jointsPositionRange.offset), static_cast<size_t>(jointsVelocityRange.offset), static_cast<size_t>(jointsPositionRange.size));
+        controlJacobianSparsity.addIdentityBlock(static_cast<size_t>(baseQuaternionRange.offset),
+                                                 static_cast<size_t>(baseQuaternionDerivativeRange.offset), 4);
+        controlJacobianSparsity.addIdentityBlock(static_cast<size_t>(jointsPositionRange.offset),
+                                                 static_cast<size_t>(jointsVelocityRange.offset), static_cast<size_t>(jointsPositionRange.size));
+
+        stateHessianSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
+        mixedHessianSparsity.addDenseBlock(baseQuaternionRange, baseLinearVelocityRange);
+        //other sparsity set in setFootRelated*Sparsity
+
+        controlHessianSparsity.clear();
+
     }
 };
 
@@ -449,13 +477,13 @@ bool DynamicalConstraints::dynamicsControlFirstDerivative(const iDynTree::Vector
 
 bool DynamicalConstraints::dynamicsStateFirstDerivativeSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool DynamicalConstraints::dynamicsControlFirstDerivativeSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -518,4 +546,22 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControl(double
     m_pimpl->computeFootRelatedMixedHessian(m_pimpl->rightRanges, hessianMap);
 
     return true;
+}
+
+bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true*0;
+}
+
+bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true*0;
+}
+
+bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
+    return true*0;
 }

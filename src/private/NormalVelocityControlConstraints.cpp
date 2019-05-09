@@ -27,7 +27,9 @@ public:
     iDynTree::VectorDynSize constraintValues;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
 
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
+
 };
 
 
@@ -65,13 +67,17 @@ NormalVelocityControlConstraints::NormalVelocityControlConstraints(const Variabl
     m_isUpperBounded = false;
     m_lowerBound.zero();
 
-    m_pimpl->stateSparsity.clear();
-    m_pimpl->controlSparsity.clear();
+    m_pimpl->stateJacobianSparsity.clear();
+    m_pimpl->controlJacobianSparsity.clear();
 
     size_t forceIndex = static_cast<size_t>(m_pimpl->forcePointRange.offset + 2);
-    m_pimpl->stateSparsity.addDenseBlock(0, forceIndex, 2, 1);
+    m_pimpl->stateJacobianSparsity.addDenseBlock(0, forceIndex, 2, 1);
     size_t velocityIndex = static_cast<size_t>(m_pimpl->velocityControlRange.offset + 2);
-    m_pimpl->controlSparsity.addDenseBlock(0, velocityIndex, 2, 1);
+    m_pimpl->controlJacobianSparsity.addDenseBlock(0, velocityIndex, 2, 1);
+
+    m_pimpl->stateHessianSparsity.add(forceIndex, forceIndex);
+    m_pimpl->mixedHessianSparsity.clear();
+    m_pimpl->controlHessianSparsity.clear();
 }
 
 NormalVelocityControlConstraints::~NormalVelocityControlConstraints()
@@ -147,13 +153,13 @@ size_t NormalVelocityControlConstraints::expectedControlSpaceSize() const
 
 bool NormalVelocityControlConstraints::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool NormalVelocityControlConstraints::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -185,5 +191,23 @@ bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTState
                                                                                         const iDynTree::VectorDynSize &/*lambda*/,
                                                                                         iDynTree::MatrixDynSize &/*hessian*/)
 {
+    return true;
+}
+
+bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

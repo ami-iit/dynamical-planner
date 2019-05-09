@@ -24,6 +24,8 @@ public:
     iDynTree::Vector3 pointPosition, pointForce;
 
     iDynTree::VectorDynSize stateJacobianBuffer, controlJacobianBuffer;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
+
 };
 
 
@@ -51,6 +53,17 @@ PhantomForcesCost::PhantomForcesCost(const VariablesLabeller &stateVariables, co
 
     m_pimpl->controlJacobianBuffer.resize(static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
+
+    unsigned int pzCol = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
+    unsigned int fzCol = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
+
+    m_pimpl->stateHessianSparsity.add(pzCol, pzCol);
+    m_pimpl->stateHessianSparsity.add(fzCol, fzCol);
+    m_pimpl->stateHessianSparsity.add(fzCol, pzCol);
+    m_pimpl->stateHessianSparsity.add(pzCol, fzCol);
+
+    m_pimpl->mixedHessianSparsity.clear();
+    m_pimpl->controlHessianSparsity.clear();
 }
 
 PhantomForcesCost::~PhantomForcesCost()
@@ -136,5 +149,23 @@ bool PhantomForcesCost::costSecondPartialDerivativeWRTControl(double /*time*/, c
 
 bool PhantomForcesCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/, const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
 {
+    return true;
+}
+
+bool PhantomForcesCost::costSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool PhantomForcesCost::costSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool PhantomForcesCost::costSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

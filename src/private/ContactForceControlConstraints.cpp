@@ -28,7 +28,8 @@ public:
     iDynTree::VectorDynSize constraintValues;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
 
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 };
 
 
@@ -71,17 +72,24 @@ ContactForceControlConstraints::ContactForceControlConstraints(const VariablesLa
     m_isUpperBounded = false;
     m_lowerBound.zero();
 
-    m_pimpl->stateSparsity.clear();
-    m_pimpl->controlSparsity.clear();
+    m_pimpl->stateJacobianSparsity.clear();
+    m_pimpl->controlJacobianSparsity.clear();
 
     size_t pzCol = static_cast<size_t>(m_pimpl->positionPointRange.offset + 2);
     size_t fzCol = static_cast<size_t>(m_pimpl->forcePointRange.offset + 2);
     size_t fzCtrlCol = static_cast<size_t>(m_pimpl->forceControlRange.offset + 2);
 
-    m_pimpl->stateSparsity.addDenseBlock(0, pzCol, 2, 1);
-    m_pimpl->stateSparsity.addDenseBlock(0, fzCol, 2, 1);
+    m_pimpl->stateJacobianSparsity.addDenseBlock(0, pzCol, 2, 1);
+    m_pimpl->stateJacobianSparsity.addDenseBlock(0, fzCol, 2, 1);
 
-    m_pimpl->controlSparsity.addDenseBlock(0, fzCtrlCol, 2, 1);
+    m_pimpl->controlJacobianSparsity.addDenseBlock(0, fzCtrlCol, 2, 1);
+
+    m_pimpl->stateHessianSparsity.add(pzCol, pzCol);
+    m_pimpl->stateHessianSparsity.add(pzCol, fzCol);
+    m_pimpl->stateHessianSparsity.add(fzCol, pzCol);
+
+    m_pimpl->controlHessianSparsity.clear();
+    m_pimpl->mixedHessianSparsity.clear();
 
 
 }
@@ -182,13 +190,13 @@ size_t ContactForceControlConstraints::expectedControlSpaceSize() const
 
 bool ContactForceControlConstraints::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool ContactForceControlConstraints::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -232,5 +240,23 @@ bool ContactForceControlConstraints::constraintSecondPartialDerivativeWRTStateCo
                                                                                       const iDynTree::VectorDynSize &/*lambda*/,
                                                                                       iDynTree::MatrixDynSize &/*hessian*/)
 {
+    return true;
+}
+
+bool ContactForceControlConstraints::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool ContactForceControlConstraints::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool ContactForceControlConstraints::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

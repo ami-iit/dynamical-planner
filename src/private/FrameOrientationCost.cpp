@@ -48,6 +48,7 @@ public:
     double costBuffer;
     double tolerance;
 
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 
     void updateRobotState() {
 
@@ -136,6 +137,14 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
     m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
     m_pimpl->jointsHessian = m_pimpl->jointsDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
     m_pimpl->quaternionJointsHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
+
+    m_pimpl->stateHessianSparsity.addDenseBlock(m_pimpl->baseQuaternionRange, m_pimpl->baseQuaternionRange);
+    m_pimpl->stateHessianSparsity.addDenseBlock(m_pimpl->baseQuaternionRange, m_pimpl->jointsPositionRange);
+    m_pimpl->stateHessianSparsity.addDenseBlock(m_pimpl->jointsPositionRange, m_pimpl->baseQuaternionRange);
+    m_pimpl->stateHessianSparsity.addDenseBlock(m_pimpl->jointsPositionRange, m_pimpl->jointsPositionRange);
+
+    m_pimpl->mixedHessianSparsity.clear();
+    m_pimpl->controlHessianSparsity.clear();
 
 }
 
@@ -321,5 +330,23 @@ bool FrameOrientationCost::costSecondPartialDerivativeWRTControl(double /*time*/
 bool FrameOrientationCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
                                                                       const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
 {
+    return true;
+}
+
+bool FrameOrientationCost::costSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool FrameOrientationCost::costSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool FrameOrientationCost::costSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

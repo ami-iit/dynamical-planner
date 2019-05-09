@@ -26,6 +26,8 @@ public:
     iDynTree::Vector3 differenceFromMean, sumOfForces;
     iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
 
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
+
 };
 
 ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
@@ -52,6 +54,32 @@ ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const Vari
     m_pimpl->stateGradientBuffer.zero();
     m_pimpl->controlGradientBuffer.resize(static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlGradientBuffer.zero();
+
+    m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->forcePointRange.offset),
+                                                   static_cast<size_t>(m_pimpl->forcePointRange.offset), 3);
+
+    for (auto& force : m_pimpl->otherPointsRanges) {
+        m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->forcePointRange.offset),
+                                                       static_cast<size_t>(force.offset), 3);
+        m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(force.offset),
+                                                       static_cast<size_t>(m_pimpl->forcePointRange.offset), 3);
+    }
+
+    for (size_t i = 0; i < m_pimpl->otherPointsRanges.size(); ++i) {
+        for (size_t j = i; j < m_pimpl->otherPointsRanges.size(); ++j) {
+
+            m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->otherPointsRanges[i].offset),
+                                                           static_cast<size_t>(m_pimpl->otherPointsRanges[j].offset), 3);
+
+            if (i != j) {
+                m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->otherPointsRanges[j].offset),
+                                                               static_cast<size_t>(m_pimpl->otherPointsRanges[i].offset), 3);
+            }
+        }
+    }
+
+    m_pimpl->mixedHessianSparsity.clear();
+    m_pimpl->controlHessianSparsity.clear();
 }
 
 ForceMeanCost::~ForceMeanCost()
@@ -158,5 +186,23 @@ bool ForceMeanCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, 
                                                                const iDynTree::VectorDynSize &/*control*/,
                                                                iDynTree::MatrixDynSize &/*partialDerivative*/)
 {
+    return true;
+}
+
+bool ForceMeanCost::costSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool ForceMeanCost::costSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool ForceMeanCost::costSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

@@ -79,6 +79,12 @@ public:
                                                                   const iDynTree::VectorDynSize& lambda,
                                                                   iDynTree::MatrixDynSize& hessian) override;
 
+    virtual bool constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure& stateControlSparsity) override;
+
+    virtual bool constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
+
 };
 
 #endif // DPLANNER_CENTROIDALMOMENTUMCONSTRAINT_H

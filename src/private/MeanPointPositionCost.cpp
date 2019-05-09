@@ -25,6 +25,8 @@ public:
     iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
 
     std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight;
+
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 };
 
 
@@ -50,6 +52,22 @@ MeanPointPositionCost::MeanPointPositionCost(const VariablesLabeller &stateVaria
     m_pimpl->controlGradientBuffer.zero();
 
     m_pimpl->timeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(1.0);
+
+    for (size_t i = 0; i < m_pimpl->pointRanges.size(); ++i) {
+        for (size_t j = i; j < m_pimpl->pointRanges.size(); ++j) {
+
+            m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->pointRanges[i].offset),
+                                                           static_cast<size_t>(m_pimpl->pointRanges[j].offset), 3);
+
+            if (i != j) {
+                m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->pointRanges[j].offset),
+                                                               static_cast<size_t>(m_pimpl->pointRanges[i].offset), 3);
+            }
+        }
+    }
+
+    m_pimpl->mixedHessianSparsity.clear();
+    m_pimpl->controlHessianSparsity.clear();
 
 }
 
@@ -197,5 +215,23 @@ bool MeanPointPositionCost::costSecondPartialDerivativeWRTControl(double /*time*
 bool MeanPointPositionCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, const iDynTree::VectorDynSize &/*state*/,
                                                                        const iDynTree::VectorDynSize &/*control*/, iDynTree::MatrixDynSize &/*partialDerivative*/)
 {
+    return true;
+}
+
+bool MeanPointPositionCost::costSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool MeanPointPositionCost::costSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool MeanPointPositionCost::costSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

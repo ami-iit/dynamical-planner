@@ -22,7 +22,9 @@ public:
     iDynTree::Vector4 baseQuaternion;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
 
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
+
 };
 
 
@@ -45,10 +47,16 @@ QuaternionNormConstraint::QuaternionNormConstraint(const VariablesLabeller &stat
     m_pimpl->controlJacobianBuffer.resize(1, static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlJacobianBuffer.zero();
 
-    m_pimpl->stateSparsity.clear();
-    m_pimpl->controlSparsity.clear();
+    m_pimpl->stateJacobianSparsity.clear();
+    m_pimpl->controlJacobianSparsity.clear();
 
-    m_pimpl->stateSparsity.addDenseBlock(0, static_cast<size_t>(m_pimpl->baseQuaternionRange.offset), 1, 4);
+    m_pimpl->stateJacobianSparsity.addDenseBlock(0, static_cast<size_t>(m_pimpl->baseQuaternionRange.offset), 1, 4);
+
+    m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->baseQuaternionRange.offset),
+                                                   static_cast<size_t>(m_pimpl->baseQuaternionRange.offset),
+                                                   static_cast<size_t>(m_pimpl->baseQuaternionRange.size));
+    m_pimpl->mixedHessianSparsity.clear();
+    m_pimpl->controlHessianSparsity.clear();
 }
 
 QuaternionNormConstraint::~QuaternionNormConstraint()
@@ -98,13 +106,13 @@ size_t QuaternionNormConstraint::expectedControlSpaceSize() const
 
 bool QuaternionNormConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool QuaternionNormConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -135,5 +143,23 @@ bool QuaternionNormConstraint::constraintSecondPartialDerivativeWRTStateControl(
                                                                                 const iDynTree::VectorDynSize &/*lambda*/,
                                                                                 iDynTree::MatrixDynSize &/*hessian*/)
 {
+    return true;
+}
+
+bool QuaternionNormConstraint::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool QuaternionNormConstraint::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool QuaternionNormConstraint::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

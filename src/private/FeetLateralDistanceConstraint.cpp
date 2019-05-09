@@ -35,6 +35,7 @@ public:
     double tolerance;
 
     iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 
     levi::Expression asExpression, jointsDerivative;
     std::vector<levi::Expression> columnsHessian;
@@ -64,6 +65,9 @@ public:
         fullRange.size = 1;
 
         stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
+        stateHessianSparsity.addDenseBlock(jointsPositionRange, jointsPositionRange);
+        mixedHessianSparsity.clear();
+        controlHessianSparsity.clear();
     }
 
 };
@@ -263,5 +267,23 @@ bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTStateCon
                                                                                      const iDynTree::VectorDynSize &/*lambda*/,
                                                                                      iDynTree::MatrixDynSize &/*hessian*/)
 {
+    return true;
+}
+
+bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool FeetLateralDistanceConstraint::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

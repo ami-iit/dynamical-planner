@@ -25,7 +25,8 @@ public:
     iDynTree::VectorDynSize constraintValues;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
 
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 };
 
 
@@ -66,20 +67,30 @@ DynamicalComplementarityConstraint::DynamicalComplementarityConstraint(const Var
     m_lowerBound.zero();
     m_upperBound.zero();
 
-    m_pimpl->stateSparsity.clear();
-    m_pimpl->controlSparsity.clear();
+    m_pimpl->stateJacobianSparsity.clear();
+    m_pimpl->controlJacobianSparsity.clear();
 
     size_t fzIndex = static_cast<size_t>(m_pimpl->forcePointRange.offset + 2);
     size_t pzIndex = static_cast<size_t>(m_pimpl->positionPointRange.offset + 2);
 
-    m_pimpl->stateSparsity.addNonZeroIfNotPresent(0, fzIndex);
-    m_pimpl->stateSparsity.addNonZeroIfNotPresent(0, pzIndex);
+    m_pimpl->stateJacobianSparsity.add(0, fzIndex);
+    m_pimpl->stateJacobianSparsity.add(0, pzIndex);
 
     size_t fzDotIndex = static_cast<size_t>(m_pimpl->forceControlRange.offset + 2);
     size_t vzIndex = static_cast<size_t>(m_pimpl->velocityControlRange.offset + 2);
 
-    m_pimpl->controlSparsity.addNonZeroIfNotPresent(0, vzIndex);
-    m_pimpl->controlSparsity.addNonZeroIfNotPresent(0, fzDotIndex);
+    m_pimpl->controlJacobianSparsity.add(0, vzIndex);
+    m_pimpl->controlJacobianSparsity.add(0, fzDotIndex);
+
+    m_pimpl->stateHessianSparsity.add(fzIndex, pzIndex);
+    m_pimpl->stateHessianSparsity.add(pzIndex, fzIndex);
+
+    m_pimpl->controlHessianSparsity.clear();
+
+    m_pimpl->mixedHessianSparsity.add(fzIndex, vzIndex);
+    m_pimpl->mixedHessianSparsity.add(pzIndex, fzDotIndex);
+
+
 
 }
 
@@ -156,13 +167,13 @@ size_t DynamicalComplementarityConstraint::expectedControlSpaceSize() const
 
 bool DynamicalComplementarityConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool DynamicalComplementarityConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -202,4 +213,22 @@ bool DynamicalComplementarityConstraint::constraintSecondPartialDerivativeWRTSta
     hessian(pzIndex, fzDotIndex) = lambda(0);
     return true;
 
+}
+
+bool DynamicalComplementarityConstraint::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool DynamicalComplementarityConstraint::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool DynamicalComplementarityConstraint::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
+    return true;
 }

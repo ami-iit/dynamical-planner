@@ -779,13 +779,13 @@ public:
 //                return false;
 //            }
 
-            //            constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
-            //                                                                                                          "Right", i, velocityActivationZ,
-            //                                                                                                          st.velocityMaximumDerivative(2));
-            //            ok = ocp->addConstraint(constraints.rightNormalVelocityControl[i]);
-            //            if (!ok) {
-            //                return false;
-            //            }
+//            constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
+//                                                                                                          "Right", i, velocityActivationZ,
+//                                                                                                          st.velocityMaximumDerivative(2));
+//            ok = ocp->addConstraint(constraints.rightNormalVelocityControl[i]);
+//            if (!ok) {
+//                return false;
+//            }
 
             constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
                                                                                                         i, forceActivation,

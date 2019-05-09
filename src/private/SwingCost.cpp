@@ -19,6 +19,8 @@ public:
     size_t contactIndex;
 
     iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
+
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 };
 
 SwingCost::SwingCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const std::string &footName, size_t contactIndex, double desiredSwingHeight)
@@ -44,6 +46,17 @@ SwingCost::SwingCost(const VariablesLabeller &stateVariables, const VariablesLab
     m_pimpl->controlGradientBuffer.zero();
 
     m_pimpl->swingHeight = desiredSwingHeight;
+
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->pointPositionRange.offset + 2);
+    unsigned int uxIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
+    unsigned int uyIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 1);
+
+    m_pimpl->stateHessianSparsity.add(pzIndex, pzIndex);
+    m_pimpl->controlHessianSparsity.add(uxIndex, uxIndex);
+    m_pimpl->controlHessianSparsity.add(uyIndex, uyIndex);
+    m_pimpl->mixedHessianSparsity.add(pzIndex, uxIndex);
+    m_pimpl->mixedHessianSparsity.add(pzIndex, uyIndex);
+
 }
 
 SwingCost::~SwingCost()
@@ -135,5 +148,23 @@ bool SwingCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, cons
     partialDerivative(pzIndex, uxIndex) = 2.0 * ux * heightDifference;
     partialDerivative(pzIndex, uyIndex) = 2.0 * uy * heightDifference;
 
+    return true;
+}
+
+bool SwingCost::costSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool SwingCost::costSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool SwingCost::costSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

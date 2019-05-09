@@ -52,7 +52,9 @@ public:
     bool updateDoneOnceControlJacobian = false;
     double tolerance;
 
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
+
 
     levi::Expression asExpression, quaternionDerivative, jointsDerivative;
 
@@ -146,20 +148,35 @@ public:
     }
 
     void setSparsity() {
-        stateSparsity.clear();
-        controlSparsity.clear();
+        stateJacobianSparsity.clear();
+        controlJacobianSparsity.clear();
 
         iDynTree::IndexRange fullRange;
         fullRange.size = 3;
         fullRange.offset = 0;
 
-        stateSparsity.addDenseBlock(fullRange, jointsPositionRange);
-        stateSparsity.addIdentityBlock(0, static_cast<size_t>(momentumRange.offset) + 3, 3);
-        stateSparsity.addDenseBlock(fullRange, baseQuaternionRange);
+        stateJacobianSparsity.addDenseBlock(fullRange, jointsPositionRange);
+        stateJacobianSparsity.addIdentityBlock(0, static_cast<size_t>(momentumRange.offset) + 3, 3);
+        stateJacobianSparsity.addDenseBlock(fullRange, baseQuaternionRange);
 
-        controlSparsity.addDenseBlock(fullRange, baseQuaternionDerivativeRange);
-        controlSparsity.addDenseBlock(fullRange, baseLinearVelocityRange);
-        controlSparsity.addDenseBlock(fullRange, jointsVelocityRange);
+        controlJacobianSparsity.addDenseBlock(fullRange, baseQuaternionDerivativeRange);
+        controlJacobianSparsity.addDenseBlock(fullRange, baseLinearVelocityRange);
+        controlJacobianSparsity.addDenseBlock(fullRange, jointsVelocityRange);
+
+        stateHessianSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionRange);
+        stateHessianSparsity.addDenseBlock(baseQuaternionRange, jointsPositionRange);
+        stateHessianSparsity.addDenseBlock(jointsPositionRange, baseQuaternionRange);
+        stateHessianSparsity.addDenseBlock(jointsPositionRange, jointsPositionRange);
+
+        controlHessianSparsity.clear();
+
+        mixedHessianSparsity.addDenseBlock(baseQuaternionRange, baseLinearVelocityRange);
+        mixedHessianSparsity.addDenseBlock(baseQuaternionRange, baseQuaternionDerivativeRange);
+        mixedHessianSparsity.addDenseBlock(baseQuaternionRange, jointsVelocityRange);
+
+        mixedHessianSparsity.addDenseBlock(jointsPositionRange, baseLinearVelocityRange);
+        mixedHessianSparsity.addDenseBlock(jointsPositionRange, baseQuaternionDerivativeRange);
+        mixedHessianSparsity.addDenseBlock(jointsPositionRange, jointsVelocityRange);
 
     }
 
@@ -448,13 +465,13 @@ size_t CentroidalMomentumConstraint::expectedControlSpaceSize() const
 
 bool CentroidalMomentumConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool CentroidalMomentumConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -612,5 +629,23 @@ bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTStateCont
         }
     }
 
+    return true;
+}
+
+bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool CentroidalMomentumConstraint::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }

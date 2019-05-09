@@ -22,7 +22,8 @@ public:
 
     iDynTree::Vector3 pointForce;
 
-    iDynTree::optimalcontrol::SparsityStructure stateSparsity, controlSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateJacobianSparsity, controlJacobianSparsity;
+    iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 };
 
 
@@ -47,12 +48,16 @@ ContactFrictionConstraint::ContactFrictionConstraint(const VariablesLabeller &st
     m_isUpperBounded = true;
     m_upperBound.zero();
 
-    m_pimpl->stateSparsity.clear();
-    m_pimpl->controlSparsity.clear();
+    m_pimpl->stateJacobianSparsity.clear();
+    m_pimpl->controlJacobianSparsity.clear();
 
     size_t fCol = static_cast<size_t>(m_pimpl->forcePointRange.offset);
 
-    m_pimpl->stateSparsity.addDenseBlock(0, fCol, 1, 3);
+    m_pimpl->stateJacobianSparsity.addDenseBlock(0, fCol, 1, 3);
+
+    m_pimpl->stateHessianSparsity.addIdentityBlock(fCol, fCol, 3);
+    m_pimpl->controlHessianSparsity.clear();
+    m_pimpl->mixedHessianSparsity.clear();
 }
 
 ContactFrictionConstraint::~ContactFrictionConstraint()
@@ -114,13 +119,13 @@ size_t ContactFrictionConstraint::expectedControlSpaceSize() const
 
 bool ContactFrictionConstraint::constraintJacobianWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
-    stateSparsity = m_pimpl->stateSparsity;
+    stateSparsity = m_pimpl->stateJacobianSparsity;
     return true;
 }
 
 bool ContactFrictionConstraint::constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
-    controlSparsity = m_pimpl->controlSparsity;
+    controlSparsity = m_pimpl->controlJacobianSparsity;
     return true;
 }
 
@@ -150,5 +155,23 @@ bool ContactFrictionConstraint::constraintSecondPartialDerivativeWRTStateControl
                                                                                  const iDynTree::VectorDynSize &/*lambda*/,
                                                                                  iDynTree::MatrixDynSize &/*hessian*/)
 {
+    return true;
+}
+
+bool ContactFrictionConstraint::constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
+{
+    stateSparsity = m_pimpl->stateHessianSparsity;
+    return true;
+}
+
+bool ContactFrictionConstraint::constraintSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
+{
+    stateControlSparsity = m_pimpl->mixedHessianSparsity;
+    return true;
+}
+
+bool ContactFrictionConstraint::constraintSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
+{
+    controlSparsity = m_pimpl->controlHessianSparsity;
     return true;
 }
