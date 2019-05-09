@@ -108,47 +108,170 @@ public:
         }
 
 
-        //--------------------------------
-        double perturbation = 1e-4;
-        iDynTree::VectorDynSize firstOrderTaylor, perturbedRow, originalVariables, perturbedVariables;
-        iDynTree::MatrixDynSize originalJacobian = jacobian;
-        originalVariables = variables;
+        //-------------------------------- Check Constraints hessian
+        {
+            double perturbation = 1e-4;
+            iDynTree::VectorDynSize firstOrderTaylor, perturbedRow, originalVariables, perturbedVariables, perturbedConstraints;
+            iDynTree::MatrixDynSize originalJacobian = jacobian;
+            originalVariables = variables;
 
 
-        iDynTree::MatrixDynSize perturbedJacobian;
-        perturbedJacobian = jacobian;
+            iDynTree::MatrixDynSize perturbedJacobian;
+            perturbedJacobian = jacobian;
 
-        ok = m_problem->setVariables(originalVariables);
-        ASSERT_IS_TRUE(ok);
-
-        ok = m_problem->evaluateConstraintsJacobian(originalJacobian);
-        ASSERT_IS_TRUE(ok);
-
-        for (unsigned int row = 0; row < multipliers.size(); ++row) {
-            multipliers.zero();
-            multipliers(row) = 1.0;
-
-            std::cerr << "Row: " << row << std::endl;
-
-            constraintsHessian.zero();
-
-            perturbedVariables = originalVariables;
             ok = m_problem->setVariables(originalVariables);
             ASSERT_IS_TRUE(ok);
 
-            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-            ok = m_problem->evaluateConstraintsHessian(multipliers, constraintsHessian);
+            ok = m_problem->evaluateConstraintsJacobian(originalJacobian);
             ASSERT_IS_TRUE(ok);
-            std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
-            if (!row) {
-                std::cout << "Elapsed time ms hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+
+            iDynTree::VectorDynSize originalConstraints(multipliers.size());
+            ok = m_problem->evaluateConstraints(originalConstraints);
+
+            perturbedConstraints = originalConstraints;
+            perturbedVariables = originalVariables;
+
+            for (unsigned int row = 0; row < multipliers.size(); ++row) {
+                multipliers.zero();
+                multipliers(row) = 1.0;
+
+                std::cerr << "Row: " << row << std::endl;
+
+                constraintsHessian.zero();
+
+                perturbedVariables = originalVariables;
+                ok = m_problem->setVariables(originalVariables);
+                ASSERT_IS_TRUE(ok);
+
+                std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                ok = m_problem->evaluateConstraintsHessian(multipliers, constraintsHessian);
+                ASSERT_IS_TRUE(ok);
+                std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+                if (!row) {
+                    std::cout << "Elapsed time ms hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+                }
+
+                perturbedRow.resize(originalJacobian.cols());
+                firstOrderTaylor = perturbedRow;
+
+                for (unsigned int i = 0; i < originalVariables.size(); ++i) {
+                    //                std::cerr << "Variable: " << i << std::endl;
+
+                    perturbedVariables = originalVariables;
+                    perturbedVariables(i) = perturbedVariables(i) + perturbation;
+
+                    ok = m_problem->setVariables(perturbedVariables);
+                    ASSERT_IS_TRUE(ok);
+
+                    ok = m_problem->evaluateConstraintsJacobian(perturbedJacobian);
+                    ASSERT_IS_TRUE(ok);
+
+                    iDynTree::toEigen(perturbedRow) = iDynTree::toEigen(perturbedJacobian).row(row).transpose();
+
+                    iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalJacobian).row(row).transpose() +
+                        iDynTree::toEigen(constraintsHessian) * (iDynTree::toEigen(perturbedVariables) - iDynTree::toEigen(originalVariables));
+                    ASSERT_EQUAL_VECTOR_TOL(perturbedRow, firstOrderTaylor, perturbation/10);
+                }
             }
 
-            perturbedRow.resize(originalJacobian.cols());
-            firstOrderTaylor = perturbedRow;
+            for (size_t i = 0; i < 3; ++i) {
+                ok = m_problem->setVariables(originalVariables);
+                ASSERT_IS_TRUE(ok);
+
+                iDynTree::getRandomVector(multipliers,-10.0, 10.0);
+
+                ok = m_problem->evaluateConstraintsHessian(multipliers, constraintsHessian);
+                ASSERT_IS_TRUE(ok);
+
+                iDynTree::VectorDynSize delta = originalVariables;
+
+                iDynTree::getRandomVector(delta);
+
+                iDynTree::toEigen(delta).normalize();
+
+                //            iDynTree::toEigen(delta) *= perturbation*100;
+
+                iDynTree::toEigen(perturbedVariables) = iDynTree::toEigen(originalVariables) + iDynTree::toEigen(delta);
+
+                double originalLagrangian = iDynTree::toEigen(multipliers).transpose() * iDynTree::toEigen(originalConstraints);
+
+//                Eigen::JacobiSVD<Eigen::MatrixXd> svd(iDynTree::toEigen(constraintsHessian), Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+//                iDynTree::VectorDynSize deltaProjected = delta;
+
+//                iDynTree::toEigen(deltaProjected) = svd.matrixV() * iDynTree::toEigen(delta);
+
+                double firstOrderApprox = originalLagrangian + (iDynTree::toEigen(delta).transpose() * iDynTree::toEigen(originalJacobian).transpose() * iDynTree::toEigen(multipliers))(0,0);
+                //            double secondOrderApprox = firstOrderApprox + 0.5 * iDynTree::toEigen(deltaProjected).topRows(svd.rank()).transpose() * svd.singularValues().topRows(svd.rank()).asDiagonal() * iDynTree::toEigen(deltaProjected).topRows(svd.rank());
+
+                double secondOrderApprox = firstOrderApprox + 0.5 * iDynTree::toEigen(delta).transpose() *
+                        iDynTree::toEigen(constraintsHessian) * iDynTree::toEigen(delta);
+
+                iDynTree::MatrixDynSize test = constraintsHessian;
+
+//                iDynTree::toEigen(test) = svd.matrixU() * svd.matrixV();
+
+//                iDynTree::MatrixDynSize testIdentity = constraintsHessian;
+//                iDynTree::toEigen(testIdentity).setIdentity();
+
+//                Eigen::MatrixXd thisShouldBeNull = iDynTree::toEigen(test) - iDynTree::toEigen(testIdentity);
+//                Eigen::JacobiSVD<Eigen::MatrixXd> svd2(thisShouldBeNull);
+//                svd2.setThreshold(1e-10);
+
+//                std::cerr << "Test max eigenvalue: " << svd2.singularValues().maxCoeff() << std::endl;
+
+
+//                std::cerr << "Hessian dim: " << hessian.rows() << " rank: " << svd.rank() << std::endl;
+
+                std::cerr << "Hessian contribution: " << secondOrderApprox - firstOrderApprox << std::endl;
+
+                ok = m_problem->setVariables(perturbedVariables);
+                ASSERT_IS_TRUE(ok);
+
+                ok = m_problem->evaluateConstraints(perturbedConstraints);
+                ASSERT_IS_TRUE(ok);
+
+                double perturbedLagrangian = iDynTree::toEigen(multipliers).transpose() * iDynTree::toEigen(perturbedConstraints);
+
+                double firstOrderError = std::abs(perturbedLagrangian - firstOrderApprox);
+                std::cerr << "Constraints First order error: " << firstOrderError << std::endl;
+                double secondOrderError = std::abs(perturbedLagrangian - secondOrderApprox);
+                std::cerr << "Constraint Second order error: " << secondOrderError << std::endl;
+
+                ASSERT_IS_TRUE(firstOrderError >= secondOrderError);
+            }
+
+        }
+
+        //-------------------------------- Check Costs hessian
+        {
+            double perturbation = 1e-4;
+            iDynTree::VectorDynSize firstOrderTaylor, perturbedGradient, originalVariables, perturbedVariables;
+            iDynTree::VectorDynSize originalGradient;
+            iDynTree::MatrixDynSize costHessian;
+            originalVariables = variables;
+
+            ok = m_problem->setVariables(originalVariables);
+            ASSERT_IS_TRUE(ok);
+
+            originalGradient.resize(originalVariables.size());
+
+            ok = m_problem->evaluateCostGradient(originalGradient);
+            ASSERT_IS_TRUE(ok);
+            perturbedGradient = originalGradient;
+
+            costHessian.resize(originalVariables.size(), originalVariables.size());
+
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+            ok = m_problem->evaluateCostHessian(costHessian);
+            ASSERT_IS_TRUE(ok);
+            std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+            std::cout << "Elapsed time ms cost hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+            firstOrderTaylor = originalGradient;
+
 
             for (unsigned int i = 0; i < originalVariables.size(); ++i) {
-//                std::cerr << "Variable: " << i << std::endl;
+                //                std::cerr << "Variable: " << i << std::endl;
 
                 perturbedVariables = originalVariables;
                 perturbedVariables(i) = perturbedVariables(i) + perturbation;
@@ -156,19 +279,47 @@ public:
                 ok = m_problem->setVariables(perturbedVariables);
                 ASSERT_IS_TRUE(ok);
 
-                ok = m_problem->evaluateConstraintsJacobian(perturbedJacobian);
+                ok = m_problem->evaluateCostGradient(perturbedGradient);
                 ASSERT_IS_TRUE(ok);
 
-                iDynTree::toEigen(perturbedRow) = iDynTree::toEigen(perturbedJacobian).row(row).transpose();
-
-                iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalJacobian).row(row).transpose() +
-                    iDynTree::toEigen(constraintsHessian) * (iDynTree::toEigen(perturbedVariables) - iDynTree::toEigen(originalVariables));
-                ASSERT_EQUAL_VECTOR_TOL(perturbedRow, firstOrderTaylor, perturbation/10);
+                iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalGradient) +
+                    iDynTree::toEigen(costHessian) * (iDynTree::toEigen(perturbedVariables) - iDynTree::toEigen(originalVariables));
+                ASSERT_EQUAL_VECTOR_TOL(perturbedGradient, firstOrderTaylor, perturbation/10);
             }
+
+            ok = m_problem->setVariables(originalVariables);
+            ASSERT_IS_TRUE(ok);
+
+            double originalCost;
+            ok = m_problem->evaluateCostFunction(originalCost);
+
+            iDynTree::VectorDynSize delta = originalVariables;
+
+            iDynTree::getRandomVector(delta);
+
+            iDynTree::toEigen(delta).normalize();
+
+            iDynTree::toEigen(perturbedVariables) = iDynTree::toEigen(originalVariables) + iDynTree::toEigen(delta);
+
+            double firstOrderApprox = originalCost + (iDynTree::toEigen(originalGradient).transpose()*iDynTree::toEigen(delta))(0,0);
+            double secondOrderApprox = firstOrderApprox + 0.5 * iDynTree::toEigen(delta).transpose() * iDynTree::toEigen(costHessian) * iDynTree::toEigen(delta);
+            double perturbedCost;
+
+            ok = m_problem->setVariables(perturbedVariables);
+            ASSERT_IS_TRUE(ok);
+
+            ok = m_problem->evaluateCostFunction(perturbedCost);
+            ASSERT_IS_TRUE(ok);
+
+            double firstOrderError = std::abs(perturbedCost - firstOrderApprox);
+            std::cerr << "Cost First order error: " << firstOrderError << std::endl;
+            double secondOrderError = std::abs(perturbedCost - secondOrderApprox);
+            std::cerr << "Cost Second order error: " << secondOrderError << std::endl;
+
+
+            ASSERT_IS_TRUE(firstOrderError >= secondOrderError);
+
         }
-
-
-
         return true;
     }
 
@@ -534,18 +685,18 @@ int main() {
         joint.second = 10;
     }
 
-    settingsStruct.frameCostActive = false;
+    settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
-    settingsStruct.forceMeanCostActive = false;
-    settingsStruct.comCostActive = false;
+    settingsStruct.forceMeanCostActive = true;
+    settingsStruct.comCostActive = true;
     settingsStruct.comVelocityCostActive = true;
-    settingsStruct.forceDerivativeCostActive = false;
-    settingsStruct.pointAccelerationCostActive = false;
+    settingsStruct.forceDerivativeCostActive = true;
+    settingsStruct.pointAccelerationCostActive = true;
     settingsStruct.jointsRegularizationCostActive = true;
     settingsStruct.jointsVelocityCostActive = true;
-    settingsStruct.swingCostActive = false;
-    settingsStruct.phantomForcesCostActive = false;
-    settingsStruct.meanPointPositionCostActive = false;
+    settingsStruct.swingCostActive = true;
+    settingsStruct.phantomForcesCostActive = true;
+    settingsStruct.meanPointPositionCostActive = true;
 
     settingsStruct.frameCostOverallWeight = 10;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-2;
