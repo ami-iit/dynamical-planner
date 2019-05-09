@@ -726,6 +726,13 @@ public:
 //                return false;
 //            }
 
+//            constraints.leftComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
+//                                                                                                      "Left", i, st.complementarityDissipation);
+//            ok = ocp->addConstraint(constraints.leftComplementarity[i]);
+//            if (!ok) {
+//                return false;
+//            }
+
             constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
                                                                                                        i, forceActivation,
                                                                                                        st.forceMaximumDerivative(2),
@@ -735,13 +742,6 @@ public:
             if (!ok) {
                 return false;
             }
-
-//            constraints.leftComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
-//                                                                                                      "Left", i, st.complementarityDissipation);
-//            ok = ocp->addConstraint(constraints.leftComplementarity[i]);
-//            if (!ok) {
-//                return false;
-//            }
 
             constraints.leftContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateStructure, controlStructure, "Left", i);
 
@@ -787,6 +787,13 @@ public:
 //                return false;
 //            }
 
+//            constraints.rightComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
+//                                                                                                      "Right", i, st.complementarityDissipation);
+//            ok = ocp->addConstraint(constraints.rightComplementarity[i]);
+//            if (!ok) {
+//                return false;
+//            }
+
             constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
                                                                                                         i, forceActivation,
                                                                                                         st.forceMaximumDerivative(2),
@@ -796,13 +803,6 @@ public:
             if (!ok) {
                 return false;
             }
-
-//            constraints.rightComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
-//                                                                                                      "Right", i, st.complementarityDissipation);
-//            ok = ocp->addConstraint(constraints.rightComplementarity[i]);
-//            if (!ok) {
-//                return false;
-//            }
 
             constraints.rightContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateStructure, controlStructure, "Right", i);
 

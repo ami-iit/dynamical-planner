@@ -551,17 +551,17 @@ bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControl(double
 bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure &stateSparsity)
 {
     stateSparsity = m_pimpl->stateHessianSparsity;
-    return true*0;
+    return true;
 }
 
 bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTStateControlSparsity(iDynTree::optimalcontrol::SparsityStructure &stateControlSparsity)
 {
     stateControlSparsity = m_pimpl->mixedHessianSparsity;
-    return true*0;
+    return true;
 }
 
 bool DynamicalConstraints::dynamicsSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure &controlSparsity)
 {
     controlSparsity = m_pimpl->controlHessianSparsity;
-    return true*0;
+    return true;
 }
