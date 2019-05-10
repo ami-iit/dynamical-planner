@@ -448,7 +448,7 @@ int main() {
     }
 
     settingsStruct.frameCostActive = true;
-    settingsStruct.staticTorquesCostActive = true;
+    settingsStruct.staticTorquesCostActive = false;
     settingsStruct.forceMeanCostActive = true;
     settingsStruct.comCostActive = false;
     settingsStruct.comVelocityCostActive = true;
@@ -461,7 +461,7 @@ int main() {
     settingsStruct.meanPointPositionCostActive = true;
 
     settingsStruct.frameCostOverallWeight = 10;
-    settingsStruct.jointsVelocityCostOverallWeight = 1e-2;
+    settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
     settingsStruct.forceMeanCostOverallWeight = 1e-3;
@@ -477,7 +477,7 @@ int main() {
     settingsStruct.comVelocityCostOverallWeight = 1.0;
     settingsStruct.comVelocityWeights(0) = 1.0;
     settingsStruct.comVelocityWeights(1) = 0.0;
-    settingsStruct.comVelocityWeights(2) = 0.0;
+    settingsStruct.comVelocityWeights(2) = 1.0;
 
 
 //    settingsStruct.minimumDt = 0.01;
@@ -503,7 +503,7 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 15.0);
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 30.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
     iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
@@ -512,7 +512,7 @@ int main() {
     meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
     meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
 
-
+    settingsStruct.desiredSwingHeight = 0.1;
 
     settingsStruct.constrainTargetCoMPosition = false;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
@@ -603,6 +603,12 @@ int main() {
 //    ok = ipoptSolver->setIpoptOption("warm_start_same_structure", "no");
     ok = ipoptSolver->setIpoptOption("expect_infeasible_problem", "yes");
     ok = ipoptSolver->setIpoptOption("required_infeasibility_reduction", 0.8);
+
+    ok = ipoptSolver->setIpoptOption("first_hessian_perturbation", 100.0);
+//    ok = ipoptSolver->setIpoptOption("perturb_dec_fact", 10.0);
+//    ok = ipoptSolver->setIpoptOption("jacobian_regularization_value", 0.001);
+//    ok = ipoptSolver->setIpoptOption("obj_scaling_factor", 0.01);
+
 
     ipoptSolver->useApproximatedHessians(true);
 
@@ -709,6 +715,7 @@ int main() {
 //    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
 //    ASSERT_IS_TRUE(ok);
 
+    //-----------------------
 
     ok = ipoptSolver->setIpoptOption("print_level", 0);
     ASSERT_IS_TRUE(ok);
@@ -740,7 +747,7 @@ int main() {
         mpcStates.back().time += initialTime;
         visualizer.visualizeState(mpcStates.back());
 
-        size_t middlePoint = static_cast<size_t>(std::round(optimalStates.size() * 0.6));
+        size_t middlePoint = static_cast<size_t>(std::round(optimalStates.size() * 0.3));
         futureMeanPositionError = (iDynTree::toEigen(meanPointPosition(optimalStates[middlePoint])) - iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition)).norm();
         std::cerr << "Future mean point error: " << futureMeanPositionError << std::endl;
 
