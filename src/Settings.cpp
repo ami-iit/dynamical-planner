@@ -335,5 +335,10 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.meanPointPositionCostActiveRange = iDynTree::optimalcontrol::TimeRange::AnyTime();
     defaults.desiredMeanPointPosition = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(iDynTree::Position::Zero());
 
+    defaults.useConstraintsHessianRegularization = true;
+    defaults.constraintsHessianRegularization = 1e-3;
+    defaults.useCostsHessianRegularization = false;
+    defaults.costsHessianRegularization = 0.0;
+
     return defaults;
 }

@@ -601,16 +601,19 @@ int main() {
     ok = ipoptSolver->setIpoptOption("warm_start_slack_bound_push", 1e-2);
     ok = ipoptSolver->setIpoptOption("warm_start_init_point", "yes");
 //    ok = ipoptSolver->setIpoptOption("warm_start_same_structure", "no");
-    ok = ipoptSolver->setIpoptOption("expect_infeasible_problem", "yes");
+//    ok = ipoptSolver->setIpoptOption("expect_infeasible_problem", "yes");
     ok = ipoptSolver->setIpoptOption("required_infeasibility_reduction", 0.8);
 
-    ok = ipoptSolver->setIpoptOption("first_hessian_perturbation", 100.0);
-//    ok = ipoptSolver->setIpoptOption("perturb_dec_fact", 10.0);
+//    ok = ipoptSolver->setIpoptOption("first_hessian_perturbation", 100.0);
+    ok = ipoptSolver->setIpoptOption("perturb_dec_fact", 0.1);
+    ok = ipoptSolver->setIpoptOption("max_hessian_perturbation", 100.0);
 //    ok = ipoptSolver->setIpoptOption("jacobian_regularization_value", 0.001);
-//    ok = ipoptSolver->setIpoptOption("obj_scaling_factor", 0.01);
+//    ok = ipoptSolver->setIpoptOption("obj_scaling_factor", 500.0);
 
+    ok = ipoptSolver->setIpoptOption("fast_step_computation", "yes");
+    ok = ipoptSolver->setIpoptOption("evaluate_orig_obj_at_resto_trial", "yes");
 
-    ipoptSolver->useApproximatedHessians(true);
+    ipoptSolver->useApproximatedHessians(false);
 
 //    ok = ipoptSolver->setIpoptOption("limited_memory_aug_solver", "extended");
 //    ASSERT_IS_TRUE(ok);

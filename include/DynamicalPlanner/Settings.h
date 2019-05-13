@@ -147,6 +147,12 @@ namespace DynamicalPlanner {
         iDynTree::optimalcontrol::TimeRange meanPointPositionCostActiveRange;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> desiredMeanPointPosition;
 
+        //Regularizations
+        bool useConstraintsHessianRegularization;
+        double constraintsHessianRegularization;
+        bool useCostsHessianRegularization;
+        double costsHessianRegularization;
+
     } SettingsStruct;
 }
 

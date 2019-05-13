@@ -1244,6 +1244,18 @@ bool Solver::specifySettings(const Settings &settings)
 
     m_pimpl->resizeSolutionVector(numberOfDofs, numberOfPoints);
 
+    if (st.useCostsHessianRegularization) {
+        m_pimpl->multipleShootingSolver->addCostsHessianRegularization(st.costsHessianRegularization);
+    } else {
+        m_pimpl->multipleShootingSolver->disableCostsHessianRegularization();
+    }
+
+    if (st.useConstraintsHessianRegularization) {
+        m_pimpl->multipleShootingSolver->addConstraintsHessianRegularization(st.constraintsHessianRegularization);
+    } else {
+        m_pimpl->multipleShootingSolver->disableConstraintsHessianRegularization();
+    }
+
     m_pimpl->prepared = true;
 
     return true;
