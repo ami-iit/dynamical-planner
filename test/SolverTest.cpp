@@ -447,6 +447,16 @@ int main() {
         joint.second = 10;
     }
 
+
+    double torsoVelocityLimit = 5.0;
+    settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
+    settingsStruct.jointsVelocityLimits[0].second = torsoVelocityLimit;
+    settingsStruct.jointsVelocityLimits[1].first = -torsoVelocityLimit;
+    settingsStruct.jointsVelocityLimits[1].second = torsoVelocityLimit;
+    settingsStruct.jointsVelocityLimits[2].first = -torsoVelocityLimit;
+    settingsStruct.jointsVelocityLimits[2].second = torsoVelocityLimit;
+
+
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
     settingsStruct.forceMeanCostActive = true;
@@ -459,14 +469,16 @@ int main() {
     settingsStruct.swingCostActive = true;
     settingsStruct.phantomForcesCostActive = false;
     settingsStruct.meanPointPositionCostActive = true;
+    settingsStruct.leftFootYawCostActive = true;
+    settingsStruct.rightFootYawCostActive = true;
 
-    settingsStruct.frameCostOverallWeight = 10;
+    settingsStruct.frameCostOverallWeight = 50.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
     settingsStruct.forceMeanCostOverallWeight = 1e-3;
-    settingsStruct.forceDerivativesCostOverallWeight = 1e-15;
-    settingsStruct.pointAccelerationCostOverallWeight = 1e-15;
+    settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
+    settingsStruct.pointAccelerationCostOverallWeight = 1e-10;
     settingsStruct.swingCostOverallWeight = 10;
     settingsStruct.phantomForcesCostOverallWeight = 1.0;
     settingsStruct.meanPointPositionCostOverallWeight = 100;
@@ -474,7 +486,7 @@ int main() {
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
-    settingsStruct.comVelocityCostOverallWeight = 1.0;
+    settingsStruct.comVelocityCostOverallWeight = 10.0;
     settingsStruct.comVelocityWeights(0) = 1.0;
     settingsStruct.comVelocityWeights(1) = 0.0;
     settingsStruct.comVelocityWeights(2) = 1.0;
@@ -539,7 +551,7 @@ int main() {
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
 //    settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
 
-    settingsStruct.complementarityDissipation = 10.0;
+    settingsStruct.complementarityDissipation = 1.0;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 
@@ -570,6 +582,12 @@ int main() {
 //    ok = ipoptSolver->setIpoptOption("bound_relax_factor", 1e-5);
 //    ASSERT_IS_TRUE(ok);
 //    ok = ipoptSolver->setIpoptOption("honor_original_bounds", "yes");
+//    ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("dual_inf_tol", 1000.0);
+    ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("compl_inf_tol", 1e-2);
+    ASSERT_IS_TRUE(ok);
+//    ok = ipoptSolver->setIpoptOption("recalc_y","yes");
 //    ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("constr_viol_tol", 1e-4);
     ASSERT_IS_TRUE(ok);
@@ -611,7 +629,12 @@ int main() {
 //    ok = ipoptSolver->setIpoptOption("obj_scaling_factor", 500.0);
 
     ok = ipoptSolver->setIpoptOption("fast_step_computation", "yes");
-    ok = ipoptSolver->setIpoptOption("evaluate_orig_obj_at_resto_trial", "yes");
+//    ok = ipoptSolver->setIpoptOption("evaluate_orig_obj_at_resto_trial", "yes");
+//    ok = ipoptSolver->setIpoptOption("soft_resto_pderror_reduction_factor", 0.0);
+//    ok = ipoptSolver->setIpoptOption("linear_system_scaling", "slack-based");
+
+
+
 
     ipoptSolver->useApproximatedHessians(false);
 
@@ -720,7 +743,7 @@ int main() {
 
     //-----------------------
 
-    ok = ipoptSolver->setIpoptOption("print_level", 0);
+//    ok = ipoptSolver->setIpoptOption("print_level", 0);
     ASSERT_IS_TRUE(ok);
 
     std::vector<DynamicalPlanner::State> mpcStates;

@@ -235,10 +235,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
 //    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer);
 //    ok = ocProblem.addConstraint(constraints.comPosition);
-//    ASSERT_IS_TRUE(ok);//    constraints.centroidalMomentum = std::make_shared<CentroidalMomentumConstraint>(stateVariables, controlVariables,
-    //                                                                                    timelySharedKinDyn, expressionsServer);
-    //    ok = ocProblem.addConstraint(constraints.centroidalMomentum);
-    //    ASSERT_IS_TRUE(ok);
+//    ASSERT_IS_TRUE(ok);
 
 //    constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, timelySharedKinDyn,
 //                                                                                      expressionsServer, 1, rightFrame, leftFrame);
@@ -334,19 +331,22 @@ void checkDynamicalConstraintHessian(double time, const iDynTree::VectorDynSize&
         lambda.zero();
         lambda(row) = 1.0;
 
-//        std::cerr << "Row: " << row << std::endl;
-
         ok = constraints.dynamical->setControlInput(originalControlVector);
         ASSERT_IS_TRUE(ok);
 
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         ok = constraints.dynamical->dynamicsSecondPartialDerivativeWRTState(time, originalStateVector, lambda, stateHessian);
         ASSERT_IS_TRUE(ok);
+        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+        if (!row) {
+            std::cout << "Elapsed time ms state hessian (dynamical): " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        }
 
         perturbedRow.resize(originalStateJacobian.cols());
         firstOrderTaylor = perturbedRow;
 
         for (unsigned int i = 0; i < originalStateVector.size(); ++i) {
-//            std::cerr << "Variable: " << i << std::endl;
+//            std::cerr << "State Row: " << row << " Variable: " << i << std::endl;
 
             perturbedState = originalStateVector;
             perturbedState(i) = perturbedState(i) + perturbation;
@@ -364,10 +364,17 @@ void checkDynamicalConstraintHessian(double time, const iDynTree::VectorDynSize&
         ok = constraints.dynamical->setControlInput(originalControlVector);
         ASSERT_IS_TRUE(ok);
 
+        begin = std::chrono::steady_clock::now();
         ok = constraints.dynamical->dynamicsSecondPartialDerivativeWRTStateControl(time, originalStateVector, lambda, mixedHessian);
         ASSERT_IS_TRUE(ok);
+        end= std::chrono::steady_clock::now();
+        if (!row) {
+            std::cout << "Elapsed time ms mixed hessian (dynamical): " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        }
 
         for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
+//            std::cerr << "Control Row: " << row << " Variable: " << i << std::endl;
+
             perturbedControl = originalControlVector;
             perturbedControl(i) = perturbedControl(i) + perturbation;
 
@@ -386,8 +393,13 @@ void checkDynamicalConstraintHessian(double time, const iDynTree::VectorDynSize&
         ok = constraints.dynamical->setControlInput(originalControlVector);
         ASSERT_IS_TRUE(ok);
 
+        begin = std::chrono::steady_clock::now();
         ok = constraints.dynamical->dynamicsSecondPartialDerivativeWRTControl(time, originalStateVector, lambda, controlHessian);
         ASSERT_IS_TRUE(ok);
+        end= std::chrono::steady_clock::now();
+        if (!row) {
+            std::cout << "Elapsed time ms control hessian (dynamical): " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        }
 
         perturbedRow.resize(originalControlJacobian.cols());
         firstOrderTaylor = perturbedRow;
@@ -493,10 +505,12 @@ void checkConstraintsHessian(double time, const iDynTree::VectorDynSize& origina
 
         stateHessian.zero();
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        ok = ocProblem.constraintSecondPartialDerivativeWRTState(time, originalStateVector, originalControlVector, lambda, stateHessian);
+        ok = ocProblem.constraintsSecondPartialDerivativeWRTState(time, originalStateVector, originalControlVector, lambda, stateHessian);
         ASSERT_IS_TRUE(ok);
         std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
-        std::cout << "Elapsed time ms state hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        if (!row) {
+            std::cout << "Elapsed time ms state hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        }
 
         perturbedRow.resize(originalStateJacobian.cols());
         firstOrderTaylor = perturbedRow;
@@ -519,10 +533,12 @@ void checkConstraintsHessian(double time, const iDynTree::VectorDynSize& origina
 
         mixedHessian.zero();
         begin = std::chrono::steady_clock::now();
-        ok = ocProblem.constraintSecondPartialDerivativeWRTStateControl(time, originalStateVector, originalControlVector, lambda, mixedHessian);
+        ok = ocProblem.constraintsSecondPartialDerivativeWRTStateControl(time, originalStateVector, originalControlVector, lambda, mixedHessian);
         ASSERT_IS_TRUE(ok);
         end= std::chrono::steady_clock::now();
-        std::cout << "Elapsed time ms mixed hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        if (!row) {
+            std::cout << "Elapsed time ms mixed hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        }
 
         for (unsigned int i = 0; i < originalControlVector.size(); ++i) {
             perturbedControl = originalControlVector;
@@ -539,10 +555,12 @@ void checkConstraintsHessian(double time, const iDynTree::VectorDynSize& origina
         }
 
         begin = std::chrono::steady_clock::now();
-        ok = ocProblem.constraintSecondPartialDerivativeWRTControl(time, originalStateVector, originalControlVector, lambda, controlHessian);
+        ok = ocProblem.constraintsSecondPartialDerivativeWRTControl(time, originalStateVector, originalControlVector, lambda, controlHessian);
         ASSERT_IS_TRUE(ok);
         end= std::chrono::steady_clock::now();
-        std::cout << "Elapsed time ms control hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        if (!row) {
+            std::cout << "Elapsed time ms control hessian: " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0) <<std::endl;
+        }
 
         perturbedRow.resize(originalControlJacobian.cols());
         firstOrderTaylor = perturbedRow;
@@ -577,11 +595,13 @@ int main() {
     setVariables(stateVariables, controlVariables, 4, timelySharedKinDyn->model().getNrOfDOFs());
     std::vector<iDynTree::Position> leftPositions, rightPositions;
     leftPositions.resize(4);
+//    leftPositions.resize(1);
     iDynTree::toEigen(leftPositions[0]) << 0.125, -0.04, 0.0;
     iDynTree::toEigen(leftPositions[1]) << 0.125,  0.04, 0.0;
     iDynTree::toEigen(leftPositions[2]) << -0.063,  0.04, 0.0;
     iDynTree::toEigen(leftPositions[3]) << 0.063, -0.04, 0.0;
     rightPositions.resize(4);
+//    rightPositions.resize(1);
     iDynTree::toEigen(rightPositions[0]) << 0.125,  0.04, 0.0;
     iDynTree::toEigen(rightPositions[1]) << 0.125, -0.04, 0.0;
     iDynTree::toEigen(rightPositions[2]) << -0.063, -0.04, 0.0;
@@ -598,9 +618,9 @@ int main() {
 //    std::cerr << "Original control:" << std::endl << controlVector.toString() << std::endl;
 
 
-//    checkDynamicalConstraintDerivative(0.0, stateVector, controlVector, 0.01, constraints);
+    checkDynamicalConstraintDerivative(0.0, stateVector, controlVector, 0.01, constraints);
 
-//    checkConstraintsDerivative(0.0, stateVector, controlVector, 0.001, ocProblem);
+    checkConstraintsDerivative(0.0, stateVector, controlVector, 0.001, ocProblem);
 
 //    checkDynamicalConstraintHessian(0.0, stateVector, controlVector, 0.001, constraints);
 
@@ -608,10 +628,16 @@ int main() {
 
 //    checkConstraintsDerivative(1.0, stateVector, controlVector, 0.001, ocProblem);
 
-//    checkDynamicalConstraintHessian(1.0, stateVector, controlVector, 0.001, constraints);
+//    iDynTree::getRandomVector(stateVector);
 
-    iDynTree::getRandomVector(controlVector, -0.01, 0.01);
-    checkConstraintsHessian(0.0, stateVector, controlVector, 0.0001, ocProblem);
+    checkDynamicalConstraintHessian(1.0, stateVector, controlVector, 0.0001, constraints);
+
+    for (size_t i = 0; i < 1; ++i) {
+        iDynTree::getRandomVector(stateVector);
+        iDynTree::getRandomVector(controlVector);
+        checkConstraintsHessian(1.0*i, stateVector, controlVector, 0.0001, ocProblem);
+    }
+
 
     return EXIT_SUCCESS;
 }

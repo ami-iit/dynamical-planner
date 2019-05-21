@@ -340,5 +340,15 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.useCostsHessianRegularization = false;
     defaults.costsHessianRegularization = 0.0;
 
+    //Left foot yaw cost
+    defaults.leftFootYawCostActive = true;
+    defaults.leftFootYawCostOverallWeight = 1.0;
+    defaults.desiredLeftFootYaw = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.0);
+
+    //Right foot yaw cost
+    defaults.rightFootYawCostActive = true;
+    defaults.rightFootYawCostOverallWeight = 1.0;
+    defaults.desiredRightFootYaw = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.0);
+
     return defaults;
 }

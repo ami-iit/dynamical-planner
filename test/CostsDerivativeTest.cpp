@@ -111,39 +111,39 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     ok = ocProblem.setDynamicalSystemConstraint(dynamical);
     ASSERT_IS_TRUE(ok);
 
-    for (size_t i = 0; i < leftPositions.size(); ++i) {
-        std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Left", i);
-        ok = ocProblem.addLagrangeTerm(1.0, forceCost);
-        ASSERT_IS_TRUE(ok);
+//    for (size_t i = 0; i < leftPositions.size(); ++i) {
+//        std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Left", i);
+//        ok = ocProblem.addLagrangeTerm(1.0, forceCost);
+//        ASSERT_IS_TRUE(ok);
 
-        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Left", i, 0.03);
-        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
-        ASSERT_IS_TRUE(ok);
+//        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Left", i, 0.03);
+//        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
+//        ASSERT_IS_TRUE(ok);
 
-        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Left",
-                                                                                                  i, forceActivation);
-        ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
-        ASSERT_IS_TRUE(ok);
-    }
-    for (size_t i = 0; i < rightPositions.size(); ++i) {
-        std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Right", i);
-        ok = ocProblem.addLagrangeTerm(1.0, forceCost);
-        ASSERT_IS_TRUE(ok);
+//        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Left",
+//                                                                                                  i, forceActivation);
+//        ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
+//        ASSERT_IS_TRUE(ok);
+//    }
+//    for (size_t i = 0; i < rightPositions.size(); ++i) {
+//        std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Right", i);
+//        ok = ocProblem.addLagrangeTerm(1.0, forceCost);
+//        ASSERT_IS_TRUE(ok);
 
-        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
-        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
-        ASSERT_IS_TRUE(ok);
+//        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
+//        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
+//        ASSERT_IS_TRUE(ok);
 
-        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Right",
-                                                                                                  i, forceActivation);
-        ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
-        ASSERT_IS_TRUE(ok);
-    }
-    std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> comCost = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("CoMCost", stateVariables.getIndexRange("CoMPosition"),
-                                                                                                                           stateVariables.size(),iDynTree::IndexRange::InvalidRange(),
-                                                                                                                           controlVariables.size());
-    ok = ocProblem.addLagrangeTerm(0.5, comCost);
-    ASSERT_IS_TRUE(ok);
+//        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Right",
+//                                                                                                  i, forceActivation);
+//        ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
+//        ASSERT_IS_TRUE(ok);
+//    }
+//    std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> comCost = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("CoMCost", stateVariables.getIndexRange("CoMPosition"),
+//                                                                                                                           stateVariables.size(),iDynTree::IndexRange::InvalidRange(),
+//                                                                                                                           controlVariables.size());
+//    ok = ocProblem.addLagrangeTerm(0.5, comCost);
+//    ASSERT_IS_TRUE(ok);
     std::shared_ptr<FrameOrientationCost> orientationCost = std::make_shared<FrameOrientationCost>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, 22);
     ok = ocProblem.addLagrangeTerm(0.5, orientationCost);
     ASSERT_IS_TRUE(ok);
@@ -154,9 +154,13 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
 //    ok = ocProblem.addLagrangeTerm(0.5, staticTorquesCost);
 //    ASSERT_IS_TRUE(ok);
 
-    std::shared_ptr<MeanPointPositionCost> meanPositionCost = std::make_shared<MeanPointPositionCost>(stateVariables, controlVariables);
-    meanPositionCost->setTimeVaryingWeight(std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(15.0));
-    ok = ocProblem.addLagrangeTerm(0.5, meanPositionCost);
+//    std::shared_ptr<MeanPointPositionCost> meanPositionCost = std::make_shared<MeanPointPositionCost>(stateVariables, controlVariables);
+//    meanPositionCost->setTimeVaryingWeight(std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(15.0));
+//    ok = ocProblem.addLagrangeTerm(0.5, meanPositionCost);
+//    ASSERT_IS_TRUE(ok);
+
+    std::shared_ptr<FootYawCost> footYawCost = std::make_shared<FootYawCost>(stateVariables, "Left", leftPositions);
+    ok = ocProblem.addLagrangeTerm(0.5, footYawCost);
     ASSERT_IS_TRUE(ok);
 
 }
@@ -446,12 +450,12 @@ int main() {
     leftPositions.push_back(iDynTree::Position(0.125, -0.04, 0.0));
     leftPositions.push_back(iDynTree::Position(0.125,  0.04, 0.0));
     leftPositions.push_back(iDynTree::Position(-0.063,  0.04, 0.0));
-    leftPositions.push_back(iDynTree::Position( 0.063, -0.04, 0.0));
+    leftPositions.push_back(iDynTree::Position(-0.063, -0.04, 0.0));
 
     rightPositions.push_back(iDynTree::Position(0.125,  0.04, 0.0));
     rightPositions.push_back(iDynTree::Position(0.125, -0.04, 0.0));
     rightPositions.push_back(iDynTree::Position(-0.063, -0.04, 0.0));
-    rightPositions.push_back(iDynTree::Position( 0.063,  0.04, 0.0));
+    rightPositions.push_back(iDynTree::Position(-0.063,  0.04, 0.0));
 
     configureSharedKinDyn(timelySharedKinDyn);
     std::shared_ptr<ExpressionsServer> expressionsServer = std::make_shared<ExpressionsServer>(timelySharedKinDyn);
@@ -481,8 +485,13 @@ int main() {
 
     checkFrameOrientationDerivative(desiredRotation, 0, 0.01, timelySharedKinDyn->get(0.0), stateVariables);
 
-    iDynTree::getRandomVector(stateVector, -0.1, 0.1);
+    iDynTree::getRandomVector(stateVector/*, -0.1, 0.1*/);
+    iDynTree::toEigen(stateVector) *= 0.5;
     checkCostsHessian(0.0, stateVector, controlVector, 0.0001, ocProblem);
+    iDynTree::getRandomVector(stateVector);
+    iDynTree::getRandomVector(controlVector);
+    checkCostsHessian(1.0, stateVector, controlVector, 0.0001, ocProblem);
+
 
     return 0;
 }

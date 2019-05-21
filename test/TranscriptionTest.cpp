@@ -270,25 +270,27 @@ public:
             firstOrderTaylor = originalGradient;
 
 
-            for (unsigned int i = 0; i < originalVariables.size(); ++i) {
-                //                std::cerr << "Variable: " << i << std::endl;
+//            for (unsigned int i = 0; i < originalVariables.size(); ++i) {
+//                //                std::cerr << "Variable: " << i << std::endl;
 
-                perturbedVariables = originalVariables;
-                perturbedVariables(i) = perturbedVariables(i) + perturbation;
+//                perturbedVariables = originalVariables;
+//                perturbedVariables(i) = perturbedVariables(i) + perturbation;
 
-                ok = m_problem->setVariables(perturbedVariables);
-                ASSERT_IS_TRUE(ok);
+//                ok = m_problem->setVariables(perturbedVariables);
+//                ASSERT_IS_TRUE(ok);
 
-                ok = m_problem->evaluateCostGradient(perturbedGradient);
-                ASSERT_IS_TRUE(ok);
+//                ok = m_problem->evaluateCostGradient(perturbedGradient);
+//                ASSERT_IS_TRUE(ok);
 
-                iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalGradient) +
-                    iDynTree::toEigen(costHessian) * (iDynTree::toEigen(perturbedVariables) - iDynTree::toEigen(originalVariables));
-                ASSERT_EQUAL_VECTOR_TOL(perturbedGradient, firstOrderTaylor, perturbation/10);
-            }
+//                iDynTree::toEigen(firstOrderTaylor) = iDynTree::toEigen(originalGradient) +
+//                    iDynTree::toEigen(costHessian) * (iDynTree::toEigen(perturbedVariables) - iDynTree::toEigen(originalVariables));
+//                ASSERT_EQUAL_VECTOR_TOL(perturbedGradient, firstOrderTaylor, perturbation/10);
+//            }
 
             ok = m_problem->setVariables(originalVariables);
             ASSERT_IS_TRUE(ok);
+
+            perturbedVariables = originalVariables;
 
             double originalCost;
             ok = m_problem->evaluateCostFunction(originalCost);

@@ -147,6 +147,16 @@ namespace DynamicalPlanner {
         iDynTree::optimalcontrol::TimeRange meanPointPositionCostActiveRange;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> desiredMeanPointPosition;
 
+        //Left foot yaw cost
+        bool leftFootYawCostActive;
+        double leftFootYawCostOverallWeight;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> desiredLeftFootYaw;
+
+        //Right foot yaw cost
+        bool rightFootYawCostActive;
+        double rightFootYawCostOverallWeight;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> desiredRightFootYaw;
+
         //Regularizations
         bool useConstraintsHessianRegularization;
         double constraintsHessianRegularization;

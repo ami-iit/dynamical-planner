@@ -73,6 +73,7 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${COSTS_HEADERS_DIR}/FrameOrientationCost.h
                                      ${COSTS_HEADERS_DIR}/PhantomForcesCost.h
                                      ${COSTS_HEADERS_DIR}/MeanPointPositionCost.h
                                      ${COSTS_HEADERS_DIR}/CoMVelocityCost.h
+                                     ${COSTS_HEADERS_DIR}/FootYawCost.h
                                      include/DynamicalPlannerPrivate/Costs.h)
 
 set(UTILITIES_DIR include/DynamicalPlannerPrivate/Utilities)
@@ -137,7 +138,8 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/ExpressionsServer.cpp
                              src/private/QuaternionErrorExpression.cpp
                              src/private/AbsoluteVelocityExpression.cpp
-                             src/private/MomentumInBaseExpression.cpp)
+                             src/private/MomentumInBaseExpression.cpp
+                             src/private/FootYawCost.cpp)
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})
 target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)
