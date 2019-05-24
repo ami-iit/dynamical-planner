@@ -456,6 +456,10 @@ int main() {
     settingsStruct.jointsVelocityLimits[2].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[2].second = torsoVelocityLimit;
 
+    settingsStruct.jointsLimits[4].first = iDynTree::deg2rad(+10.0); //l_shoulder_roll
+    settingsStruct.jointsLimits[8].first = iDynTree::deg2rad(+10.0); // r_shoulder_roll
+
+
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
@@ -493,7 +497,7 @@ int main() {
     settingsStruct.leftFootYawCostOverallWeight = 1000.0;
     settingsStruct.rightFootYawCostOverallWeight = 1000.0;
 
-//    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setZero();
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setZero();
 
 
 //    settingsStruct.minimumDt = 0.01;
@@ -514,7 +518,7 @@ int main() {
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     iDynTree::VectorDynSize comVelocityReference(3);
-    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
+    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.09, 0.0, 0.0));
     auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
