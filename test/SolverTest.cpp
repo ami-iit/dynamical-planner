@@ -490,6 +490,10 @@ int main() {
     settingsStruct.comVelocityWeights(0) = 1.0;
     settingsStruct.comVelocityWeights(1) = 0.0;
     settingsStruct.comVelocityWeights(2) = 1.0;
+    settingsStruct.leftFootYawCostOverallWeight = 1000.0;
+    settingsStruct.rightFootYawCostOverallWeight = 1000.0;
+
+//    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setZero();
 
 
 //    settingsStruct.minimumDt = 0.01;
@@ -636,7 +640,7 @@ int main() {
 
 
 
-    ipoptSolver->useApproximatedHessians(false);
+    ipoptSolver->useApproximatedHessians(true);
 
 //    ok = ipoptSolver->setIpoptOption("limited_memory_aug_solver", "extended");
 //    ASSERT_IS_TRUE(ok);
@@ -743,7 +747,7 @@ int main() {
 
     //-----------------------
 
-//    ok = ipoptSolver->setIpoptOption("print_level", 0);
+    ok = ipoptSolver->setIpoptOption("print_level", 0);
     ASSERT_IS_TRUE(ok);
 
     std::vector<DynamicalPlanner::State> mpcStates;

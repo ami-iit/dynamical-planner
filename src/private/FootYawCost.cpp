@@ -21,9 +21,9 @@ public:
     VariablesLabeller stateVariables;
 
     std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> desiredYaw;
-    size_t bottomRightIndex, topRightIndex;
+    size_t bottomRightIndex, topRightIndex, topLeftIndex;
     double initialYaw;
-    iDynTree::IndexRange bottomRightRange, topRightRange;
+    iDynTree::IndexRange bottomRightRange, topRightRange, topLeftRange;
 
     iDynTree::VectorDynSize stateGradientBuffer;
 
@@ -49,10 +49,11 @@ FootYawCost::FootYawCost(const VariablesLabeller &stateVariables, const std::str
     iDynTree::toEigen(centroid) /= pointsPosition.size();
 
     iDynTree::Vector3 relativePosition;
-    double bottomRightValue = 0, topRightValue = 0;
+    double bottomRightValue = 0, topRightValue = 0, topLeftValue = 0;
 
     m_pimpl->bottomRightIndex = pointsPosition.size();
     m_pimpl->topRightIndex = pointsPosition.size();
+    m_pimpl->topLeftIndex = pointsPosition.size();
 
     for (size_t i = 0; i < pointsPosition.size(); ++i) {
         relativePosition = pointsPosition[i] - centroid;
@@ -68,20 +69,32 @@ FootYawCost::FootYawCost(const VariablesLabeller &stateVariables, const std::str
                     topRightValue = -relativePosition(0) * relativePosition(1);
                 }
             }
+        } else {
+            if (relativePosition(0) > 0) {
+                if ((m_pimpl->topLeftIndex == pointsPosition.size()) || (relativePosition(0) * relativePosition(1) > topLeftValue)) {
+                    m_pimpl->topLeftIndex = i;
+                    topLeftValue = relativePosition(0) * relativePosition(1);
+                }
+            }
         }
     }
     assert(m_pimpl->bottomRightIndex < pointsPosition.size());
     assert(m_pimpl->topRightIndex < pointsPosition.size());
+    assert(m_pimpl->topLeftIndex < pointsPosition.size());
     assert(m_pimpl->bottomRightIndex != m_pimpl->topRightIndex);
+    assert(m_pimpl->bottomRightIndex != m_pimpl->topLeftIndex);
+    assert(m_pimpl->topRightIndex != m_pimpl->topLeftIndex);
 
-    iDynTree::Vector3 initialDistance = pointsPosition[m_pimpl->topRightIndex] - pointsPosition[m_pimpl->bottomRightIndex];
+    iDynTree::Vector3 initialTopBottomDistance = pointsPosition[m_pimpl->topRightIndex] - pointsPosition[m_pimpl->bottomRightIndex];
 
-    m_pimpl->initialYaw = std::atan2(initialDistance(1), initialDistance(0));
+    m_pimpl->initialYaw = std::atan2(initialTopBottomDistance(1), initialTopBottomDistance(0));
 
     m_pimpl->bottomRightRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(m_pimpl->bottomRightIndex));
     assert(m_pimpl->bottomRightRange.isValid());
     m_pimpl->topRightRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(m_pimpl->topRightIndex));
     assert(m_pimpl->topRightRange.isValid());
+    m_pimpl->topLeftRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(m_pimpl->topLeftIndex));
+    assert(m_pimpl->topLeftRange.isValid());
 
     m_pimpl->stateHessianSparsity.addDenseBlock(static_cast<size_t>(m_pimpl->topRightRange.offset),
                                                 static_cast<size_t>(m_pimpl->topRightRange.offset), 2, 2);
@@ -93,6 +106,15 @@ FootYawCost::FootYawCost(const VariablesLabeller &stateVariables, const std::str
                                                 static_cast<size_t>(m_pimpl->bottomRightRange.offset), 2, 2);
 
     m_pimpl->stateHessianSparsity.addDenseBlock(static_cast<size_t>(m_pimpl->bottomRightRange.offset),
+                                                static_cast<size_t>(m_pimpl->topRightRange.offset), 2, 2);
+
+    m_pimpl->stateHessianSparsity.addDenseBlock(static_cast<size_t>(m_pimpl->topLeftRange.offset),
+                                                static_cast<size_t>(m_pimpl->topLeftRange.offset), 2, 2);
+
+    m_pimpl->stateHessianSparsity.addDenseBlock(static_cast<size_t>(m_pimpl->topRightRange.offset),
+                                                static_cast<size_t>(m_pimpl->topLeftRange.offset), 2, 2);
+
+    m_pimpl->stateHessianSparsity.addDenseBlock(static_cast<size_t>(m_pimpl->topLeftRange.offset),
                                                 static_cast<size_t>(m_pimpl->topRightRange.offset), 2, 2);
 
     m_pimpl->controlHessianSparsity.clear();
@@ -117,12 +139,18 @@ bool FootYawCost::costEvaluation(double time, const iDynTree::VectorDynSize &sta
     double desiredYaw = m_pimpl->desiredYaw->get(time, isValid) - m_pimpl->initialYaw;
     assert(isValid);
 
-    iDynTree::Vector3 currentDistance;
-    iDynTree::toEigen(currentDistance) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topRightRange)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->bottomRightRange));
+    double sy = std::sin(desiredYaw);
+    double cy = std::cos(desiredYaw);
 
-    double yawError = currentDistance(1) * std::cos(desiredYaw) - currentDistance(0) * std::sin(desiredYaw);
+    iDynTree::Vector3 currentTopBottomDistance, currentLeftRightDistance;
+    iDynTree::toEigen(currentTopBottomDistance) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topRightRange)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->bottomRightRange));
+    iDynTree::toEigen(currentLeftRightDistance) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topLeftRange)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topRightRange));
 
-    costValue = 0.5 * yawError * yawError;
+    double yawTopBottomError = currentTopBottomDistance(1) * cy - currentTopBottomDistance(0) * sy;
+
+    double yawLeftError = currentLeftRightDistance(0) * cy + currentLeftRightDistance(1) * sy;
+
+    costValue = 0.5 * yawTopBottomError * yawTopBottomError + 0.5 * yawLeftError * yawLeftError;
 
     return true;
 }
@@ -135,19 +163,25 @@ bool FootYawCost::costFirstPartialDerivativeWRTState(double time, const iDynTree
     double desiredYaw = m_pimpl->desiredYaw->get(time, isValid) - m_pimpl->initialYaw;
     assert(isValid);
 
-    iDynTree::Vector3 currentDistance;
-    iDynTree::toEigen(currentDistance) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topRightRange)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->bottomRightRange));
+    iDynTree::Vector3 currentTopBottomDistance, currentLeftRightDistance;
+    iDynTree::toEigen(currentTopBottomDistance) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topRightRange)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->bottomRightRange));
+    iDynTree::toEigen(currentLeftRightDistance) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topLeftRange)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topRightRange));
 
     double sy = std::sin(desiredYaw);
     double cy = std::cos(desiredYaw);
 
-    double yawError = currentDistance(1) * cy - currentDistance(0) * sy;
+    double yawTopBottomError = currentTopBottomDistance(1) * cy - currentTopBottomDistance(0) * sy;
 
-    partialDerivative(static_cast<unsigned int>(m_pimpl->topRightRange.offset)) = - yawError * sy;
-    partialDerivative(static_cast<unsigned int>(m_pimpl->topRightRange.offset) + 1) = yawError * cy;
+    double yawLeftError = currentLeftRightDistance(0) * cy + currentLeftRightDistance(1) * sy;
 
-    partialDerivative(static_cast<unsigned int>(m_pimpl->bottomRightRange.offset)) = yawError * sy;
-    partialDerivative(static_cast<unsigned int>(m_pimpl->bottomRightRange.offset) + 1) = - yawError * cy;
+    partialDerivative(static_cast<unsigned int>(m_pimpl->topRightRange.offset)) = - yawTopBottomError * sy - yawLeftError * cy;
+    partialDerivative(static_cast<unsigned int>(m_pimpl->topRightRange.offset) + 1) = yawTopBottomError * cy - yawLeftError * sy;
+
+    partialDerivative(static_cast<unsigned int>(m_pimpl->bottomRightRange.offset)) = yawTopBottomError * sy;
+    partialDerivative(static_cast<unsigned int>(m_pimpl->bottomRightRange.offset) + 1) = - yawTopBottomError * cy;
+
+    partialDerivative(static_cast<unsigned int>(m_pimpl->topLeftRange.offset)) = yawLeftError * cy;
+    partialDerivative(static_cast<unsigned int>(m_pimpl->topLeftRange.offset) + 1) = yawLeftError * sy;
 
     return true;
 }
@@ -165,24 +199,32 @@ bool FootYawCost::costSecondPartialDerivativeWRTState(double time, const iDynTre
     double desiredYaw = m_pimpl->desiredYaw->get(time, isValid) - m_pimpl->initialYaw;
     assert(isValid);
 
-    iDynTree::Vector3 currentDistance;
-    iDynTree::toEigen(currentDistance) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->topRightRange)) - iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->bottomRightRange));
-
     double sy = std::sin(desiredYaw);
     double cy = std::cos(desiredYaw);
     unsigned int trIndex = static_cast<unsigned int>(m_pimpl->topRightRange.offset);
     unsigned int brIndex = static_cast<unsigned int>(m_pimpl->bottomRightRange.offset);
+    unsigned int tlIndex = static_cast<unsigned int>(m_pimpl->topLeftRange.offset);
 
-    Eigen::Matrix<double, 2, 2> hessianBlock;
-    hessianBlock(0,0) = sy * sy;
-    hessianBlock(0,1) = -sy * cy;
-    hessianBlock(1,0) = hessianBlock(0,1);
-    hessianBlock(1,1) = cy * cy;
+    Eigen::Matrix<double, 2, 2> topBottomHessianBlock;
+    topBottomHessianBlock(0,0) = sy * sy;
+    topBottomHessianBlock(0,1) = -sy * cy;
+    topBottomHessianBlock(1,0) = topBottomHessianBlock(0,1);
+    topBottomHessianBlock(1,1) = cy * cy;
 
-    iDynTree::toEigen(partialDerivative).block<2,2>(trIndex, trIndex) = hessianBlock;
-    iDynTree::toEigen(partialDerivative).block<2,2>(brIndex, brIndex) = hessianBlock;
-    iDynTree::toEigen(partialDerivative).block<2,2>(trIndex, brIndex) = -hessianBlock;
-    iDynTree::toEigen(partialDerivative).block<2,2>(brIndex, trIndex) = -hessianBlock;
+    Eigen::Matrix<double, 2, 2> leftRightHessianBlock;
+    leftRightHessianBlock(0,0) = cy * cy;
+    leftRightHessianBlock(0,1) = sy * cy;
+    leftRightHessianBlock(1,0) = leftRightHessianBlock(0,1);
+    leftRightHessianBlock(1,1) = sy * sy;
+
+    iDynTree::toEigen(partialDerivative).block<2,2>(trIndex, trIndex) = topBottomHessianBlock + leftRightHessianBlock;
+    iDynTree::toEigen(partialDerivative).block<2,2>(brIndex, brIndex) = topBottomHessianBlock;
+    iDynTree::toEigen(partialDerivative).block<2,2>(trIndex, brIndex) = -topBottomHessianBlock;
+    iDynTree::toEigen(partialDerivative).block<2,2>(brIndex, trIndex) = -topBottomHessianBlock;
+
+    iDynTree::toEigen(partialDerivative).block<2,2>(tlIndex, tlIndex) = leftRightHessianBlock;
+    iDynTree::toEigen(partialDerivative).block<2,2>(trIndex, tlIndex) = -leftRightHessianBlock;
+    iDynTree::toEigen(partialDerivative).block<2,2>(tlIndex, trIndex) = -leftRightHessianBlock;
 
 
     return true;
