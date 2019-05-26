@@ -48,6 +48,7 @@ endif()
 find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(levi REQUIRED)
+find_package(matlogger2 REQUIRED)
 
 set(CONSTRAINTS_HEADERS_DIR include/DynamicalPlannerPrivate/Constraints)
 
@@ -152,20 +153,23 @@ set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
                      include/DynamicalPlanner/State.h
                      include/DynamicalPlanner/Control.h
                      include/DynamicalPlanner/Visualizer.h
-                     include/DynamicalPlanner/RectangularFoot.h)
+                     include/DynamicalPlanner/RectangularFoot.h
+                     include/DynamicalPlanner/Logger.h)
 
 set(DPLANNER_SOURCES src/Settings.cpp
                      src/Solver.cpp
                      src/State.cpp
                      src/Control.cpp
                      src/RectangularFoot.cpp
-                     src/Visualizer.cpp)
+                     src/Visualizer.cpp
+                     src/Logger.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_include_directories(DynamicalPlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_include_directories(DynamicalPlannerPrivate PRIVATE ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(DynamicalPlanner PRIVATE DynamicalPlannerPrivate)
+target_link_libraries(DynamicalPlanner PRIVATE matlogger2::matlogger2)
 target_link_libraries(DynamicalPlanner PUBLIC ${iDynTree_LIBRARIES})
 
 include(AddUninstallTarget)

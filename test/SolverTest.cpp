@@ -8,6 +8,7 @@
 #include <DynamicalPlanner/Solver.h>
 #include <DynamicalPlanner/Visualizer.h>
 #include <DynamicalPlanner/RectangularFoot.h>
+#include <DynamicalPlanner/Logger.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
@@ -755,6 +756,7 @@ int main() {
     ASSERT_IS_TRUE(ok);
 
     std::vector<DynamicalPlanner::State> mpcStates;
+    std::vector<DynamicalPlanner::Control> mpcControls;
     mpcStates.push_back(initialState);
 
     double meanPositionError, minimumForce, futureMeanPositionError;
@@ -779,6 +781,8 @@ int main() {
         std::cout << "Elapsed time (" << i << "): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
         mpcStates.push_back(optimalStates.front());
         mpcStates.back().time += initialTime;
+        mpcControls.push_back(optimalControls.front());
+        mpcControls.back().time += initialTime;
         visualizer.visualizeState(mpcStates.back());
 
         size_t middlePoint = static_cast<size_t>(std::round(optimalStates.size() * 0.3));
@@ -837,6 +841,8 @@ int main() {
 
     ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
+
+    DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log", mpcStates, mpcControls);
 
     return EXIT_SUCCESS;
 }
