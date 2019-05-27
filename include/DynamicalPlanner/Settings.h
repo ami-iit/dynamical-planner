@@ -57,6 +57,7 @@ namespace DynamicalPlanner {
 
         //Dynamical Complementarity Constraint
         double complementarityDissipation;
+        bool useDynamicalComplementarityConstraint;
 
         //Feet lateral distance constraint
         unsigned int indexOfLateralDirection;

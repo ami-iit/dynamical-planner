@@ -746,14 +746,16 @@ public:
 //                return false;
 //            }
 
-//            constraints.leftComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
-//                                                                                                      "Left", i, st.complementarityDissipation);
-//            ok = ocp->addConstraint(constraints.leftComplementarity[i]);
-//            if (!ok) {
-//                return false;
-//            }
+            if (st.useDynamicalComplementarityConstraint) {
+                constraints.leftComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
+                                                                                                          "Left", i, st.complementarityDissipation);
+                ok = ocp->addConstraint(constraints.leftComplementarity[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
 
-            if (st.contactForceControlConstraintsAsSeparateConstraints) {
+            if (st.contactForceControlConstraintsAsSeparateConstraints && !st.useDynamicalComplementarityConstraint) {
                 constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
                                                                                                            i, forceActivation,
                                                                                                            st.forceMaximumDerivative(2),
@@ -811,14 +813,16 @@ public:
 //                return false;
 //            }
 
-//            constraints.rightComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
-//                                                                                                      "Right", i, st.complementarityDissipation);
-//            ok = ocp->addConstraint(constraints.rightComplementarity[i]);
-//            if (!ok) {
-//                return false;
-//            }
+            if (st.useDynamicalComplementarityConstraint) {
+                constraints.rightComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateStructure, controlStructure,
+                                                                                                           "Right", i, st.complementarityDissipation);
+                ok = ocp->addConstraint(constraints.rightComplementarity[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
 
-            if (st.contactForceControlConstraintsAsSeparateConstraints) {
+            if (st.contactForceControlConstraintsAsSeparateConstraints && !st.useDynamicalComplementarityConstraint) {
                 constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
                                                                                                             i, forceActivation,
                                                                                                             st.forceMaximumDerivative(2),
@@ -873,7 +877,7 @@ public:
             segment(stateLowerBound, ranges.left.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.left.forcePoints[i])(2) = 0.0;
 
-            if (!st.contactForceControlConstraintsAsSeparateConstraints) {
+            if (!st.contactForceControlConstraintsAsSeparateConstraints || st.useDynamicalComplementarityConstraint) {
                 segment(controlLowerBound, ranges.left.forceControlPoints[i])(2) = -st.forceMaximumDerivative(2);
                 segment(controlUpperBound, ranges.left.forceControlPoints[i])(2) = st.forceMaximumDerivative(2);
             }
@@ -891,7 +895,7 @@ public:
             segment(stateLowerBound, ranges.right.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.right.forcePoints[i])(2) = 0.0;
 
-            if (!st.contactForceControlConstraintsAsSeparateConstraints) {
+            if (!st.contactForceControlConstraintsAsSeparateConstraints || st.useDynamicalComplementarityConstraint) {
                 segment(controlLowerBound, ranges.right.forceControlPoints[i])(2) = -st.forceMaximumDerivative(2);
                 segment(controlUpperBound, ranges.right.forceControlPoints[i])(2) = st.forceMaximumDerivative(2);
             }
@@ -1175,7 +1179,7 @@ bool Solver::specifySettings(const Settings &settings)
 
     HyperbolicSecant forceActivation;
     forceActivation.setScaling(st.normalForceHyperbolicSecantScaling);
-    if (st.contactForceControlConstraintsAsSeparateConstraints) {
+    if (st.contactForceControlConstraintsAsSeparateConstraints || st.useDynamicalComplementarityConstraint) {
         forceActivation.disable();
     }
 

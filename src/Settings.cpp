@@ -200,6 +200,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
 
     //Dynamical Complementarity Constraint
     defaults.complementarityDissipation = 10.0;
+    defaults.useDynamicalComplementarityConstraint = false;
 
     //ContactFrictionConstraint
     defaults.frictionCoefficient = 0.3;
