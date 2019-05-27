@@ -196,6 +196,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::toEigen(defaults.forceMaximumDerivative).setConstant(10.0);
     defaults.normalForceDissipationRatio = 10.0;
     defaults.normalForceHyperbolicSecantScaling = 300.0;
+    defaults.contactForceControlConstraintsAsSeparateConstraints = true;
 
     //Dynamical Complementarity Constraint
     defaults.complementarityDissipation = 10.0;
@@ -207,6 +208,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::toEigen(defaults.velocityMaximumDerivative).setConstant(10.0);
     defaults.planarVelocityHyperbolicTangentScaling = 50.0;
     defaults.normalVelocityHyperbolicSecantScaling = 1.0;
+    defaults.contactVelocityControlConstraintsAsSeparateConstraints = false;
 
     //Feet lateral distance constraint
     defaults.indexOfLateralDirection = 1;

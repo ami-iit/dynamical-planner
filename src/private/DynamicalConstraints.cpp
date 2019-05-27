@@ -38,6 +38,8 @@ public:
     std::shared_ptr<ExpressionsServer> expressionServer;
 
     HyperbolicTangent activationXY;
+    HyperbolicSecant normalForceActivation;
+    double normalForceDissipation;
     levi::Variable force;
     levi::Expression skewForce;
     levi::Expression basePositionDerivative, basePositionDerivativeJacobian;
@@ -99,9 +101,18 @@ public:
         Eigen::Vector3d distance, appliedForce;
 
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
-//Span operator = does not copy content!
+            //Span operator = does not copy content!
 
-            iDynTree::toEigen(dynamics(foot.forcePoints[i])) = iDynTree::toEigen(controlVariables(foot.forceControlPoints[i]));
+            double pz = stateVariables(foot.positionPoints[i])(2);
+            double deltaZ = normalForceActivation.eval(pz);
+            double fz = stateVariables(foot.forcePoints[i])(2);
+            double uz = controlVariables(foot.forceControlPoints[i])(2);
+
+            iDynTree::toEigen(dynamics(foot.forcePoints[i])).topRows<2>() =
+                iDynTree::toEigen(controlVariables(foot.forceControlPoints[i])).topRows<2>();
+
+            dynamics(foot.forcePoints[i])(2) = deltaZ * uz + normalForceDissipation * (deltaZ - 1.0) * fz;
+
             double deltaXY = activationXY.eval(stateVariables(foot.positionPoints[i])(2));
             iDynTree::toEigen(dynamics(foot.positionPoints[i])).topRows<2>() = deltaXY * iDynTree::toEigen(controlVariables(foot.velocityControlPoints[i])).topRows<2>();
             dynamics(foot.positionPoints[i])(2) = controlVariables(foot.velocityControlPoints[i])(2);
@@ -127,6 +138,16 @@ public:
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.forcePoints[i].offset) = iDynTree::skew(distance);
             jacobianMap.block<3,3>(momentumRange.offset+3, foot.positionPoints[i].offset) = -iDynTree::skew(appliedForce);
             jacobianMap.block<3,3>(momentumRange.offset+3, comPositionRange.offset) += iDynTree::skew(appliedForce);
+
+            double pz = stateVariables(foot.positionPoints[i])(2);
+            double deltaZDerivative = normalForceActivation.evalDerivative(pz);
+            double deltaZ = normalForceActivation.eval(pz);
+            double fz = stateVariables(foot.forcePoints[i])(2);
+            double uz = controlVariables(foot.forceControlPoints[i])(2);
+
+            jacobianMap(foot.forcePoints[i].offset + 2, foot.positionPoints[i].offset + 2) = deltaZDerivative * (uz + normalForceDissipation * fz);
+            jacobianMap(foot.forcePoints[i].offset + 2, foot.forcePoints[i].offset + 2) = normalForceDissipation * (deltaZ - 1.0);
+
             jacobianMap.block<2,1>(foot.positionPoints[i].offset, foot.positionPoints[i].offset + 2) = deltaXYDerivative * iDynTree::toEigen(controlVariables(foot.velocityControlPoints[i])).topRows<2>();
 
 //            jacobianMap.block<3,3>(momentumRange.offset+3, basePositionRange.offset) += iDynTree::skew(appliedForce) * iDynTree::toEigen(comjacobianBuffer).leftCols<3>();
@@ -140,8 +161,11 @@ public:
     void computeFootRelatedControlJacobian(FootRanges& foot, iDynTree::iDynTreeEigenMatrixMap& jacobianMap) {
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
             double deltaXY = activationXY.eval(stateVariables(foot.positionPoints[i])(2));
+            double pz = stateVariables(foot.positionPoints[i])(2);
+            double deltaZ = normalForceActivation.eval(pz);
 
-            jacobianMap.block<3,3>(foot.forcePoints[i].offset, foot.forceControlPoints[i].offset).setIdentity();
+            jacobianMap.block<2,2>(foot.forcePoints[i].offset, foot.forceControlPoints[i].offset).setIdentity();
+            jacobianMap(foot.forcePoints[i].offset + 2, foot.forceControlPoints[i].offset + 2) = deltaZ;
 
             jacobianMap.block<3,3>(foot.positionPoints[i].offset, foot.velocityControlPoints[i].offset).setIdentity();
             jacobianMap.block<2,2>(foot.positionPoints[i].offset, foot.velocityControlPoints[i].offset) *= deltaXY;
@@ -167,21 +191,37 @@ public:
                 hessianMap.block<3, 1>(foot.forcePoints[i].offset, foot.positionPoints[i].offset + j) = -forceHessian.transpose();
             }
 
-            double deltaDoubleDerivative = activationXY.evalDoubleDerivative(stateVariables(foot.positionPoints[i])(2));
+            double pz = stateVariables(foot.positionPoints[i])(2);
+            double deltaXYDoubleDerivative = activationXY.evalDoubleDerivative(pz);
+            double deltaZDoubleDerivative = normalForceActivation.evalDoubleDerivative(pz);
+            double deltaZDerivative = normalForceActivation.evalDerivative(pz);
+            double fz = stateVariables(foot.forcePoints[i])(2);
+            double uz = controlVariables(foot.forceControlPoints[i])(2);
+
             hessianMap(foot.positionPoints[i].offset + 2, foot.positionPoints[i].offset + 2) =
-                deltaDoubleDerivative * (lambda(foot.positionPoints[i])(0) + lambda(foot.positionPoints[i])(1));
+                deltaXYDoubleDerivative * (lambda(foot.positionPoints[i])(0) * controlVariables(foot.velocityControlPoints[i])(0) +
+                                           lambda(foot.positionPoints[i])(1) * controlVariables(foot.velocityControlPoints[i])(1)) +
+                deltaZDoubleDerivative * lambda(foot.forcePoints[i])(2) * (uz + normalForceDissipation * fz);
+
+            hessianMap(foot.positionPoints[i].offset + 2, foot.forcePoints[i].offset + 2) += deltaZDerivative * normalForceDissipation * lambda(foot.forcePoints[i])(2);
+            hessianMap(foot.forcePoints[i].offset + 2, foot.positionPoints[i].offset + 2) =
+                hessianMap(foot.positionPoints[i].offset + 2, foot.forcePoints[i].offset + 2);
         }
     }
 
     void computeFootRelatedMixedHessian(FootRanges& foot, iDynTree::iDynTreeEigenMatrixMap& hessianMap) {
         for (size_t i = 0; i < foot.positionPoints.size(); ++i) {
-            double deltaXYDerivative = activationXY.evalDerivative(stateVariables(foot.positionPoints[i])(2));
+            double pz = stateVariables(foot.positionPoints[i])(2);
+            double deltaXYDerivative = activationXY.evalDerivative(pz);
+            double deltaZDerivative = normalForceActivation.evalDerivative(pz);
 
             hessianMap(foot.positionPoints[i].offset + 2, foot.velocityControlPoints[i].offset) =
-                deltaXYDerivative * lambda(foot.forcePoints[i])(0);
+                deltaXYDerivative * lambda(foot.positionPoints[i])(0);
 
             hessianMap(foot.positionPoints[i].offset + 2, foot.velocityControlPoints[i].offset + 1) =
-                deltaXYDerivative * lambda(foot.forcePoints[i])(1);
+                deltaXYDerivative * lambda(foot.positionPoints[i])(1);
+
+            hessianMap(foot.positionPoints[i].offset + 2, foot.forceControlPoints[i].offset + 2) = deltaZDerivative * lambda(foot.forcePoints[i])(2);
         }
     }
 
@@ -223,6 +263,7 @@ public:
                                                 static_cast<size_t>(foot.positionPoints[i].offset), 3, 3);
             stateJacobianSparsity.addDenseBlock(static_cast<size_t>(foot.positionPoints[i].offset),
                                                 static_cast<size_t>(foot.positionPoints[i].offset) + 2, 2, 1);
+            stateJacobianSparsity.add(static_cast<size_t>(foot.forcePoints[i].offset + 2), static_cast<size_t>(foot.positionPoints[i].offset + 2));
 
             stateHessianSparsity.addDenseBlock(comPositionRange, foot.forcePoints[i]);
             stateHessianSparsity.addDenseBlock(foot.forcePoints[i], comPositionRange);
@@ -235,7 +276,8 @@ public:
                                      static_cast<size_t>(foot.velocityControlPoints[i].offset));
             mixedHessianSparsity.add(static_cast<size_t>(foot.positionPoints[i].offset + 2),
                                      static_cast<size_t>(foot.velocityControlPoints[i].offset + 1));
-
+            mixedHessianSparsity.add(static_cast<size_t>(foot.positionPoints[i].offset + 2),
+                                     static_cast<size_t>(foot.forceControlPoints[i].offset + 2));
         }
     }
 
@@ -280,7 +322,8 @@ public:
 
 DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
                                            std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
-                                           std::shared_ptr<ExpressionsServer> expressionsServer, const HyperbolicTangent& planarVelocityActivation)
+                                           std::shared_ptr<ExpressionsServer> expressionsServer, const HyperbolicTangent& planarVelocityActivation,
+                                           const HyperbolicSecant &normalForceActivation,  double forceDissipationRatio)
    : iDynTree::optimalcontrol::DynamicalSystem (stateVariables.size(), controlVariables.size())
    , m_pimpl(std::make_unique<Implementation>())
 {
@@ -314,7 +357,9 @@ DynamicalConstraints::DynamicalConstraints(const VariablesLabeller &stateVariabl
 //    m_pimpl->controlJacobianBuffer.resize(static_cast<unsigned int>(stateVariables.size()), static_cast<unsigned int>(controlVariables.size()));
 //    m_pimpl->controlJacobianBuffer.zero();
 
+    m_pimpl->normalForceActivation = normalForceActivation;
     m_pimpl->activationXY = planarVelocityActivation;
+    m_pimpl->normalForceDissipation = forceDissipationRatio;
 
     size_t leftPoints = 0, rightPoints = 0;
     for (auto& label : stateVariables.listOfLabels()) {

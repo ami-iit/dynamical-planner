@@ -44,6 +44,7 @@ namespace DynamicalPlanner {
         iDynTree::Vector3 forceMaximumDerivative;
         double normalForceDissipationRatio;
         double normalForceHyperbolicSecantScaling;
+        bool contactForceControlConstraintsAsSeparateConstraints;
 
         //ContactFrictionConstraint
         double frictionCoefficient;
@@ -52,6 +53,7 @@ namespace DynamicalPlanner {
         iDynTree::Vector3 velocityMaximumDerivative;
         double planarVelocityHyperbolicTangentScaling;
         double normalVelocityHyperbolicSecantScaling;
+        bool contactVelocityControlConstraintsAsSeparateConstraints;
 
         //Dynamical Complementarity Constraint
         double complementarityDissipation;

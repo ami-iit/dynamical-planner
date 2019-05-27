@@ -103,15 +103,16 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     bool ok = false;
     HyperbolicSecant forceActivation;
     forceActivation.setScaling(1.0);
+    double forceDissipationRatios = 10.0;
     HyperbolicTangent velocityActivationXY;
     velocityActivationXY.setScaling(0.1);
 
 
-    auto dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, velocityActivationXY);
+    auto dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, velocityActivationXY, forceActivation, forceDissipationRatios);
     ok = ocProblem.setDynamicalSystemConstraint(dynamical);
     ASSERT_IS_TRUE(ok);
 
-//    for (size_t i = 0; i < leftPositions.size(); ++i) {
+    for (size_t i = 0; i < leftPositions.size(); ++i) {
 //        std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Left", i);
 //        ok = ocProblem.addLagrangeTerm(1.0, forceCost);
 //        ASSERT_IS_TRUE(ok);
@@ -130,15 +131,15 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
 //        ok = ocProblem.addLagrangeTerm(1.0, forceCost);
 //        ASSERT_IS_TRUE(ok);
 
-//        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
-//        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
-//        ASSERT_IS_TRUE(ok);
+        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
+        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
+        ASSERT_IS_TRUE(ok);
 
 //        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Right",
 //                                                                                                  i, forceActivation);
 //        ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
 //        ASSERT_IS_TRUE(ok);
-//    }
+    }
 //    std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> comCost = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("CoMCost", stateVariables.getIndexRange("CoMPosition"),
 //                                                                                                                           stateVariables.size(),iDynTree::IndexRange::InvalidRange(),
 //                                                                                                                           controlVariables.size());

@@ -116,7 +116,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     iDynTree::Vector3 velocityMaximumDerivative;
 
     double forceMaximumDerivative = 10.0;
-    double forceDissipationRatios = 10.0;
+    double forceDissipationRatios = 1.0;
     double complementarityDissipation = 10.0;
     iDynTree::toEigen(velocityMaximumDerivative).setConstant(10.0);
 
@@ -148,7 +148,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
 
     bool ok = false;
-    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, velocityActivationXY);
+    constraints.dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, velocityActivationXY, forceActivation, forceDissipationRatios);
     ok = ocProblem.setDynamicalSystemConstraint(constraints.dynamical);
     ASSERT_IS_TRUE(ok);
 

@@ -14,6 +14,7 @@
 #include <DynamicalPlannerPrivate/Utilities/TimelySharedKinDynComputations.h>
 #include <DynamicalPlannerPrivate/Utilities/ExpressionsServer.h>
 #include <DynamicalPlannerPrivate/Utilities/HyperbolicTangent.h>
+#include <DynamicalPlannerPrivate/Utilities/HyperbolicSecant.h>
 #include <iDynTree/SparsityStructure.h>
 #include <memory>
 
@@ -33,7 +34,8 @@ public:
     DynamicalConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
                          std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                          std::shared_ptr<ExpressionsServer> expressionsServer,
-                         const DynamicalPlanner::Private::HyperbolicTangent &planarVelocityActivation);
+                         const DynamicalPlanner::Private::HyperbolicTangent &planarVelocityActivation,
+                         const DynamicalPlanner::Private::HyperbolicSecant &normalForceActivation, double forceDissipationRatio);
 
     ~DynamicalConstraints() override;
 

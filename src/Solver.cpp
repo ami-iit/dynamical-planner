@@ -727,14 +727,16 @@ public:
 
         for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
 
-//            constraints.leftPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
-//                                                                                                          "Left", i,velocityActivationXY,
-//                                                                                                          st.velocityMaximumDerivative(0),
-//                                                                                                          st.velocityMaximumDerivative(1));
-//            ok = ocp->addConstraint(constraints.leftPlanarVelocityControl[i]);
-//            if (!ok) {
-//                return false;
-//            }
+            if (st.contactVelocityControlConstraintsAsSeparateConstraints) {
+                constraints.leftPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
+                                                                                                              "Left", i,velocityActivationXY,
+                                                                                                              st.velocityMaximumDerivative(0),
+                                                                                                              st.velocityMaximumDerivative(1));
+                ok = ocp->addConstraint(constraints.leftPlanarVelocityControl[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
 
 //            constraints.leftNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
 //                                                                                                          "Left", i, velocityActivationZ,
@@ -751,14 +753,16 @@ public:
 //                return false;
 //            }
 
-            constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
-                                                                                                       i, forceActivation,
-                                                                                                       st.forceMaximumDerivative(2),
-                                                                                                       st.normalForceDissipationRatio,
-                                                                                                       st.horizon * st.activeControlPercentage);
-            ok = ocp->addConstraint(constraints.leftContactsForceControl[i]);
-            if (!ok) {
-                return false;
+            if (st.contactForceControlConstraintsAsSeparateConstraints) {
+                constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
+                                                                                                           i, forceActivation,
+                                                                                                           st.forceMaximumDerivative(2),
+                                                                                                           st.normalForceDissipationRatio,
+                                                                                                           st.horizon * st.activeControlPercentage);
+                ok = ocp->addConstraint(constraints.leftContactsForceControl[i]);
+                if (!ok) {
+                    return false;
+                }
             }
 
             constraints.leftContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateStructure, controlStructure, "Left", i);
@@ -788,14 +792,16 @@ public:
 
         for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
 
-//            constraints.rightPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
-//                                                                                                          "Right", i,velocityActivationXY,
-//                                                                                                          st.velocityMaximumDerivative(0),
-//                                                                                                          st.velocityMaximumDerivative(1));
-//            ok = ocp->addConstraint(constraints.rightPlanarVelocityControl[i]);
-//            if (!ok) {
-//                return false;
-//            }
+            if (st.contactVelocityControlConstraintsAsSeparateConstraints) {
+                constraints.rightPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
+                                                                                                               "Right", i,velocityActivationXY,
+                                                                                                               st.velocityMaximumDerivative(0),
+                                                                                                               st.velocityMaximumDerivative(1));
+                ok = ocp->addConstraint(constraints.rightPlanarVelocityControl[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
 
 //            constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateStructure, controlStructure,
 //                                                                                                          "Right", i, velocityActivationZ,
@@ -812,14 +818,16 @@ public:
 //                return false;
 //            }
 
-            constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
-                                                                                                        i, forceActivation,
-                                                                                                        st.forceMaximumDerivative(2),
-                                                                                                        st.normalForceDissipationRatio,
-                                                                                                        st.horizon * st.activeControlPercentage);
-            ok = ocp->addConstraint(constraints.rightContactsForceControl[i]);
-            if (!ok) {
-                return false;
+            if (st.contactForceControlConstraintsAsSeparateConstraints) {
+                constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
+                                                                                                            i, forceActivation,
+                                                                                                            st.forceMaximumDerivative(2),
+                                                                                                            st.normalForceDissipationRatio,
+                                                                                                            st.horizon * st.activeControlPercentage);
+                ok = ocp->addConstraint(constraints.rightContactsForceControl[i]);
+                if (!ok) {
+                    return false;
+                }
             }
 
             constraints.rightContactsFriction[i] = std::make_shared<ContactFrictionConstraint>(stateStructure, controlStructure, "Right", i);
@@ -864,8 +872,17 @@ public:
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.left.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.left.forcePoints[i])(2) = 0.0;
-//            iDynTree::toEigen(segment(controlLowerBound, ranges.left.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
-//            iDynTree::toEigen(segment(controlUpperBound, ranges.left.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
+
+            if (!st.contactForceControlConstraintsAsSeparateConstraints) {
+                segment(controlLowerBound, ranges.left.forceControlPoints[i])(2) = -st.forceMaximumDerivative(2);
+                segment(controlUpperBound, ranges.left.forceControlPoints[i])(2) = st.forceMaximumDerivative(2);
+            }
+
+            iDynTree::toEigen(segment(controlLowerBound, ranges.left.forceControlPoints[i])).topRows<2>() =
+                -iDynTree::toEigen(st.forceMaximumDerivative).topRows<2>();
+            iDynTree::toEigen(segment(controlUpperBound, ranges.left.forceControlPoints[i])).topRows<2>() =
+                iDynTree::toEigen(st.forceMaximumDerivative).topRows<2>();
+
             iDynTree::toEigen(segment(controlLowerBound, ranges.left.velocityControlPoints[i])) = -iDynTree::toEigen(st.velocityMaximumDerivative);
             iDynTree::toEigen(segment(controlUpperBound, ranges.left.velocityControlPoints[i])) = iDynTree::toEigen(st.velocityMaximumDerivative);
         }
@@ -873,8 +890,17 @@ public:
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
             segment(stateLowerBound, ranges.right.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.right.forcePoints[i])(2) = 0.0;
-//            iDynTree::toEigen(segment(controlLowerBound, ranges.right.forceControlPoints[i])) = -iDynTree::toEigen(st.forceMaximumDerivative);
-//            iDynTree::toEigen(segment(controlUpperBound, ranges.right.forceControlPoints[i])) = iDynTree::toEigen(st.forceMaximumDerivative);
+
+            if (!st.contactForceControlConstraintsAsSeparateConstraints) {
+                segment(controlLowerBound, ranges.right.forceControlPoints[i])(2) = -st.forceMaximumDerivative(2);
+                segment(controlUpperBound, ranges.right.forceControlPoints[i])(2) = st.forceMaximumDerivative(2);
+            }
+
+            iDynTree::toEigen(segment(controlLowerBound, ranges.right.forceControlPoints[i])).topRows<2>() =
+                -iDynTree::toEigen(st.forceMaximumDerivative).topRows<2>();
+            iDynTree::toEigen(segment(controlUpperBound, ranges.right.forceControlPoints[i])).topRows<2>() =
+                iDynTree::toEigen(st.forceMaximumDerivative).topRows<2>();
+
             iDynTree::toEigen(segment(controlLowerBound, ranges.right.velocityControlPoints[i])) = -iDynTree::toEigen(st.velocityMaximumDerivative);
             iDynTree::toEigen(segment(controlUpperBound, ranges.right.velocityControlPoints[i])) = iDynTree::toEigen(st.velocityMaximumDerivative);
         }
@@ -1143,12 +1169,23 @@ bool Solver::specifySettings(const Settings &settings)
 
     HyperbolicTangent velocityActivationXY;
     velocityActivationXY.setScaling(st.planarVelocityHyperbolicTangentScaling);
+    if (st.contactVelocityControlConstraintsAsSeparateConstraints) {
+        velocityActivationXY.disable();
+    }
+
+    HyperbolicSecant forceActivation;
+    forceActivation.setScaling(st.normalForceHyperbolicSecantScaling);
+    if (st.contactForceControlConstraintsAsSeparateConstraints) {
+        forceActivation.disable();
+    }
 
     m_pimpl->constraints.dynamical = std::make_shared<DynamicalConstraints>(m_pimpl->stateStructure,
                                                                             m_pimpl->controlStructure,
                                                                             m_pimpl->timelySharedKinDyn,
                                                                             m_pimpl->expressionsServer,
-                                                                            velocityActivationXY);
+                                                                            velocityActivationXY,
+                                                                            forceActivation,
+                                                                            st.normalForceDissipationRatio);
 
     m_pimpl->ocProblem = std::make_shared<iDynTree::optimalcontrol::OptimalControlProblem>();
 

@@ -16,6 +16,8 @@ namespace DynamicalPlanner {
 class DynamicalPlanner::Private::SmoothingFunction {
 protected:
     double m_K;
+    bool m_disabled;
+    double m_disabledValue;
 public:
     SmoothingFunction();
 
@@ -28,6 +30,8 @@ public:
     virtual double evalDerivative(double x) const = 0;
 
     virtual double evalDoubleDerivative(double x) const = 0;
+
+    virtual void disable(double constantValue = 1.0);
 };
 
 
