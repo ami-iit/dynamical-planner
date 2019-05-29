@@ -426,7 +426,7 @@ int main() {
     double d = 0.08;
     double l = 0.188;
 
-    iDynTree::Position topLeftPosition(0.125,  0.04, 0.0);
+    iDynTree::Position topLeftPosition(0.125,  0.04, -0.01);
     ok = foot.setFoot(l, d, topLeftPosition);
     ASSERT_IS_TRUE(ok);
 
@@ -464,10 +464,11 @@ int main() {
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     for (auto& joint : settingsStruct.jointsVelocityLimits) {
-        joint.first = -10;
-        joint.second = 10;
+        joint.first = -5;
+        joint.second = 5;
     }
 
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
 
     double torsoVelocityLimit = 1.0;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
@@ -477,10 +478,14 @@ int main() {
     settingsStruct.jointsVelocityLimits[2].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[2].second = torsoVelocityLimit;
 
+    double armsVelocityLimit = 1.0;
+    for (size_t i = 3; i < 11; ++i) {
+        settingsStruct.jointsVelocityLimits[i].first = -armsVelocityLimit;
+        settingsStruct.jointsVelocityLimits[i].second = armsVelocityLimit;
+    }
+
     settingsStruct.jointsLimits[4].first = iDynTree::deg2rad(+10.0); //l_shoulder_roll
     settingsStruct.jointsLimits[8].first = iDynTree::deg2rad(+10.0); // r_shoulder_roll
-
-
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
@@ -505,7 +510,7 @@ int main() {
     settingsStruct.forceMeanCostOverallWeight = 1e-3;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
     settingsStruct.pointAccelerationCostOverallWeight = 1e-10;
-    settingsStruct.swingCostOverallWeight = 10;
+    settingsStruct.swingCostOverallWeight = 50;
     settingsStruct.phantomForcesCostOverallWeight = 1.0;
     settingsStruct.meanPointPositionCostOverallWeight = 100;
     settingsStruct.comCostOverallWeight = 100;
@@ -514,7 +519,7 @@ int main() {
     settingsStruct.comWeights(2) = 1.0;
     settingsStruct.comVelocityCostOverallWeight = 1.0;
     settingsStruct.comVelocityWeights(0) = 10.0;
-    settingsStruct.comVelocityWeights(1) = 0.1;
+    settingsStruct.comVelocityWeights(1) = 0.01;
     settingsStruct.comVelocityWeights(2) = 1.0;
     settingsStruct.leftFootYawCostOverallWeight = 1000.0;
     settingsStruct.rightFootYawCostOverallWeight = 1000.0;
