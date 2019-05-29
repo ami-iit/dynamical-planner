@@ -353,5 +353,8 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.rightFootYawCostOverallWeight = 1.0;
     defaults.desiredRightFootYaw = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.0);
 
+    defaults.feetDistanceCostActive = true;
+    defaults.feetDistanceCostOverallWeight = 1.0;
+
     return defaults;
 }

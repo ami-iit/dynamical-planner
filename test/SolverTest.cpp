@@ -21,6 +21,8 @@
 #include <chrono>
 #include <ctime>
 #include <sstream>
+#include <iDynTree/Core/Utils.h>
+
 
 void fillInitialState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings,
                       const iDynTree::VectorDynSize& desiredJoints, DynamicalPlanner::RectangularFoot &foot,
@@ -116,11 +118,29 @@ void reconstructState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlann
     iDynTree::Transform leftTransform = kinDyn.getWorldTransform(settings.leftFrameName);
     iDynTree::Transform rightTransform = kinDyn.getWorldTransform(settings.rightFrameName);
 
+    double minZ = 1.0;
 
     for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
         initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
+
+        if (initialState.leftContactPointsState[i].pointPosition(2) < minZ) {
+            minZ = initialState.leftContactPointsState[i].pointPosition(2);
+        }
+
         initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
+
+        if (initialState.rightContactPointsState[i].pointPosition(2) < minZ) {
+            minZ = initialState.rightContactPointsState[i].pointPosition(2);
+        }
     }
+
+    if (!iDynTree::checkDoublesAreEqual(minZ, 0.0, 1e-6)) {
+        iDynTree::Position initialPosition = initialState.worldToBaseTransform.getPosition();
+        initialPosition(2) -= minZ;
+        initialState.worldToBaseTransform.setPosition(initialPosition);
+        reconstructState(kinDyn, settings, initialState);
+    }
+
 }
 
 iDynTree::Vector3 meanPointPosition(const DynamicalPlanner::State &state) {
@@ -449,7 +469,7 @@ int main() {
     }
 
 
-    double torsoVelocityLimit = 5.0;
+    double torsoVelocityLimit = 1.0;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[0].second = torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[1].first = -torsoVelocityLimit;
@@ -476,6 +496,7 @@ int main() {
     settingsStruct.meanPointPositionCostActive = true;
     settingsStruct.leftFootYawCostActive = true;
     settingsStruct.rightFootYawCostActive = true;
+    settingsStruct.feetDistanceCostActive = true;
 
     settingsStruct.frameCostOverallWeight = 50.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
@@ -491,15 +512,15 @@ int main() {
     settingsStruct.comWeights(0) = 1.0;
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
-    settingsStruct.comVelocityCostOverallWeight = 10.0;
-    settingsStruct.comVelocityWeights(0) = 1.0;
-    settingsStruct.comVelocityWeights(1) = 0.0;
+    settingsStruct.comVelocityCostOverallWeight = 1.0;
+    settingsStruct.comVelocityWeights(0) = 10.0;
+    settingsStruct.comVelocityWeights(1) = 0.1;
     settingsStruct.comVelocityWeights(2) = 1.0;
     settingsStruct.leftFootYawCostOverallWeight = 1000.0;
     settingsStruct.rightFootYawCostOverallWeight = 1000.0;
+    settingsStruct.feetDistanceCostOverallWeight = 1.0;
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setZero();
-
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -557,10 +578,11 @@ int main() {
     iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(10.0);
     settingsStruct.velocityMaximumDerivative(0) = 10.0;
     settingsStruct.velocityMaximumDerivative(1) = 10.0;
-    settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
+    settingsStruct.planarVelocityHyperbolicTangentScaling = 5.0; //scales the position along z
 //    settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
 
-    settingsStruct.complementarityDissipation = 1.0;
+    settingsStruct.useDynamicalComplementarityConstraint = false;
+    settingsStruct.complementarityDissipation = 2.0;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 

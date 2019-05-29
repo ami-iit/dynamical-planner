@@ -131,9 +131,9 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
 //        ok = ocProblem.addLagrangeTerm(1.0, forceCost);
 //        ASSERT_IS_TRUE(ok);
 
-        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
-        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
-        ASSERT_IS_TRUE(ok);
+//        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
+//        ok = ocProblem.addLagrangeTerm(1.0, swingCost);
+//        ASSERT_IS_TRUE(ok);
 
 //        std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Right",
 //                                                                                                  i, forceActivation);
@@ -162,6 +162,10 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
 
     std::shared_ptr<FootYawCost> footYawCost = std::make_shared<FootYawCost>(stateVariables, "Left", leftPositions);
     ok = ocProblem.addLagrangeTerm(0.5, footYawCost);
+    ASSERT_IS_TRUE(ok);
+
+    std::shared_ptr<FeetDistanceCost> feetDistanceCost = std::make_shared<FeetDistanceCost>(stateVariables, controlVariables);
+    ok = ocProblem.addLagrangeTerm(0.5, feetDistanceCost);
     ASSERT_IS_TRUE(ok);
 
 }

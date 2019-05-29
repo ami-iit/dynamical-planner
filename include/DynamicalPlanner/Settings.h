@@ -160,6 +160,10 @@ namespace DynamicalPlanner {
         double rightFootYawCostOverallWeight;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> desiredRightFootYaw;
 
+        //Right foot yaw cost
+        bool feetDistanceCostActive;
+        double feetDistanceCostOverallWeight;
+
         //Regularizations
         bool useConstraintsHessianRegularization;
         double constraintsHessianRegularization;
