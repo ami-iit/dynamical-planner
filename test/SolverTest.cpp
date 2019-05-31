@@ -464,8 +464,8 @@ int main() {
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     for (auto& joint : settingsStruct.jointsVelocityLimits) {
-        joint.first = -5;
-        joint.second = 5;
+        joint.first = -4;
+        joint.second = 4;
     }
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
@@ -493,7 +493,7 @@ int main() {
     settingsStruct.comCostActive = false;
     settingsStruct.comVelocityCostActive = true;
     settingsStruct.forceDerivativeCostActive = false;
-    settingsStruct.pointAccelerationCostActive = false;
+    settingsStruct.pointAccelerationCostActive = true;
     settingsStruct.jointsRegularizationCostActive = true;
     settingsStruct.jointsVelocityCostActive = true;
     settingsStruct.swingCostActive = true;
@@ -509,7 +509,7 @@ int main() {
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
     settingsStruct.forceMeanCostOverallWeight = 1e-3;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
-    settingsStruct.pointAccelerationCostOverallWeight = 1e-10;
+    settingsStruct.pointAccelerationCostOverallWeight = 1.0;
     settingsStruct.swingCostOverallWeight = 50;
     settingsStruct.phantomForcesCostOverallWeight = 1.0;
     settingsStruct.meanPointPositionCostOverallWeight = 100;
@@ -519,7 +519,7 @@ int main() {
     settingsStruct.comWeights(2) = 1.0;
     settingsStruct.comVelocityCostOverallWeight = 1.0;
     settingsStruct.comVelocityWeights(0) = 10.0;
-    settingsStruct.comVelocityWeights(1) = 0.01;
+    settingsStruct.comVelocityWeights(1) = 0.1;
     settingsStruct.comVelocityWeights(2) = 1.0;
     settingsStruct.leftFootYawCostOverallWeight = 1000.0;
     settingsStruct.rightFootYawCostOverallWeight = 1000.0;
@@ -545,7 +545,7 @@ int main() {
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     iDynTree::VectorDynSize comVelocityReference(3);
-    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.09, 0.0, 0.0));
+    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.05, 0.0, 0.0));
     auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
@@ -559,7 +559,7 @@ int main() {
     meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
     meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
 
-    settingsStruct.desiredSwingHeight = 0.1;
+    settingsStruct.desiredSwingHeight = 0.03;
 
     settingsStruct.constrainTargetCoMPosition = false;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
@@ -580,10 +580,10 @@ int main() {
     settingsStruct.minimumFeetDistance = 0.10;
 
     //ContactVelocityControlConstraints
-    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(10.0);
-    settingsStruct.velocityMaximumDerivative(0) = 10.0;
-    settingsStruct.velocityMaximumDerivative(1) = 10.0;
-    settingsStruct.planarVelocityHyperbolicTangentScaling = 5.0; //scales the position along z
+    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(5.0);
+    settingsStruct.velocityMaximumDerivative(0) = 5.0;
+    settingsStruct.velocityMaximumDerivative(1) = 5.0;
+    settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
 //    settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
 
     settingsStruct.useDynamicalComplementarityConstraint = false;
