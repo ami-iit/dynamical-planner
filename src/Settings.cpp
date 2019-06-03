@@ -356,5 +356,8 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.feetDistanceCostActive = true;
     defaults.feetDistanceCostOverallWeight = 1.0;
 
+    defaults.jointsVelocityForPosturalCostActive = true;
+    defaults.jointsVelocityForPosturalCostOverallWeight = 1.0;
+
     return defaults;
 }

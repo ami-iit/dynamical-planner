@@ -58,6 +58,7 @@ typedef struct {
     std::shared_ptr<MeanPointPositionCost> meanPositionCost;
     std::shared_ptr<FootYawCost> leftYaw, rightYaw;
     std::shared_ptr<FeetDistanceCost> feetDistance;
+    std::shared_ptr<JointsVelocityForPosturalCost> velocityAsPostural;
 } CostsSet;
 
 typedef struct {
@@ -663,6 +664,18 @@ public:
             costs.feetDistance = std::make_shared<FeetDistanceCost>(stateStructure,
                                                                                                     controlStructure);
             ok = ocProblem->addLagrangeTerm(st.feetDistanceCostOverallWeight, costs.feetDistance);
+            if (!ok) {
+                return false;
+            }
+        }
+
+        if (st.jointsVelocityForPosturalCostActive) {
+            costs.velocityAsPostural = std::make_shared<JointsVelocityForPosturalCost>(stateStructure, controlStructure,
+                                                                                       st.jointsVelocityCostWeights,
+                                                                                       st.jointsRegularizationWeights,
+                                                                                       st.desiredJointsTrajectory);
+
+            ok = ocProblem->addLagrangeTerm(st.jointsVelocityForPosturalCostOverallWeight, costs.velocityAsPostural);
             if (!ok) {
                 return false;
             }

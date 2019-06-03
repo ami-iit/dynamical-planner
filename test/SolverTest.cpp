@@ -160,24 +160,55 @@ iDynTree::Vector3 meanPointPosition(const DynamicalPlanner::State &state) {
     return meanPosition;
 }
 
-double minimumPointForce(const DynamicalPlanner::State &state) {
+bool leftIsForward(const DynamicalPlanner::State &state) {
+    iDynTree::Vector3 leftPosition, rightPosition;
+    leftPosition.zero();
+    rightPosition.zero();
 
-    double minForceNorm = iDynTree::toEigen(state.leftContactPointsState.begin()->pointForce).norm();
-    double forceNorm;
-
-    for (size_t i = 1; i < state.leftContactPointsState.size(); ++i) {
-        forceNorm = iDynTree::toEigen(state.leftContactPointsState[i].pointForce).norm();
-        if (forceNorm < minForceNorm)
-            minForceNorm = forceNorm;
+    for (size_t i = 0; i < state.leftContactPointsState.size(); ++i) {
+        iDynTree::toEigen(leftPosition) += iDynTree::toEigen(state.leftContactPointsState[i].pointPosition);
     }
+
+    iDynTree::toEigen(leftPosition) /= state.leftContactPointsState.size();
+
 
     for (size_t i = 0; i < state.rightContactPointsState.size(); ++i) {
-        forceNorm = iDynTree::toEigen(state.rightContactPointsState[i].pointForce).norm();
-        if (forceNorm < minForceNorm)
-            minForceNorm = forceNorm;
+        iDynTree::toEigen(rightPosition) += iDynTree::toEigen(state.rightContactPointsState[i].pointPosition);
     }
 
-    return minForceNorm;
+    iDynTree::toEigen(rightPosition) /= state.rightContactPointsState.size();
+
+
+    return leftPosition(0) > rightPosition(0);
+}
+
+double minimumPointForceOnForwardFoot(const DynamicalPlanner::State &state) {
+
+    bool isLeftForward = leftIsForward(state);
+
+    if (isLeftForward) {
+        double minForceNorm = iDynTree::toEigen(state.leftContactPointsState.begin()->pointForce).norm();
+        double forceNorm;
+
+        for (size_t i = 1; i < state.leftContactPointsState.size(); ++i) {
+            forceNorm = iDynTree::toEigen(state.leftContactPointsState[i].pointForce).norm();
+            if (forceNorm < minForceNorm)
+                minForceNorm = forceNorm;
+        }
+
+        return minForceNorm;
+    } else {
+        double minForceNorm = iDynTree::toEigen(state.rightContactPointsState.begin()->pointForce).norm();
+        double forceNorm;
+
+        for (size_t i = 1; i < state.rightContactPointsState.size(); ++i) {
+            forceNorm = iDynTree::toEigen(state.rightContactPointsState[i].pointForce).norm();
+            if (forceNorm < minForceNorm)
+                minForceNorm = forceNorm;
+        }
+
+        return minForceNorm;
+    }
 }
 
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
@@ -469,6 +500,7 @@ int main() {
     }
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setZero();
 
     double torsoVelocityLimit = 1.0;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
@@ -494,14 +526,15 @@ int main() {
     settingsStruct.comVelocityCostActive = true;
     settingsStruct.forceDerivativeCostActive = false;
     settingsStruct.pointAccelerationCostActive = true;
-    settingsStruct.jointsRegularizationCostActive = true;
-    settingsStruct.jointsVelocityCostActive = true;
+    settingsStruct.jointsRegularizationCostActive = false;
+    settingsStruct.jointsVelocityCostActive = false;
     settingsStruct.swingCostActive = true;
     settingsStruct.phantomForcesCostActive = false;
     settingsStruct.meanPointPositionCostActive = true;
     settingsStruct.leftFootYawCostActive = true;
     settingsStruct.rightFootYawCostActive = true;
     settingsStruct.feetDistanceCostActive = true;
+    settingsStruct.jointsVelocityForPosturalCostActive = true;
 
     settingsStruct.frameCostOverallWeight = 50.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
@@ -524,8 +557,7 @@ int main() {
     settingsStruct.leftFootYawCostOverallWeight = 1000.0;
     settingsStruct.rightFootYawCostOverallWeight = 1000.0;
     settingsStruct.feetDistanceCostOverallWeight = 1.0;
-
-    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setZero();
+    settingsStruct.jointsVelocityForPosturalCostOverallWeight = 1e-1;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -550,7 +582,7 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 30.0);
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 20.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
     iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
@@ -819,8 +851,8 @@ int main() {
         meanPositionError = (iDynTree::toEigen(meanPointPosition(optimalStates.front())) - iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition)).norm();
         std::cerr << "Mean point error: " << meanPositionError << std::endl;
 
-        minimumForce = minimumPointForce(optimalStates.front());
-        std::cerr << "Mean point velocity: " << minimumForce << std::endl;
+        minimumForce = minimumPointForceOnForwardFoot(optimalStates.front());
+        std::cerr << "Minimum force: " << minimumForce << std::endl;
 
         if ((futureMeanPositionError < 5e-3) && (meanPointReferenceGenerator[1].activeRange.initTime() > settingsStruct.horizon) && (meanPointReferenceGenerator[0].activeRange.endTime() < (0.6 * settingsStruct.horizon))) {
             meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, 2 * settingsStruct.horizon);
@@ -834,7 +866,7 @@ int main() {
 
             stepStart = meanPointReferenceGenerator[0].activeRange.initTime() - optimalStates.front().time;
 
-            if ((stepStart < 0.3*settingsStruct.horizon) && (minimumForce < 20)) {
+            if ((stepStart < 0.3*settingsStruct.horizon) && (minimumForce < 30)) {
 
                 meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, meanPointReferenceGenerator[0].activeRange.endTime());
                 std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;

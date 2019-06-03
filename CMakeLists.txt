@@ -76,6 +76,7 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${COSTS_HEADERS_DIR}/FrameOrientationCost.h
                                      ${COSTS_HEADERS_DIR}/CoMVelocityCost.h
                                      ${COSTS_HEADERS_DIR}/FootYawCost.h
                                      ${COSTS_HEADERS_DIR}/FeetDistanceCost.h
+                                     ${COSTS_HEADERS_DIR}/JointsVelocityForPosturalCost.h
                                      include/DynamicalPlannerPrivate/Costs.h)
 
 set(UTILITIES_DIR include/DynamicalPlannerPrivate/Utilities)
@@ -142,7 +143,8 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/AbsoluteVelocityExpression.cpp
                              src/private/MomentumInBaseExpression.cpp
                              src/private/FootYawCost.cpp
-                             src/private/FeetDistanceCost.cpp)
+                             src/private/FeetDistanceCost.cpp
+                             src/private/JointsVelocityForPosturalCost.cpp)
 
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})

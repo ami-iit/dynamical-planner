@@ -164,6 +164,11 @@ namespace DynamicalPlanner {
         bool feetDistanceCostActive;
         double feetDistanceCostOverallWeight;
 
+        //Joint Velocity for postural cost regularization
+        //(this cost share the same desired joints value and weights of joints regularization)
+        bool jointsVelocityForPosturalCostActive;
+        double jointsVelocityForPosturalCostOverallWeight;
+
         //Regularizations
         bool useConstraintsHessianRegularization;
         double constraintsHessianRegularization;
