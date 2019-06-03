@@ -536,7 +536,7 @@ int main() {
     settingsStruct.feetDistanceCostActive = true;
     settingsStruct.jointsVelocityForPosturalCostActive = true;
 
-    settingsStruct.frameCostOverallWeight = 50.0;
+    settingsStruct.frameCostOverallWeight = 90.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
@@ -582,7 +582,7 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 20.0);
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 25.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
     iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
