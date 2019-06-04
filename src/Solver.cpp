@@ -59,6 +59,7 @@ typedef struct {
     std::shared_ptr<FootYawCost> leftYaw, rightYaw;
     std::shared_ptr<FeetDistanceCost> feetDistance;
     std::shared_ptr<JointsVelocityForPosturalCost> velocityAsPostural;
+    std::vector<std::shared_ptr<ComplementarityCost>> leftComplementarities, rightComplementarities;
 } CostsSet;
 
 typedef struct {
@@ -386,7 +387,7 @@ public:
 
            costs.comVelocity->setLinearVelocityReference(st.desiredCoMVelocityTrajectory);
 
-            ok = ocp->addLagrangeTerm(st.comVelocityCostOverallWeight,
+            ok = ocp->addLagrangeTerm(st.comVelocityCostOverallWeight, st.comVelocityCostActiveRange,
                                       static_cast<std::shared_ptr<iDynTree::optimalcontrol::L2NormCost>>(costs.comVelocity));
             if (!ok) {
                 return false;
@@ -592,7 +593,8 @@ public:
         if (st.swingCostActive) {
             costs.leftSwings.resize(st.leftPointsPosition.size());
             for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
-                costs.leftSwings[i] = std::make_shared<SwingCost>(stateStructure, controlStructure, "Left", i, st.desiredSwingHeight);
+                costs.leftSwings[i] = std::make_shared<SwingCost>(stateStructure, controlStructure, "Left", i,
+                                                                  st.desiredSwingHeight, st.swingCostWeights);
                 ok = ocProblem->addLagrangeTerm(st.swingCostOverallWeight, costs.leftSwings[i]);
                 if (!ok) {
                     return false;
@@ -600,7 +602,8 @@ public:
             }
             costs.rightSwings.resize(st.rightPointsPosition.size());
             for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
-                costs.rightSwings[i] = std::make_shared<SwingCost>(stateStructure, controlStructure, "Right", i, st.desiredSwingHeight);
+                costs.rightSwings[i] = std::make_shared<SwingCost>(stateStructure, controlStructure, "Right", i,
+                                                                   st.desiredSwingHeight, st.swingCostWeights);
                 ok = ocProblem->addLagrangeTerm(st.swingCostOverallWeight, costs.rightSwings[i]);
                 if (!ok) {
                     return false;
@@ -678,6 +681,31 @@ public:
             ok = ocProblem->addLagrangeTerm(st.jointsVelocityForPosturalCostOverallWeight, costs.velocityAsPostural);
             if (!ok) {
                 return false;
+            }
+        }
+
+
+        if (st.complementarityCostActive) {
+            costs.leftComplementarities.resize(st.leftPointsPosition.size());
+            for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
+                costs.leftComplementarities[i] = std::make_shared<ComplementarityCost>(stateStructure,
+                                                                                       controlStructure,
+                                                                                       "Left", i);
+                ok = ocProblem->addLagrangeTerm(st.complementarityCostOverallWeight, costs.leftComplementarities[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+
+            costs.rightComplementarities.resize(st.rightPointsPosition.size());
+            for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
+                costs.rightComplementarities[i] = std::make_shared<ComplementarityCost>(stateStructure,
+                                                                                        controlStructure,
+                                                                                        "Right", i);
+                ok = ocProblem->addLagrangeTerm(st.complementarityCostOverallWeight, costs.rightComplementarities[i]);
+                if (!ok) {
+                    return false;
+                }
             }
         }
 

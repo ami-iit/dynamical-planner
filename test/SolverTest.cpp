@@ -500,7 +500,7 @@ int main() {
     }
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
-    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setZero();
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(0.1);
 
     double torsoVelocityLimit = 1.0;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
@@ -525,7 +525,7 @@ int main() {
     settingsStruct.comCostActive = false;
     settingsStruct.comVelocityCostActive = true;
     settingsStruct.forceDerivativeCostActive = false;
-    settingsStruct.pointAccelerationCostActive = true;
+    settingsStruct.pointAccelerationCostActive = false;
     settingsStruct.jointsRegularizationCostActive = false;
     settingsStruct.jointsVelocityCostActive = false;
     settingsStruct.swingCostActive = true;
@@ -535,6 +535,7 @@ int main() {
     settingsStruct.rightFootYawCostActive = true;
     settingsStruct.feetDistanceCostActive = true;
     settingsStruct.jointsVelocityForPosturalCostActive = true;
+    settingsStruct.complementarityCostActive = true;
 
     settingsStruct.frameCostOverallWeight = 90.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
@@ -543,7 +544,10 @@ int main() {
     settingsStruct.forceMeanCostOverallWeight = 1e-3;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
     settingsStruct.pointAccelerationCostOverallWeight = 1.0;
-    settingsStruct.swingCostOverallWeight = 50;
+    settingsStruct.swingCostOverallWeight = 1000;
+    settingsStruct.swingCostWeights(0) = 1.0;
+    settingsStruct.swingCostWeights(1) = 1.0;
+    settingsStruct.swingCostWeights(2) = 1.0;
     settingsStruct.phantomForcesCostOverallWeight = 1.0;
     settingsStruct.meanPointPositionCostOverallWeight = 100;
     settingsStruct.comCostOverallWeight = 100;
@@ -558,6 +562,7 @@ int main() {
     settingsStruct.rightFootYawCostOverallWeight = 1000.0;
     settingsStruct.feetDistanceCostOverallWeight = 1.0;
     settingsStruct.jointsVelocityForPosturalCostOverallWeight = 1e-1;
+    settingsStruct.complementarityCostOverallWeight = 1e-3;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -591,7 +596,7 @@ int main() {
     meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
     meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
 
-    settingsStruct.desiredSwingHeight = 0.03;
+    settingsStruct.desiredSwingHeight = 0.04;
 
     settingsStruct.constrainTargetCoMPosition = false;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
@@ -856,7 +861,7 @@ int main() {
 
         if ((futureMeanPositionError < 5e-3) && (meanPointReferenceGenerator[1].activeRange.initTime() > settingsStruct.horizon) && (meanPointReferenceGenerator[0].activeRange.endTime() < (0.6 * settingsStruct.horizon))) {
             meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, 2 * settingsStruct.horizon);
-            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.15, 0.00, 0.0);
+            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.1, 0.00, 0.0);
             std::cerr << "Setting new position (" << meanPointReferenceGenerator[1].desiredPosition.toString() << ") at the end of the horizon." << std::endl;
         }
 

@@ -17,13 +17,15 @@ public:
 
     std::string footName;
     size_t contactIndex;
+    iDynTree::Vector3 weights;
 
     iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
 
     iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 };
 
-SwingCost::SwingCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const std::string &footName, size_t contactIndex, double desiredSwingHeight)
+SwingCost::SwingCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const std::string &footName,
+                     size_t contactIndex, double desiredSwingHeight, const iDynTree::Vector3 &weights)
     : iDynTree::optimalcontrol::Cost ("Swing" + footName + std::to_string(contactIndex))
     , m_pimpl(std::make_unique<Implementation>())
 {
@@ -47,16 +49,14 @@ SwingCost::SwingCost(const VariablesLabeller &stateVariables, const VariablesLab
 
     m_pimpl->swingHeight = desiredSwingHeight;
 
+    m_pimpl->weights = weights;
+
     unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->pointPositionRange.offset + 2);
-    unsigned int uxIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
-    unsigned int uyIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 1);
+    unsigned int uIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
 
     m_pimpl->stateHessianSparsity.add(pzIndex, pzIndex);
-    m_pimpl->controlHessianSparsity.add(uxIndex, uxIndex);
-    m_pimpl->controlHessianSparsity.add(uyIndex, uyIndex);
-    m_pimpl->mixedHessianSparsity.add(pzIndex, uxIndex);
-    m_pimpl->mixedHessianSparsity.add(pzIndex, uyIndex);
-
+    m_pimpl->controlHessianSparsity.addIdentityBlock(uIndex, uIndex, 3);
+    m_pimpl->mixedHessianSparsity.addDenseBlock(pzIndex, uIndex, 1, 3);
 }
 
 SwingCost::~SwingCost()
@@ -67,10 +67,15 @@ bool SwingCost::costEvaluation(double, const iDynTree::VectorDynSize &state, con
     m_pimpl->stateVariables = state;
     m_pimpl->controlVariables = control;
 
-    double costX = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
-    double costY = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1) * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
+    double zError = (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
 
-    costValue = 0.5 * (costX * costX + costY * costY);
+    double costX = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) * zError;
+    double costY = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1) * zError;
+    double costZ = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(2) * zError;
+
+    costValue = 0.5 * (m_pimpl->weights(0) * costX * costX +
+                       m_pimpl->weights(1) * costY * costY +
+                       m_pimpl->weights(2) * costZ * costZ);
     return true;
 }
 
@@ -80,10 +85,16 @@ bool SwingCost::costFirstPartialDerivativeWRTState(double, const iDynTree::Vecto
     m_pimpl->controlVariables = control;
 
     unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->pointPositionRange.offset + 2);
-    double costX = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
-    double costY = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1) * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
+    double zError = (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
 
-    m_pimpl->stateGradientBuffer(pzIndex) = costX * m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) + costY * m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1);
+    double costX = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) * zError;
+    double costY = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1) * zError;
+    double costZ = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(2) * zError;
+
+
+    m_pimpl->stateGradientBuffer(pzIndex) = m_pimpl->weights(0) * costX * m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) +
+        m_pimpl->weights(1) * costY * m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1) +
+        m_pimpl->weights(2) * costZ * m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(2);
 
     partialDerivative = m_pimpl->stateGradientBuffer;
 
@@ -97,12 +108,18 @@ bool SwingCost::costFirstPartialDerivativeWRTControl(double, const iDynTree::Vec
 
     unsigned int uxIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
     unsigned int uyIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 1);
+    unsigned int uzIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 2);
 
-    double costX = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
-    double costY = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1) * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
 
-    m_pimpl->controlGradientBuffer(uxIndex) = costX * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
-    m_pimpl->controlGradientBuffer(uyIndex) = costY * (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
+    double zError = (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
+
+    double costX = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0) * zError;
+    double costY = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1) * zError;
+    double costZ = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(2) * zError;
+
+    m_pimpl->controlGradientBuffer(uxIndex) = m_pimpl->weights(0) * costX * zError;
+    m_pimpl->controlGradientBuffer(uyIndex) = m_pimpl->weights(1) * costY * zError;
+    m_pimpl->controlGradientBuffer(uzIndex) = m_pimpl->weights(2) * costZ * zError;
 
     partialDerivative = m_pimpl->controlGradientBuffer;
 
@@ -116,8 +133,11 @@ bool SwingCost::costSecondPartialDerivativeWRTState(double /*time*/, const iDynT
     unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->pointPositionRange.offset + 2);
     double ux = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0);
     double uy = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1);
+    double uz = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(2);
 
-    partialDerivative(pzIndex, pzIndex) = ux * ux + uy * uy;
+    partialDerivative(pzIndex, pzIndex) = m_pimpl->weights(0) * ux * ux +
+        m_pimpl->weights(1) * uy * uy +
+        m_pimpl->weights(2) * uz * uz;
 
     return true;
 }
@@ -127,10 +147,14 @@ bool SwingCost::costSecondPartialDerivativeWRTControl(double /*time*/, const iDy
     m_pimpl->stateVariables = state;
     unsigned int uxIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
     unsigned int uyIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 1);
+    unsigned int uzIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 2);
     double heightDifference = (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
+    double squaredHeightDifference = heightDifference * heightDifference;
 
-    partialDerivative(uxIndex, uxIndex) = heightDifference * heightDifference;
-    partialDerivative(uyIndex, uyIndex) = partialDerivative(uxIndex, uxIndex);
+    partialDerivative(uxIndex, uxIndex) = m_pimpl->weights(0) * squaredHeightDifference;
+    partialDerivative(uyIndex, uyIndex) = m_pimpl->weights(1) * squaredHeightDifference;
+    partialDerivative(uzIndex, uzIndex) = m_pimpl->weights(2) * squaredHeightDifference;
+
     return true;
 }
 
@@ -141,12 +165,18 @@ bool SwingCost::costSecondPartialDerivativeWRTStateControl(double /*time*/, cons
     unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->pointPositionRange.offset + 2);
     unsigned int uxIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset);
     unsigned int uyIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 1);
+    unsigned int uzIndex = static_cast<unsigned int>(m_pimpl->pointVelocityRange.offset + 2);
+
     double ux = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(0);
     double uy = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(1);
+    double uz = m_pimpl->controlVariables(m_pimpl->pointVelocityRange)(2);
+
     double heightDifference = (m_pimpl->stateVariables(m_pimpl->pointPositionRange)(2) - m_pimpl->swingHeight);
 
-    partialDerivative(pzIndex, uxIndex) = 2.0 * ux * heightDifference;
-    partialDerivative(pzIndex, uyIndex) = 2.0 * uy * heightDifference;
+    partialDerivative(pzIndex, uxIndex) = 2.0 * m_pimpl->weights(0) * ux * heightDifference;
+    partialDerivative(pzIndex, uyIndex) = 2.0 * m_pimpl->weights(1) * uy * heightDifference;
+    partialDerivative(pzIndex, uzIndex) = 2.0 * m_pimpl->weights(2) * uz * heightDifference;
+
 
     return true;
 }

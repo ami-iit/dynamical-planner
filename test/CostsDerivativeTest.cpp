@@ -107,6 +107,9 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     HyperbolicTangent velocityActivationXY;
     velocityActivationXY.setScaling(0.1);
 
+    iDynTree::Vector3 swingWeights;
+    iDynTree::getRandomVector(swingWeights);
+
 
     auto dynamical = std::make_shared<DynamicalConstraints>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, velocityActivationXY, forceActivation, forceDissipationRatios);
     ok = ocProblem.setDynamicalSystemConstraint(dynamical);
@@ -117,7 +120,7 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
         ok = ocProblem.addLagrangeTerm(1.0, forceCost);
         ASSERT_IS_TRUE(ok);
 
-        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Left", i, 0.03);
+        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Left", i, 0.03, swingWeights);
         ok = ocProblem.addLagrangeTerm(1.0, swingCost);
         ASSERT_IS_TRUE(ok);
 
@@ -125,19 +128,30 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
                                                                                                   i, forceActivation);
         ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
         ASSERT_IS_TRUE(ok);
+
+        std::shared_ptr<ComplementarityCost> complementarityCost = std::make_shared<ComplementarityCost>(stateVariables, controlVariables,
+                                                                                                         "Left", i);
+        ok = ocProblem.addLagrangeTerm(1.0, complementarityCost);
+        ASSERT_IS_TRUE(ok);
     }
     for (size_t i = 0; i < rightPositions.size(); ++i) {
         std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Right", i);
         ok = ocProblem.addLagrangeTerm(1.0, forceCost);
         ASSERT_IS_TRUE(ok);
 
-        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i, 0.03);
+        std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i,
+                                                                           0.03, swingWeights);
         ok = ocProblem.addLagrangeTerm(1.0, swingCost);
         ASSERT_IS_TRUE(ok);
 
         std::shared_ptr<PhantomForcesCost> phantomForceCost = std::make_shared<PhantomForcesCost>(stateVariables, controlVariables, "Right",
                                                                                                   i, forceActivation);
         ok = ocProblem.addLagrangeTerm(1.0, phantomForceCost);
+        ASSERT_IS_TRUE(ok);
+
+        std::shared_ptr<ComplementarityCost> complementarityCost = std::make_shared<ComplementarityCost>(stateVariables, controlVariables,
+                                                                                                         "Right", i);
+        ok = ocProblem.addLagrangeTerm(1.0, complementarityCost);
         ASSERT_IS_TRUE(ok);
     }
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> comCost =

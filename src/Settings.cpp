@@ -266,6 +266,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //CoM velocity
     defaults.comVelocityCostActive = true;
     defaults.comVelocityCostOverallWeight = 1.0;
+    defaults.comVelocityCostActiveRange = iDynTree::optimalcontrol::TimeRange::AnyTime();
     defaults.comVelocityWeights.resize(3);
     iDynTree::toEigen(defaults.comVelocityWeights).setConstant(1.0);
     iDynTree::VectorDynSize desiredCoMVelocity(3);
@@ -326,6 +327,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.swingCostActive = true;
     defaults.swingCostOverallWeight = 0.1;
     defaults.desiredSwingHeight = 0.03;
+    iDynTree::toEigen(defaults.swingCostWeights).setConstant(1.0);
 
     //Phantom forces aka forces when point is not in contact (each contact point has a different cost with same settings)
     defaults.phantomForcesCostActive = true;
@@ -358,6 +360,9 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
 
     defaults.jointsVelocityForPosturalCostActive = true;
     defaults.jointsVelocityForPosturalCostOverallWeight = 1.0;
+
+    defaults.complementarityCostActive = true;
+    defaults.complementarityCostOverallWeight = 1.0;
 
     return defaults;
 }

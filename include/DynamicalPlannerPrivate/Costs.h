@@ -17,6 +17,7 @@
 #include <DynamicalPlannerPrivate/Costs/FootYawCost.h>
 #include <DynamicalPlannerPrivate/Costs/FeetDistanceCost.h>
 #include <DynamicalPlannerPrivate/Costs/JointsVelocityForPosturalCost.h>
+#include <DynamicalPlannerPrivate/Costs/ComplementarityCost.h>
 #include <iDynTree/L2NormCost.h>
 
 #endif // DPLANNER_COSTS_H

@@ -93,6 +93,7 @@ namespace DynamicalPlanner {
         bool comVelocityCostActive;
         double comVelocityCostOverallWeight;
         iDynTree::VectorDynSize comVelocityWeights;
+        iDynTree::optimalcontrol::TimeRange comVelocityCostActiveRange;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredCoMVelocityTrajectory;
 
         //Frame orientation
@@ -138,6 +139,7 @@ namespace DynamicalPlanner {
         bool swingCostActive;
         double swingCostOverallWeight;
         double desiredSwingHeight;
+        iDynTree::Vector3 swingCostWeights;
 
         //Phantom forces aka forces when point is not in contact (each contact point has a different cost with same settings)
         bool phantomForcesCostActive;
@@ -168,6 +170,10 @@ namespace DynamicalPlanner {
         //(this cost share the same desired joints value and weights of joints regularization)
         bool jointsVelocityForPosturalCostActive;
         double jointsVelocityForPosturalCostOverallWeight;
+
+        //Complementarity cost
+        bool complementarityCostActive;
+        double complementarityCostOverallWeight;
 
         //Regularizations
         bool useConstraintsHessianRegularization;

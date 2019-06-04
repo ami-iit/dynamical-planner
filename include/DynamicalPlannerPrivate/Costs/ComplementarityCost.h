@@ -4,34 +4,33 @@
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
-#ifndef DPLANNER_SWINGCOST_H
-#define DPLANNER_SWINGCOST_H
+#ifndef DPLANNER_COMPLEMENTARITYCOST_H
+#define DPLANNER_COMPLEMENTARITYCOST_H
 
 #include <iDynTree/Cost.h>
 #include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/MatrixDynSize.h>
 #include <DynamicalPlannerPrivate/Utilities/VariablesLabeller.h>
+#include <DynamicalPlannerPrivate/Utilities/HyperbolicSecant.h>
 #include <memory>
 
 namespace DynamicalPlanner {
     namespace Private {
-        class SwingCost;
+        class ComplementarityCost;
     }
 }
 
-class DynamicalPlanner::Private::SwingCost : public iDynTree::optimalcontrol::Cost {
+class DynamicalPlanner::Private::ComplementarityCost : public iDynTree::optimalcontrol::Cost {
 
     class Implementation;
     std::unique_ptr<Implementation> m_pimpl;
 
 public:
 
-    SwingCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-              const std::string &footName, size_t contactIndex, double desiredSwingHeight,
-              const iDynTree::Vector3& weights);
+    ComplementarityCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
+                        const std::string &footName, size_t contactIndex);
 
-    ~SwingCost() override;
+    ~ComplementarityCost() override;
 
     virtual bool costEvaluation(double,
                                 const iDynTree::VectorDynSize& state, const iDynTree::VectorDynSize&control,
@@ -67,4 +66,4 @@ public:
     virtual bool costSecondPartialDerivativeWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 };
 
-#endif // DPLANNER_SWINGCOST_H
+#endif // COMPLEMENTARITYCOST_H
