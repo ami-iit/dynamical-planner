@@ -502,7 +502,9 @@ int main() {
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(0.1);
 
-    double torsoVelocityLimit = 1.0;
+//    iDynTree::toEigen(settingsStruct.jointsVelocityCostWeights).topRows<3>().setConstant(100.0);
+
+    double torsoVelocityLimit = 0.6;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[0].second = torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[1].first = -torsoVelocityLimit;
@@ -525,7 +527,7 @@ int main() {
     settingsStruct.comCostActive = false;
     settingsStruct.comVelocityCostActive = true;
     settingsStruct.forceDerivativeCostActive = false;
-    settingsStruct.pointAccelerationCostActive = false;
+    settingsStruct.pointAccelerationCostActive = true;
     settingsStruct.jointsRegularizationCostActive = false;
     settingsStruct.jointsVelocityCostActive = false;
     settingsStruct.swingCostActive = true;
@@ -533,17 +535,21 @@ int main() {
     settingsStruct.meanPointPositionCostActive = true;
     settingsStruct.leftFootYawCostActive = true;
     settingsStruct.rightFootYawCostActive = true;
-    settingsStruct.feetDistanceCostActive = true;
+    settingsStruct.feetDistanceCostActive = false;
     settingsStruct.jointsVelocityForPosturalCostActive = true;
-    settingsStruct.complementarityCostActive = true;
+    settingsStruct.complementarityCostActive = false;
 
     settingsStruct.frameCostOverallWeight = 90.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.forceMeanCostOverallWeight = 1e-3;
+    settingsStruct.forceMeanCostOverallWeight = 1e-1;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
-    settingsStruct.pointAccelerationCostOverallWeight = 1.0;
+    settingsStruct.pointAccelerationCostOverallWeight = 5.0;
+    settingsStruct.pointAccelerationWeights(0) = 1.0;
+    settingsStruct.pointAccelerationWeights(1) = 1.0;
+    settingsStruct.pointAccelerationWeights(2) = 0.0;
+
     settingsStruct.swingCostOverallWeight = 1000;
     settingsStruct.swingCostWeights(0) = 1.0;
     settingsStruct.swingCostWeights(1) = 1.0;
@@ -571,7 +577,7 @@ int main() {
     settingsStruct.minimumDt = 0.1;
     settingsStruct.controlPeriod = 0.1;
     settingsStruct.maximumDt = 1.0;
-    settingsStruct.horizon = 1.5;
+    settingsStruct.horizon = 2.0;
     settingsStruct.activeControlPercentage = 1.0;
 
     settingsStruct.comCostActiveRange.setTimeInterval(settingsStruct.horizon*0, settingsStruct.horizon);
@@ -587,7 +593,7 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 25.0);
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 30.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
     iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
@@ -618,8 +624,8 @@ int main() {
 
     //ContactVelocityControlConstraints
     iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(5.0);
-    settingsStruct.velocityMaximumDerivative(0) = 5.0;
-    settingsStruct.velocityMaximumDerivative(1) = 5.0;
+    settingsStruct.velocityMaximumDerivative(0) = 2.0;
+    settingsStruct.velocityMaximumDerivative(1) = 2.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
 //    settingsStruct.normalVelocityHyperbolicSecantScaling = 1.0; //scales the force along z
 
