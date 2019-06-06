@@ -171,7 +171,9 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
 //    ASSERT_IS_TRUE(ok);
 
     std::shared_ptr<MeanPointPositionCost> meanPositionCost = std::make_shared<MeanPointPositionCost>(stateVariables, controlVariables);
-    meanPositionCost->setTimeVaryingWeight(std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(15.0));
+    iDynTree::VectorDynSize weights(3);
+    iDynTree::toEigen(weights).setConstant(15.0);
+    meanPositionCost->setTimeVaryingWeight(std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(weights));
     ok = ocProblem.addLagrangeTerm(0.5, meanPositionCost);
     ASSERT_IS_TRUE(ok);
 

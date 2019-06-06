@@ -18,11 +18,11 @@ public:
 
     std::string footName;
     size_t contactIndex;
-    HyperbolicSecant normalVelocityActivation;
+    HyperbolicTangent normalVelocityActivation;
     double maximumDerivative;
 
-    iDynTree::IndexRange positionPointRange, forcePointRange, velocityControlRange;
-    iDynTree::Vector3 pointPosition, pointForce, pointVelocityControl;
+    iDynTree::IndexRange positionPointRange, velocityControlRange;
+    iDynTree::Vector3 pointPosition, pointVelocityControl;
 
     iDynTree::VectorDynSize constraintValues;
     iDynTree::MatrixDynSize stateJacobianBuffer, controlJacobianBuffer;
@@ -34,7 +34,7 @@ public:
 
 
 NormalVelocityControlConstraints::NormalVelocityControlConstraints(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
-                                                                   const std::string &footName, size_t contactIndex, const HyperbolicSecant &normalVelocityActivation, double maximumDerivative)
+                                                                   const std::string &footName, size_t contactIndex, const HyperbolicTangent &lowerBoundMultiplier, double maximumDerivative)
     : iDynTree::optimalcontrol::Constraint (2, "NormalVelocityControlBounds" + footName + std::to_string(contactIndex))
     , m_pimpl(std::make_unique<Implementation>())
 {
@@ -43,14 +43,11 @@ NormalVelocityControlConstraints::NormalVelocityControlConstraints(const Variabl
 
     m_pimpl->footName = footName;
     m_pimpl->contactIndex = contactIndex;
-    m_pimpl->normalVelocityActivation = normalVelocityActivation;
+    m_pimpl->normalVelocityActivation = lowerBoundMultiplier;
     m_pimpl->maximumDerivative = maximumDerivative;
 
     m_pimpl->positionPointRange = stateVariables.getIndexRange(footName + "PositionPoint" + std::to_string(contactIndex));
     assert(m_pimpl->positionPointRange.isValid());
-
-    m_pimpl->forcePointRange = stateVariables.getIndexRange(footName + "ForcePoint" + std::to_string(contactIndex));
-    assert(m_pimpl->forcePointRange.isValid());
 
     m_pimpl->velocityControlRange = controlVariables.getIndexRange(footName + "VelocityControlPoint" + std::to_string(contactIndex));
     assert(m_pimpl->velocityControlRange.isValid());
@@ -70,12 +67,12 @@ NormalVelocityControlConstraints::NormalVelocityControlConstraints(const Variabl
     m_pimpl->stateJacobianSparsity.clear();
     m_pimpl->controlJacobianSparsity.clear();
 
-    size_t forceIndex = static_cast<size_t>(m_pimpl->forcePointRange.offset + 2);
-    m_pimpl->stateJacobianSparsity.addDenseBlock(0, forceIndex, 2, 1);
+    size_t pzIndex = static_cast<size_t>(m_pimpl->positionPointRange.offset + 2);
+    m_pimpl->stateJacobianSparsity.addDenseBlock(0, pzIndex, 2, 1);
     size_t velocityIndex = static_cast<size_t>(m_pimpl->velocityControlRange.offset + 2);
     m_pimpl->controlJacobianSparsity.addDenseBlock(0, velocityIndex, 2, 1);
 
-    m_pimpl->stateHessianSparsity.add(forceIndex, forceIndex);
+    m_pimpl->stateHessianSparsity.add(pzIndex, pzIndex);
     m_pimpl->mixedHessianSparsity.clear();
     m_pimpl->controlHessianSparsity.clear();
 }
@@ -89,13 +86,12 @@ bool NormalVelocityControlConstraints::evaluateConstraint(double, const iDynTree
     m_pimpl->controlVariables = control;
 
     m_pimpl->pointPosition = m_pimpl->stateVariables(m_pimpl->positionPointRange);
-    m_pimpl->pointForce = m_pimpl->stateVariables(m_pimpl->forcePointRange);
     m_pimpl->pointVelocityControl = m_pimpl->controlVariables(m_pimpl->velocityControlRange);
-    double deltaZ = m_pimpl->normalVelocityActivation.eval(m_pimpl->pointForce(2));
+    double deltaZ = m_pimpl->normalVelocityActivation.eval(m_pimpl->pointPosition(2));
 
     iDynTree::iDynTreeEigenVector constraintMap = iDynTree::toEigen(m_pimpl->constraintValues);
 
-    constraintMap(0) = deltaZ * m_pimpl->maximumDerivative - m_pimpl->pointVelocityControl(2);
+    constraintMap(0) = m_pimpl->maximumDerivative - m_pimpl->pointVelocityControl(2);
 
     constraintMap(1) = m_pimpl->pointVelocityControl(2) + deltaZ * m_pimpl->maximumDerivative;
 
@@ -110,15 +106,12 @@ bool NormalVelocityControlConstraints::constraintJacobianWRTState(double, const 
     m_pimpl->controlVariables = control;
 
     m_pimpl->pointPosition = m_pimpl->stateVariables(m_pimpl->positionPointRange);
-    m_pimpl->pointForce = m_pimpl->stateVariables(m_pimpl->forcePointRange);
     m_pimpl->pointVelocityControl = m_pimpl->controlVariables(m_pimpl->velocityControlRange);
-    double deltaZDerivative =  m_pimpl->normalVelocityActivation.evalDerivative(m_pimpl->pointForce(2));
+    double deltaZDerivative =  m_pimpl->normalVelocityActivation.evalDerivative(m_pimpl->pointPosition(2));
 
-    unsigned int forceIndex = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
 
-    m_pimpl->stateJacobianBuffer(0, forceIndex) = deltaZDerivative * m_pimpl->maximumDerivative;
-
-    m_pimpl->stateJacobianBuffer(1, forceIndex) = deltaZDerivative * m_pimpl->maximumDerivative;
+    m_pimpl->stateJacobianBuffer(1, pzIndex) = deltaZDerivative * m_pimpl->maximumDerivative;
 
     jacobian = m_pimpl->stateJacobianBuffer;
 
@@ -170,10 +163,11 @@ bool NormalVelocityControlConstraints::constraintSecondPartialDerivativeWRTState
 {
     m_pimpl->stateVariables = state;
 
-    unsigned int forceIndex = static_cast<unsigned int>(m_pimpl->forcePointRange.offset + 2);
-    double deltaDoubleDerivative = m_pimpl->normalVelocityActivation.evalDoubleDerivative(m_pimpl->pointForce(2));
+    unsigned int pzIndex = static_cast<unsigned int>(m_pimpl->positionPointRange.offset + 2);
+    m_pimpl->pointPosition = m_pimpl->stateVariables(m_pimpl->positionPointRange);
+    double deltaDoubleDerivative = m_pimpl->normalVelocityActivation.evalDoubleDerivative(m_pimpl->pointPosition(2));
 
-    hessian(forceIndex, forceIndex) = (lambda(0) + lambda(1)) * deltaDoubleDerivative * m_pimpl->maximumDerivative;
+    hessian(pzIndex, pzIndex) = (lambda(1)) * deltaDoubleDerivative * m_pimpl->maximumDerivative;
 
     return true;
 }

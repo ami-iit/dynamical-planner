@@ -515,25 +515,31 @@ public:
 
 };
 
-class TimeVaryingWeight : public iDynTree::optimalcontrol::TimeVaryingDouble {
+class TimeVaryingWeight : public iDynTree::optimalcontrol::TimeVaryingVector {
 
     friend class MeanPointReferenceGenerator;
 
     std::shared_ptr<MeanPointReferenceGeneratorData> m_data;
-    double m_increaseFactor;
-    double m_outputWeight;
+    iDynTree::VectorDynSize m_outputWeight, m_increaseFactors;
 
-    TimeVaryingWeight(std::shared_ptr<MeanPointReferenceGeneratorData> data, double increaseFactor) {
+    TimeVaryingWeight(std::shared_ptr<MeanPointReferenceGeneratorData> data, double increaseFactorX,
+                      double increaseFactorY, double increaseFactorZ) {
         m_data = data;
-        m_increaseFactor = increaseFactor;
+        m_increaseFactors.resize(3);
+        m_increaseFactors.zero();
+        m_increaseFactors(0) = increaseFactorX;
+        m_increaseFactors(1) = increaseFactorY;
+        m_increaseFactors(2) = increaseFactorZ;
+
+        m_outputWeight.resize(3);
+        m_outputWeight.zero();
     }
 
 public:
 
     ~TimeVaryingWeight() override;
 
-
-    const double& get(double time, bool& isValid) override {
+    const iDynTree::VectorDynSize& get(double time, bool& isValid) override {
 
         isValid = true;
         std::vector<PositionWithTimeRange>::reverse_iterator activeElement;
@@ -542,12 +548,16 @@ public:
                                      [time](const PositionWithTimeRange& a) -> bool { return a.activeRange.isInRange(time); }); //find the last element in the vector with init time lower than the specified time
 
         if (activeElement == m_data->desiredPositions.rend()) {
-            m_outputWeight = 0.0;
+            m_outputWeight.zero();
             return m_outputWeight;
         }
 
-        double timeWeight = m_increaseFactor * (time - activeElement->activeRange.initTime())/(activeElement->activeRange.endTime() - activeElement->activeRange.initTime()) + 1.0;
-        m_outputWeight = timeWeight*timeWeight;
+        double increaseAmount = (time - activeElement->activeRange.initTime())/(activeElement->activeRange.endTime() - activeElement->activeRange.initTime());
+
+        for (unsigned int i = 0; i < 3; ++i) {
+            m_outputWeight(i) = (m_increaseFactors(i) * increaseAmount + 1.0) * (m_increaseFactors(i) * increaseAmount + 1.0);
+        }
+
         return m_outputWeight;
     }
 };
@@ -596,15 +606,16 @@ class MeanPointReferenceGenerator {
 
 public:
 
-    MeanPointReferenceGenerator(unsigned int desiredPoints, double increaseFactor) {
+    MeanPointReferenceGenerator(unsigned int desiredPoints, double increaseFactorX,
+                                double increaseFactorY, double increaseFactorZ) {
         m_data.reset(new MeanPointReferenceGeneratorData(desiredPoints));
-        m_weightPointer.reset(new TimeVaryingWeight(m_data, increaseFactor));
+        m_weightPointer.reset(new TimeVaryingWeight(m_data, increaseFactorX, increaseFactorY, increaseFactorZ));
         m_positionPointer.reset(new MeanPointReferencePosition(m_data));
     }
 
     ~MeanPointReferenceGenerator() {}
 
-    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight() {
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> timeVaryingWeight() {
         return m_weightPointer;
     }
 
@@ -743,7 +754,7 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 15.0);
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 15.0, 15.0, 15.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
     iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));

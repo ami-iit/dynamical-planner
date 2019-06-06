@@ -60,6 +60,7 @@ typedef struct {
     std::shared_ptr<FeetDistanceCost> feetDistance;
     std::shared_ptr<JointsVelocityForPosturalCost> velocityAsPostural;
     std::vector<std::shared_ptr<ComplementarityCost>> leftComplementarities, rightComplementarities;
+    std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> basePosition;
 } CostsSet;
 
 typedef struct {
@@ -709,13 +710,36 @@ public:
             }
         }
 
+        if (st.basePositionCostActive) {
+            costs.basePosition = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("RootCost",
+                                                                                        stateStructure.getIndexRange("BasePosition"),
+                                                                                        stateStructure.size(),
+                                                                                        iDynTree::IndexRange::InvalidRange(),
+                                                                                        controlStructure.size());
+
+            ok = costs.basePosition->setStateWeight(st.basePositionCostWeights);
+            if (!ok) {
+                return false;
+            }
+
+            ok = costs.basePosition->setStateDesiredTrajectory(st.desiredBasePositionTrajectory);
+            if (!ok) {
+                return false;
+            }
+
+            ok = ocp->addLagrangeTerm(st.basePositionCostOverallWeight, st.basePositionCostActiveRange, costs.basePosition);
+            if (!ok) {
+                return false;
+            }
+        }
+
         return true;
     }
 
     bool setConstraints(const SettingsStruct& st, const std::shared_ptr<iDynTree::optimalcontrol::OptimalControlProblem> ocp) {
 
-        HyperbolicSecant forceActivation, velocityActivationZ;
-        HyperbolicTangent velocityActivationXY;
+        HyperbolicSecant forceActivation;
+        HyperbolicTangent velocityActivationXY, velocityActivationZ;
         forceActivation.setScaling(st.normalForceHyperbolicSecantScaling);
         velocityActivationXY.setScaling(st.planarVelocityHyperbolicTangentScaling);
         velocityActivationZ.setScaling(st.normalVelocityHyperbolicSecantScaling);

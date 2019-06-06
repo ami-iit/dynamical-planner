@@ -32,7 +32,7 @@ class DynamicalPlanner::Private::NormalVelocityControlConstraints : public iDynT
 public:
 
     NormalVelocityControlConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                                     const std::string &footName, size_t contactIndex, const HyperbolicSecant& normalVelocityActivation,
+                                     const std::string &footName, size_t contactIndex, const HyperbolicTangent& lowerBoundMultiplier,
                                      double maximumDerivative);
 
     ~NormalVelocityControlConstraints() override;

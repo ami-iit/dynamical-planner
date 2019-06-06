@@ -24,7 +24,7 @@ public:
     iDynTree::Vector3 distanceFromTarget;
     iDynTree::VectorDynSize stateGradientBuffer, controlGradientBuffer;
 
-    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight;
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> timeVaryingWeight;
 
     iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 };
@@ -51,7 +51,9 @@ MeanPointPositionCost::MeanPointPositionCost(const VariablesLabeller &stateVaria
     m_pimpl->controlGradientBuffer.resize(static_cast<unsigned int>(controlVariables.size()));
     m_pimpl->controlGradientBuffer.zero();
 
-    m_pimpl->timeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(1.0);
+    iDynTree::VectorDynSize dummy(3);
+    iDynTree::toEigen(dummy).setConstant(1.0);
+    m_pimpl->timeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(dummy);
 
     for (size_t i = 0; i < m_pimpl->pointRanges.size(); ++i) {
         for (size_t j = i; j < m_pimpl->pointRanges.size(); ++j) {
@@ -85,7 +87,7 @@ bool MeanPointPositionCost::setDesiredPositionTrajectory(std::shared_ptr<iDynTre
     return true;
 }
 
-void MeanPointPositionCost::setTimeVaryingWeight(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight)
+void MeanPointPositionCost::setTimeVaryingWeight(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> timeVaryingWeight)
 {
     assert(timeVaryingWeight);
 
@@ -112,7 +114,7 @@ bool MeanPointPositionCost::costEvaluation(double time, const iDynTree::VectorDy
         return false;
     }
 
-    const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+    const iDynTree::VectorDynSize& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
 
     if (!isValid) {
         std::cerr << "[ERROR][MeanPointPositionCost::costEvaluation] Unable to retrieve a valid timeVaryingWeight at time " << time
@@ -120,9 +122,12 @@ bool MeanPointPositionCost::costEvaluation(double time, const iDynTree::VectorDy
         return false;
     }
 
+    assert(timeWeight.size() == 3);
+
     iDynTree::toEigen(m_pimpl->distanceFromTarget) -= iDynTree::toEigen(desiredPosition);
 
-    costValue = 0.5 * timeWeight * iDynTree::toEigen(m_pimpl->distanceFromTarget).squaredNorm();
+    costValue = 0.5 * iDynTree::toEigen(m_pimpl->distanceFromTarget).transpose() * iDynTree::toEigen(timeWeight).asDiagonal() *
+        iDynTree::toEigen(m_pimpl->distanceFromTarget);
     return true;
 }
 
@@ -148,7 +153,7 @@ bool MeanPointPositionCost::costFirstPartialDerivativeWRTState(double time, cons
         return false;
     }
 
-    const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+    const iDynTree::VectorDynSize& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
 
     if (!isValid) {
         std::cerr << "[ERROR][MeanPointPositionCost::costEvaluation] Unable to retrieve a valid timeVaryingWeight at time " << time
@@ -156,12 +161,15 @@ bool MeanPointPositionCost::costFirstPartialDerivativeWRTState(double time, cons
         return false;
     }
 
+    assert(timeWeight.size() == 3);
+
     iDynTree::toEigen(m_pimpl->distanceFromTarget) -= iDynTree::toEigen(desiredPosition);
 
     iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
 
     for (auto& point : m_pimpl->pointRanges) {
-        gradientMap.segment<3>(point.offset) = timeWeight *  numberOfPointsInverse * iDynTree::toEigen(m_pimpl->distanceFromTarget);
+        gradientMap.segment<3>(point.offset) = iDynTree::toEigen(timeWeight).asDiagonal() * numberOfPointsInverse *
+            iDynTree::toEigen(m_pimpl->distanceFromTarget);
     }
 
     partialDerivative = m_pimpl->stateGradientBuffer;
@@ -182,7 +190,7 @@ bool MeanPointPositionCost::costSecondPartialDerivativeWRTState(double time, con
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
     bool isValid;
-    const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+    const iDynTree::VectorDynSize& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
 
     if (!isValid) {
         std::cerr << "[ERROR][MeanPointPositionCost::costEvaluation] Unable to retrieve a valid timeVaryingWeight at time " << time
@@ -190,11 +198,12 @@ bool MeanPointPositionCost::costSecondPartialDerivativeWRTState(double time, con
         return false;
     }
 
+    assert(timeWeight.size() == 3);
 
     for (size_t i = 0; i < m_pimpl->pointRanges.size(); ++i) {
         for (size_t j = i; j < m_pimpl->pointRanges.size(); ++j) {
-            hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset).setIdentity();
-            hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset) *= timeWeight * numberOfPointsInverse * numberOfPointsInverse;
+            hessianMap.block<3,3>(m_pimpl->pointRanges[i].offset, m_pimpl->pointRanges[j].offset) =
+                iDynTree::toEigen(timeWeight).asDiagonal() * numberOfPointsInverse * numberOfPointsInverse;
 
             if (i != j) {
                 hessianMap.block<3,3>(m_pimpl->pointRanges[j].offset, m_pimpl->pointRanges[i].offset) =

@@ -140,6 +140,14 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.meanPointPositionCostTimeVaryingWeight, "The meanPointPositionCostTimeVaryingWeight pointer is empty.");
     }
 
+    if (inputSettings.basePositionCostActive) {
+        errors += checkError(inputSettings.basePositionCostWeights.size() != 3,
+                             "The basePositionCostWeights vector is expected to be three dimensional.");
+        errors += checkError(!inputSettings.basePositionCostActiveRange.isValid(),
+                             "The specified time range for the base position cost is not valid.");
+        errors += checkError(!inputSettings.desiredBasePositionTrajectory, "The desiredBasePositionTrajectory is empty.");
+    }
+
     checkError(errors > 0, "The were errors when importing the settings struct. The settings will not be updated.");
 
     if (errors == 0) {
@@ -336,7 +344,9 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //Mean Position of the contact points
     defaults.meanPointPositionCostActive = true;
     defaults.meanPointPositionCostOverallWeight = 1.0;
-    defaults.meanPointPositionCostTimeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(1.0);
+    iDynTree::VectorDynSize dummy(3);
+    iDynTree::toEigen(dummy).setConstant(1.0);
+    defaults.meanPointPositionCostTimeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(dummy);
     defaults.meanPointPositionCostActiveRange = iDynTree::optimalcontrol::TimeRange::AnyTime();
     defaults.desiredMeanPointPosition = std::make_shared<iDynTree::optimalcontrol::TimeInvariantPosition>(iDynTree::Position::Zero());
 
@@ -355,14 +365,28 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.rightFootYawCostOverallWeight = 1.0;
     defaults.desiredRightFootYaw = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.0);
 
+    // Feet Distance
     defaults.feetDistanceCostActive = true;
     defaults.feetDistanceCostOverallWeight = 1.0;
 
+    // Joints velocity for postural
     defaults.jointsVelocityForPosturalCostActive = true;
     defaults.jointsVelocityForPosturalCostOverallWeight = 1.0;
 
+    // Complementarity task
     defaults.complementarityCostActive = true;
     defaults.complementarityCostOverallWeight = 1.0;
+
+    //Base position task
+    defaults.basePositionCostActive = true;
+    defaults.basePositionCostOverallWeight = 1.0;
+    defaults.basePositionCostWeights.resize(3);
+    defaults.basePositionCostActiveRange = iDynTree::optimalcontrol::TimeRange::AnyTime();
+    iDynTree::toEigen(defaults.basePositionCostWeights).setConstant(1.0);
+    iDynTree::VectorDynSize desiredBasePosition(3);
+    desiredBasePosition.zero();
+    desiredBasePosition(2) = 0.5;
+    defaults.desiredBasePositionTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredBasePosition);
 
     return defaults;
 }

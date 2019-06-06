@@ -148,7 +148,7 @@ namespace DynamicalPlanner {
         //Mean Position of the contact points
         bool meanPointPositionCostActive;
         double meanPointPositionCostOverallWeight;
-        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> meanPointPositionCostTimeVaryingWeight;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> meanPointPositionCostTimeVaryingWeight;
         iDynTree::optimalcontrol::TimeRange meanPointPositionCostActiveRange;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> desiredMeanPointPosition;
 
@@ -174,6 +174,13 @@ namespace DynamicalPlanner {
         //Complementarity cost
         bool complementarityCostActive;
         double complementarityCostOverallWeight;
+
+        //Base position cost
+        bool basePositionCostActive;
+        double basePositionCostOverallWeight;
+        iDynTree::optimalcontrol::TimeRange basePositionCostActiveRange;
+        iDynTree::VectorDynSize basePositionCostWeights;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredBasePositionTrajectory;
 
         //Regularizations
         bool useConstraintsHessianRegularization;
