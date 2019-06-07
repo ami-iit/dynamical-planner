@@ -194,7 +194,7 @@ public:
 
         levi::Expression baseTwist = BodyTwistFromQuaternionVelocity(expressionsServer->baseLinearVelocity(),
                                                                      expressionsServer->baseQuaternionVelocity(),
-                                                                     normalizedQuaternion, "baseTwist");
+                                                                     normalizedQuaternion, "baseTwistCMM");
 
         levi::Expression worldToBaseRotation = RotationExpression(normalizedQuaternion);
 

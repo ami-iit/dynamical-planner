@@ -61,6 +61,7 @@ typedef struct {
     std::shared_ptr<JointsVelocityForPosturalCost> velocityAsPostural;
     std::vector<std::shared_ptr<ComplementarityCost>> leftComplementarities, rightComplementarities;
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> basePosition;
+    std::shared_ptr<FrameAngularVelocityCost> frameAngularVelocity;
 } CostsSet;
 
 typedef struct {
@@ -733,6 +734,15 @@ public:
             }
         }
 
+        if (st.frameAngularVelocityCostActive) {
+            costs.frameAngularVelocity =
+                std::make_shared<FrameAngularVelocityCost>(stateStructure, controlStructure, timelySharedKinDyn,
+                                                           expressionsServer, st.robotModel.getFrameIndex(st.frameForOrientationCost));
+            ok = ocProblem->addLagrangeTerm(st.frameAngularVelocityCostOverallWeight, costs.frameAngularVelocity);
+            if (!ok) {
+                return false;
+            }
+        }
         return true;
     }
 

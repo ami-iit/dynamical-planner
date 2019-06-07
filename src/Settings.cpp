@@ -377,6 +377,10 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.complementarityCostActive = true;
     defaults.complementarityCostOverallWeight = 1.0;
 
+    //Frame orientation (this uses the same frame of the frame orientation cost
+    defaults.frameAngularVelocityCostActive = true;
+    defaults.frameAngularVelocityCostOverallWeight = 1.0;
+
     //Base position task
     defaults.basePositionCostActive = true;
     defaults.basePositionCostOverallWeight = 1.0;

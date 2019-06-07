@@ -200,6 +200,11 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
         std::make_shared<JointsVelocityForPosturalCost>(stateVariables, controlVariables, jointsWeight, jointsGain,desired);
     ok = ocProblem.addLagrangeTerm(0.5, jointsVelocityForPosition);
     ASSERT_IS_TRUE(ok);
+
+    std::shared_ptr<FrameAngularVelocityCost> frameAngularVelocityCost =
+        std::make_shared<FrameAngularVelocityCost>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, 22);
+    ok = ocProblem.addLagrangeTerm(0.5, frameAngularVelocityCost);
+    ASSERT_IS_TRUE(ok);
 }
 
 void checkCostsDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,

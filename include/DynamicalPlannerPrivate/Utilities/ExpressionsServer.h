@@ -99,6 +99,8 @@ public:
     levi::Expression absoluteVelocity(const std::string &targetFrame,
                                       const levi::Variable &baseTwist);
 
+    levi::Expression absoluteVelocity(const std::string &targetFrame);
+
     levi::Expression absoluteVelocityJointsDerivative(const std::string &targetFrame,
                                                       const levi::Variable &baseTwist);
 

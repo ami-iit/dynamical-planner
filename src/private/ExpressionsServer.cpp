@@ -465,13 +465,14 @@ levi::Expression ExpressionsServer::relativeVelocity(const std::string &baseFram
 
 levi::Expression ExpressionsServer::absoluteVelocity(const std::string &targetFrame, const levi::Variable &baseTwist)
 {
-    ExpressionMap::iterator element = m_pimpl->absoluteVelocitiesMap.find(targetFrame);
+    std::string key = targetFrame + baseTwist.name();
+    ExpressionMap::iterator element = m_pimpl->absoluteVelocitiesMap.find(key);
 
     if (element != m_pimpl->absoluteVelocitiesMap.end()) {
         return (element->second);
     } else {
         std::pair<std::string, levi::Expression> newElement;
-        newElement.first = targetFrame;
+        newElement.first = key;
         if (targetFrame == getFloatingBase()) {
             newElement.second = baseTwist;
         } else {
@@ -483,9 +484,14 @@ levi::Expression ExpressionsServer::absoluteVelocity(const std::string &targetFr
     }
 }
 
+levi::Expression ExpressionsServer::absoluteVelocity(const std::string &targetFrame)
+{
+    return absoluteVelocity(targetFrame, baseTwist().asVariable());
+}
+
 levi::Expression ExpressionsServer::absoluteVelocityJointsDerivative(const std::string &targetFrame, const levi::Variable &baseTwist)
 {
-    std::string label = targetFrame;
+    std::string label = targetFrame + baseTwist.name();
 
     ExpressionMap::iterator element = m_pimpl->absoluteVelocitiesDerivativeMap.find(label);
 

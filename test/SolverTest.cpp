@@ -464,10 +464,10 @@ int main() {
 
     DynamicalPlanner::RectangularFoot foot;
 
-    double d = 0.08;
-    double l = 0.188;
+    double d = 0.09;
+    double l = 0.19;
 
-    iDynTree::Position topLeftPosition(0.125,  0.04, -0.01);
+    iDynTree::Position topLeftPosition(0.1265,  0.041, -0.01);
     ok = foot.setFoot(l, d, topLeftPosition);
     ASSERT_IS_TRUE(ok);
 
@@ -505,10 +505,11 @@ int main() {
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     for (auto& joint : settingsStruct.jointsVelocityLimits) {
-        joint.first = -3;
-        joint.second = 3;
+        joint.first = -2;
+        joint.second = 2;
     }
 
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).topRows<3>().setConstant(0.1);
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(0.1);
 
@@ -549,6 +550,7 @@ int main() {
     settingsStruct.jointsVelocityForPosturalCostActive = true;
     settingsStruct.complementarityCostActive = false;
     settingsStruct.basePositionCostActive = false;
+    settingsStruct.frameAngularVelocityCostActive = true;
 
 
     settingsStruct.frameCostOverallWeight = 90.0;
@@ -581,6 +583,7 @@ int main() {
     settingsStruct.feetDistanceCostOverallWeight = 1.0;
     settingsStruct.jointsVelocityForPosturalCostOverallWeight = 1e-1;
     settingsStruct.complementarityCostOverallWeight = 1e-3;
+    settingsStruct.frameAngularVelocityCostOverallWeight = 0.1;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -847,7 +850,7 @@ int main() {
     meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
-    for (size_t i = 0; i < 100; ++i) {
+    for (size_t i = 0; i < 200; ++i) {
         double initialTime;
         initialState = mpcStates.back();
         initialTime = initialState.time;

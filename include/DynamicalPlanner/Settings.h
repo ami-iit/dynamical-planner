@@ -182,6 +182,10 @@ namespace DynamicalPlanner {
         iDynTree::VectorDynSize basePositionCostWeights;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredBasePositionTrajectory;
 
+        //Frame orientation (this uses the same frame of the frame orientation cost
+        bool frameAngularVelocityCostActive;
+        double frameAngularVelocityCostOverallWeight;
+
         //Regularizations
         bool useConstraintsHessianRegularization;
         double constraintsHessianRegularization;
