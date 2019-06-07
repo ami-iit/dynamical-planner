@@ -202,7 +202,7 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     ASSERT_IS_TRUE(ok);
 
     std::shared_ptr<FrameAngularVelocityCost> frameAngularVelocityCost =
-        std::make_shared<FrameAngularVelocityCost>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, 22);
+        std::make_shared<FrameAngularVelocityCost>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, 22, 0.01);
     ok = ocProblem.addLagrangeTerm(0.5, frameAngularVelocityCost);
     ASSERT_IS_TRUE(ok);
 }

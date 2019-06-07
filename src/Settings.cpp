@@ -380,6 +380,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     //Frame orientation (this uses the same frame of the frame orientation cost
     defaults.frameAngularVelocityCostActive = true;
     defaults.frameAngularVelocityCostOverallWeight = 1.0;
+    defaults.rotationalPIDgain = 5.0;
 
     //Base position task
     defaults.basePositionCostActive = true;

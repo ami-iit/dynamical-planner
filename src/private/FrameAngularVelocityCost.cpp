@@ -31,9 +31,13 @@ public:
     std::shared_ptr<TimelySharedKinDynComputations> timedSharedKinDyn;
     std::shared_ptr<ExpressionsServer> expressionsServer;
 
+    levi::Mutable desiredRotation = levi::Mutable(3,3,"DesiredRotation");
+
     levi::Expression asExpression, quaternionDerivative, jointsDerivative, baseQuaternionVelocityDerivative, jointsVelocityDerivative,
         quaternionHessian, jointsHessian, quaternionJointsHessian, quaternionQuaternionDerivativeHessian,
         quaternionJointsVelocityHessian, jointsQuaternionDerivativeHessian, jointsJointsVelocityHessian;
+
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredTrajectory;
 
     iDynTree::optimalcontrol::SparsityStructure stateHessianSparsity, controlHessianSparsity, mixedHessianSparsity;
 
@@ -55,12 +59,41 @@ public:
 
     }
 
+    void constructExpressions(double rotationalPIDgain) {
+        std::string desiredFrameName = timedSharedKinDyn->model().getFrameName(desiredFrame);
+
+        levi::Expression frameAngularVelocity = expressionsServer->absoluteVelocity(desiredFrameName).block(3,0,3,1);
+        levi::Expression frameRotation = expressionsServer->baseRotation() *
+            expressionsServer->relativeRotation(timedSharedKinDyn->getFloatingBase(), desiredFrameName);
+
+        levi::Expression rotationErrorExpression = frameRotation * desiredRotation.transpose();
+
+        levi::Expression skewError = 0.5 * (rotationErrorExpression - rotationErrorExpression.transpose());
+
+        levi::Expression velocityError = frameAngularVelocity + rotationalPIDgain * skewError.vee();
+
+        asExpression = 0.5 * velocityError.transpose() * velocityError;
+
+        quaternionDerivative = (velocityError.transpose() * velocityError.getColumnDerivative(0, expressionsServer->baseQuaternion())).transpose();
+        jointsDerivative = (velocityError.transpose() * velocityError.getColumnDerivative(0, expressionsServer->jointsPosition())).transpose();
+        baseQuaternionVelocityDerivative = (velocityError.transpose() * velocityError.getColumnDerivative(0, expressionsServer->baseQuaternionVelocity())).transpose();
+        jointsVelocityDerivative = (velocityError.transpose() * velocityError.getColumnDerivative(0, expressionsServer->jointsVelocity())).transpose();
+
+        quaternionHessian = quaternionDerivative.getColumnDerivative(0, expressionsServer->baseQuaternion());
+        jointsHessian = jointsDerivative.getColumnDerivative(0, expressionsServer->jointsPosition());
+        quaternionJointsHessian = quaternionDerivative.getColumnDerivative(0, expressionsServer->jointsPosition());
+        quaternionQuaternionDerivativeHessian = quaternionDerivative.getColumnDerivative(0, expressionsServer->baseQuaternionVelocity());
+        quaternionJointsVelocityHessian = quaternionDerivative.getColumnDerivative(0, expressionsServer->jointsVelocity());
+        jointsQuaternionDerivativeHessian = jointsDerivative.getColumnDerivative(0, expressionsServer->baseQuaternionVelocity());
+        jointsJointsVelocityHessian = jointsDerivative.getColumnDerivative(0, expressionsServer->jointsVelocity());
+    }
+
 };
 
 FrameAngularVelocityCost::FrameAngularVelocityCost(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables,
                                                    std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                                                    std::shared_ptr<ExpressionsServer> expressionsServer,
-                                                   const iDynTree::FrameIndex &desiredFrame)
+                                                   const iDynTree::FrameIndex &desiredFrame, double rotationalPIDgain)
     : iDynTree::optimalcontrol::Cost ("FrameAngularVelocity")
       , m_pimpl(std::make_unique<Implementation>())
 {
@@ -98,23 +131,9 @@ FrameAngularVelocityCost::FrameAngularVelocityCost(const VariablesLabeller &stat
 
     m_pimpl->expressionsServer = expressionsServer;
 
-    std::string desiredFrameName = timelySharedKinDyn->model().getFrameName(desiredFrame);
+    m_pimpl->desiredTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantRotation>(iDynTree::Rotation::Identity());
 
-    levi::Expression frameAngularVelocity = expressionsServer->absoluteVelocity(desiredFrameName).block(3,0,3,1);
-    m_pimpl->asExpression = 0.5 * frameAngularVelocity.transpose() * frameAngularVelocity;
-
-    m_pimpl->quaternionDerivative = (frameAngularVelocity.transpose() * frameAngularVelocity.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion())).transpose();
-    m_pimpl->jointsDerivative = (frameAngularVelocity.transpose() * frameAngularVelocity.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition())).transpose();
-    m_pimpl->baseQuaternionVelocityDerivative = (frameAngularVelocity.transpose() * frameAngularVelocity.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternionVelocity())).transpose();
-    m_pimpl->jointsVelocityDerivative = (frameAngularVelocity.transpose() * frameAngularVelocity.getColumnDerivative(0, m_pimpl->expressionsServer->jointsVelocity())).transpose();
-
-    m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
-    m_pimpl->jointsHessian = m_pimpl->jointsDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
-    m_pimpl->quaternionJointsHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
-    m_pimpl->quaternionQuaternionDerivativeHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternionVelocity());
-    m_pimpl->quaternionJointsVelocityHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsVelocity());
-    m_pimpl->jointsQuaternionDerivativeHessian = m_pimpl->jointsDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternionVelocity());
-    m_pimpl->jointsJointsVelocityHessian = m_pimpl->jointsDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsVelocity());
+    m_pimpl->constructExpressions(rotationalPIDgain);
 
     m_pimpl->stateHessianSparsity.addDenseBlock(m_pimpl->baseQuaternionRange, m_pimpl->baseQuaternionRange);
     m_pimpl->stateHessianSparsity.addDenseBlock(m_pimpl->baseQuaternionRange, m_pimpl->jointsPositionRange);
@@ -146,6 +165,14 @@ FrameAngularVelocityCost::~FrameAngularVelocityCost()
     m_pimpl->jointsJointsVelocityHessian.clearDerivativesCache();
 }
 
+bool FrameAngularVelocityCost::setDesiredRotationTrajectory(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredRotationTrajectory)
+{
+    if (!desiredRotationTrajectory)
+        return false;
+    m_pimpl->desiredTrajectory = desiredRotationTrajectory;
+    return true;
+}
+
 bool FrameAngularVelocityCost::costEvaluation(double time, const iDynTree::VectorDynSize &state,
                                           const iDynTree::VectorDynSize &control, double &costValue)
 {
@@ -155,6 +182,17 @@ bool FrameAngularVelocityCost::costEvaluation(double time, const iDynTree::Vecto
 
     m_pimpl->updateRobotState();
     m_pimpl->expressionsServer->updateRobotState(time);
+
+    bool isValid = false;
+    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid rotation at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
+    m_pimpl->desiredRotation = iDynTree::toEigen(desiredRotation);
 
     costValue = m_pimpl->asExpression.evaluate()(0);
 
@@ -171,6 +209,17 @@ bool FrameAngularVelocityCost::costFirstPartialDerivativeWRTState(double time, c
 
     m_pimpl->updateRobotState();
     m_pimpl->expressionsServer->updateRobotState(time);
+
+    bool isValid = false;
+    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid rotation at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
+    m_pimpl->desiredRotation = iDynTree::toEigen(desiredRotation);
 
     iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
 
@@ -194,6 +243,17 @@ bool FrameAngularVelocityCost::costFirstPartialDerivativeWRTControl(double time,
     m_pimpl->updateRobotState();
     m_pimpl->expressionsServer->updateRobotState(time);
 
+    bool isValid = false;
+    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid rotation at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
+    m_pimpl->desiredRotation = iDynTree::toEigen(desiredRotation);
+
     iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->controlGradientBuffer);
 
     gradientMap.segment<4>(m_pimpl->baseQuaternionDerivativeRange.offset) = m_pimpl->baseQuaternionVelocityDerivative.evaluate();
@@ -216,6 +276,17 @@ bool FrameAngularVelocityCost::costSecondPartialDerivativeWRTState(double time, 
 
     m_pimpl->updateRobotState();
     m_pimpl->expressionsServer->updateRobotState(time);
+
+    bool isValid = false;
+    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid rotation at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
+    m_pimpl->desiredRotation = iDynTree::toEigen(desiredRotation);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
@@ -251,6 +322,17 @@ bool FrameAngularVelocityCost::costSecondPartialDerivativeWRTStateControl(double
 
     m_pimpl->updateRobotState();
     m_pimpl->expressionsServer->updateRobotState(time);
+
+    bool isValid = false;
+    const iDynTree::Rotation& desiredRotation = m_pimpl->desiredTrajectory->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid rotation at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
+    m_pimpl->desiredRotation = iDynTree::toEigen(desiredRotation);
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 

@@ -185,6 +185,7 @@ namespace DynamicalPlanner {
         //Frame orientation (this uses the same frame of the frame orientation cost
         bool frameAngularVelocityCostActive;
         double frameAngularVelocityCostOverallWeight;
+        double rotationalPIDgain;
 
         //Regularizations
         bool useConstraintsHessianRegularization;

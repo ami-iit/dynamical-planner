@@ -737,7 +737,9 @@ public:
         if (st.frameAngularVelocityCostActive) {
             costs.frameAngularVelocity =
                 std::make_shared<FrameAngularVelocityCost>(stateStructure, controlStructure, timelySharedKinDyn,
-                                                           expressionsServer, st.robotModel.getFrameIndex(st.frameForOrientationCost));
+                                                           expressionsServer, st.robotModel.getFrameIndex(st.frameForOrientationCost),
+                                                           st.rotationalPIDgain);
+            costs.frameAngularVelocity->setDesiredRotationTrajectory(st.desiredRotationTrajectory);
             ok = ocProblem->addLagrangeTerm(st.frameAngularVelocityCostOverallWeight, costs.frameAngularVelocity);
             if (!ok) {
                 return false;

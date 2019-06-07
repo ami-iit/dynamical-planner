@@ -47,7 +47,7 @@ endif()
 
 find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(levi REQUIRED)
+find_package(levi 0.0.101 REQUIRED)
 find_package(matlogger2 REQUIRED)
 find_package(FFmpeg REQUIRED)
 

@@ -33,9 +33,11 @@ public:
     FrameAngularVelocityCost(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
                              std::shared_ptr<TimelySharedKinDynComputations> timelySharedKinDyn,
                              std::shared_ptr<ExpressionsServer> expressionsServer,
-                             const iDynTree::FrameIndex& desiredFrame);
+                             const iDynTree::FrameIndex& desiredFrame, double rotationalPIDgain);
 
     ~FrameAngularVelocityCost() override;
+
+    bool setDesiredRotationTrajectory(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredRotationTrajectory);
 
     virtual bool costEvaluation(double time,
                                 const iDynTree::VectorDynSize& state,

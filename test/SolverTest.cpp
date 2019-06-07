@@ -511,7 +511,7 @@ int main() {
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).topRows<3>().setConstant(0.1);
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
-    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(0.1);
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(1.0);
 
 //    iDynTree::toEigen(settingsStruct.jointsVelocityCostWeights).topRows<3>().setConstant(100.0);
 
@@ -583,7 +583,8 @@ int main() {
     settingsStruct.feetDistanceCostOverallWeight = 1.0;
     settingsStruct.jointsVelocityForPosturalCostOverallWeight = 1e-1;
     settingsStruct.complementarityCostOverallWeight = 1e-3;
-    settingsStruct.frameAngularVelocityCostOverallWeight = 0.1;
+    settingsStruct.frameAngularVelocityCostOverallWeight = 0.1;//1.0;
+    settingsStruct.rotationalPIDgain = 0.0;//10.0;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -850,7 +851,7 @@ int main() {
     meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
-    for (size_t i = 0; i < 200; ++i) {
+    for (size_t i = 0; i < 100; ++i) {
         double initialTime;
         initialState = mpcStates.back();
         initialTime = initialState.time;
