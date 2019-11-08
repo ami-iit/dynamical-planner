@@ -64,6 +64,7 @@ list(APPEND DPLANNER_PRIVATE_HEADERS ${CONSTRAINTS_HEADERS_DIR}/DynamicalConstra
                                      ${CONSTRAINTS_HEADERS_DIR}/NormalVelocityControlConstraints.h
                                      ${CONSTRAINTS_HEADERS_DIR}/PlanarVelocityControlConstraints.h
                                      ${CONSTRAINTS_HEADERS_DIR}/DynamicalComplementarityConstraint.h
+                                     ${CONSTRAINTS_HEADERS_DIR}/ClassicalComplementarityConstraint.h
                                      include/DynamicalPlannerPrivate/Constraints.h)
 
 set(COSTS_HEADERS_DIR include/DynamicalPlannerPrivate/Costs)
@@ -149,7 +150,8 @@ set(DPLANNER_PRIVATE_SOURCES src/private/VariablesLabeller.cpp
                              src/private/FeetDistanceCost.cpp
                              src/private/JointsVelocityForPosturalCost.cpp
                              src/private/ComplementarityCost.cpp
-                             src/private/FrameAngularVelocityCost.cpp)
+                             src/private/FrameAngularVelocityCost.cpp
+                             src/private/ClassicalComplementarityConstraint.cpp)
 
 
 add_library(DynamicalPlannerPrivate ${DPLANNER_PRIVATE_HEADERS} ${DPLANNER_PRIVATE_SOURCES})

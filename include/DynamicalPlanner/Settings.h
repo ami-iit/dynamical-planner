@@ -17,6 +17,14 @@
 #include <vector>
 
 namespace DynamicalPlanner {
+
+    enum class ComplementarityType {
+        HyperbolicSecantControl,
+        Dynamical,
+        Classical,
+        HyperbolicTangentInDynamics
+    };
+
     class Solver;
     class Settings;
 
@@ -40,11 +48,18 @@ namespace DynamicalPlanner {
         std::string leftFrameName;
         std::string rightFrameName;
 
-        //ContactForceControlConstraints
+
+        //Complementarity Constraints
+        ComplementarityType complementarity;
+        //  - HyperbolicSecantControl
         iDynTree::Vector3 forceMaximumDerivative;
         double normalForceDissipationRatio;
         double normalForceHyperbolicSecantScaling;
-        bool contactForceControlConstraintsAsSeparateConstraints;
+        // - Dynamical Complementarity Constraint
+        double complementarityDissipation;
+        // - Classical Complementarity Constraint
+        double classicalComplementarityTolerance;
+
 
         //ContactFrictionConstraint
         double frictionCoefficient;
@@ -55,9 +70,7 @@ namespace DynamicalPlanner {
         double normalVelocityHyperbolicSecantScaling;
         bool contactVelocityControlConstraintsAsSeparateConstraints;
 
-        //Dynamical Complementarity Constraint
-        double complementarityDissipation;
-        bool useDynamicalComplementarityConstraint;
+
 
         //Feet lateral distance constraint
         unsigned int indexOfLateralDirection;

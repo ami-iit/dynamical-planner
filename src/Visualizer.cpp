@@ -30,8 +30,8 @@ Visualizer::Visualizer()
     : m_pimpl(std::make_unique<VisualizerImplementation>())
 {
     iDynTree::VisualizerOptions options;
-    options.winWidth = 480;
-    options.winHeight = 320;
+    options.winWidth = 800;
+    options.winHeight = 600;
     m_pimpl->viz.init(options);
     setCameraPosition(iDynTree::Position(1.0, 0.0, 0.5));
     setCameraTarget(iDynTree::Position(0.4, 0.0, 0.5));

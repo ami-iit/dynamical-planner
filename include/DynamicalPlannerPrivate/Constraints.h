@@ -17,5 +17,6 @@
 #include <DynamicalPlannerPrivate/Constraints/FeetLateralDistanceConstraint.h>
 #include <DynamicalPlannerPrivate/Constraints/QuaternionNormConstraint.h>
 #include <DynamicalPlannerPrivate/Constraints/DynamicalComplementarityConstraint.h>
+#include <DynamicalPlannerPrivate/Constraints/ClassicalComplementarityConstraint.h>
 
 #endif // DPLANNER_CONSTRAINTS_H

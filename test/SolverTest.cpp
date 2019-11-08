@@ -645,8 +645,9 @@ int main() {
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
 
-    settingsStruct.useDynamicalComplementarityConstraint = false;
+    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Classical;
     settingsStruct.complementarityDissipation = 2.0;
+    settingsStruct.classicalComplementarityTolerance = 0.1;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 

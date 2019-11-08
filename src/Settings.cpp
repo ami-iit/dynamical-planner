@@ -148,6 +148,11 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.desiredBasePositionTrajectory, "The desiredBasePositionTrajectory is empty.");
     }
 
+    if (inputSettings.complementarity == DynamicalPlanner::ComplementarityType::Classical) {
+        errors += checkError(inputSettings.classicalComplementarityTolerance < 0,
+                              "The classicalComplementarityTolerance has to be non-negative.");
+    }
+
     checkError(errors > 0, "The were errors when importing the settings struct. The settings will not be updated.");
 
     if (errors == 0) {
@@ -204,11 +209,13 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::toEigen(defaults.forceMaximumDerivative).setConstant(10.0);
     defaults.normalForceDissipationRatio = 10.0;
     defaults.normalForceHyperbolicSecantScaling = 300.0;
-    defaults.contactForceControlConstraintsAsSeparateConstraints = true;
+    defaults.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantControl;
 
     //Dynamical Complementarity Constraint
     defaults.complementarityDissipation = 10.0;
-    defaults.useDynamicalComplementarityConstraint = false;
+
+    //Classical Complementarity Constraint
+    defaults.classicalComplementarityTolerance = 0.1;
 
     //ContactFrictionConstraint
     defaults.frictionCoefficient = 0.3;
