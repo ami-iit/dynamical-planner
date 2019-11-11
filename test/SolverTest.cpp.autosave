@@ -532,7 +532,7 @@ int main() {
     settingsStruct.jointsLimits[4].first = iDynTree::deg2rad(+10.0); //l_shoulder_roll
     settingsStruct.jointsLimits[8].first = iDynTree::deg2rad(+10.0); // r_shoulder_roll
     settingsStruct.jointsLimits[12].first = iDynTree::deg2rad(-5.0); //l_hip_roll
-    settingsStruct.jointsLimits[18].first = iDynTree::deg2rad(-5.0); // r_shoulder_roll
+    settingsStruct.jointsLimits[18].first = iDynTree::deg2rad(-5.0); // r_hip_roll
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;

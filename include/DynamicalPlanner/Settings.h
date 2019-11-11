@@ -19,10 +19,10 @@
 namespace DynamicalPlanner {
 
     enum class ComplementarityType {
-        HyperbolicSecantControl,
+        HyperbolicSecantInequality,
         Dynamical,
         Classical,
-        HyperbolicTangentInDynamics
+        HyperbolicSecantInDynamics
     };
 
     class Solver;
@@ -57,6 +57,7 @@ namespace DynamicalPlanner {
         double normalForceHyperbolicSecantScaling;
         // - Dynamical Complementarity Constraint
         double complementarityDissipation;
+        double dynamicComplementarityUpperBound;
         // - Classical Complementarity Constraint
         double classicalComplementarityTolerance;
 

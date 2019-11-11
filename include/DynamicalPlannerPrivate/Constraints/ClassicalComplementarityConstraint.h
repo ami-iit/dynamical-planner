@@ -4,8 +4,9 @@
  * CopyPolicy: Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
  *
  */
-#ifndef DPLANNER_DYNAMICALCOMPLEMENTARITYCONSTRAINT_H
-#define DPLANNER_DYNAMICALCOMPLEMENTARITYCONSTRAINT_H
+#ifndef DPLANNER_CLASSICALCOMPLEMENTARITYCONSTRAINT_H
+#define DPLANNER_CLASSICALCOMPLEMENTARITYCONSTRAINT_H
+
 
 #include <iDynTree/Constraint.h>
 #include <iDynTree/SparsityStructure.h>
@@ -15,21 +16,21 @@
 
 namespace DynamicalPlanner {
     namespace Private {
-        class DynamicalComplementarityConstraint;
+        class ClassicalComplementarityConstraint;
     }
 }
 
-class DynamicalPlanner::Private::DynamicalComplementarityConstraint : public iDynTree::optimalcontrol::Constraint {
+class DynamicalPlanner::Private::ClassicalComplementarityConstraint : public iDynTree::optimalcontrol::Constraint {
 
     class Implementation;
     std::unique_ptr<Implementation> m_pimpl;
 
 public:
 
-    DynamicalComplementarityConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
-                                       const std::string &footName, size_t contactIndex, double dissipationGain, double upperBound);
+    ClassicalComplementarityConstraint(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
+                                       const std::string &footName, size_t contactIndex, double tolerance);
 
-    ~DynamicalComplementarityConstraint() override;
+    ~ClassicalComplementarityConstraint() override;
 
     virtual bool evaluateConstraint(double,
                                     const iDynTree::VectorDynSize& state,
@@ -41,9 +42,7 @@ public:
                                             const iDynTree::VectorDynSize& control,
                                             iDynTree::MatrixDynSize& jacobian) override;
 
-    virtual bool constraintJacobianWRTControl(double,
-                                              const iDynTree::VectorDynSize& state,
-                                              const iDynTree::VectorDynSize& control,
+    virtual bool constraintJacobianWRTControl(double, const iDynTree::VectorDynSize&, const iDynTree::VectorDynSize&,
                                               iDynTree::MatrixDynSize& jacobian) override;
 
 
@@ -69,9 +68,7 @@ public:
 
     virtual bool constraintSecondPartialDerivativeWRTStateControl(double time,
                                                                   const iDynTree::VectorDynSize& state,
-                                                                  const iDynTree::VectorDynSize& control,
-                                                                  const iDynTree::VectorDynSize& lambda,
-                                                                  iDynTree::MatrixDynSize& hessian) override;
+                                                                  const iDynTree::VectorDynSize& control, const iDynTree::VectorDynSize&, iDynTree::MatrixDynSize&) override;
 
     virtual bool constraintSecondPartialDerivativeWRTStateSparsity(iDynTree::optimalcontrol::SparsityStructure& stateSparsity) override;
 
@@ -83,4 +80,5 @@ public:
 
 
 
-#endif // DPLANNER_DYNAMICALCOMPLEMENTARITYCONSTRAINT_H
+
+#endif // DPLANNER_CLASSICALCOMPLEMENTARITYCONSTRAINT_H

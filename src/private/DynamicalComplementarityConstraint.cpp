@@ -31,7 +31,7 @@ public:
 
 
 
-DynamicalComplementarityConstraint::DynamicalComplementarityConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const std::string &footName, size_t contactIndex, double dissipationGain)
+DynamicalComplementarityConstraint::DynamicalComplementarityConstraint(const VariablesLabeller &stateVariables, const VariablesLabeller &controlVariables, const std::string &footName, size_t contactIndex, double dissipationGain, double upperBound)
     : iDynTree::optimalcontrol::Constraint (1, "DynamicalComplementarity" + footName + std::to_string(contactIndex))
     , m_pimpl(std::make_unique<Implementation>())
 {
@@ -62,10 +62,10 @@ DynamicalComplementarityConstraint::DynamicalComplementarityConstraint(const Var
 
     m_pimpl->constraintValues.resize(1);
 
-    m_isLowerBounded = true;
+    m_isLowerBounded = false;
     m_isUpperBounded = true;
     m_lowerBound.zero();
-    m_upperBound.zero();
+    m_upperBound(0) = upperBound;
 
     m_pimpl->stateJacobianSparsity.clear();
     m_pimpl->controlJacobianSparsity.clear();

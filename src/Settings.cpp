@@ -148,6 +148,13 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.desiredBasePositionTrajectory, "The desiredBasePositionTrajectory is empty.");
     }
 
+    if (inputSettings.complementarity == DynamicalPlanner::ComplementarityType::Dynamical) {
+        errors += checkError(inputSettings.complementarityDissipation < 0,
+                             "The complementarityDissipation has to be non-negative.");
+        errors += checkError(inputSettings.dynamicComplementarityUpperBound < 0,
+                             "The dynamicComplementarityUpperBound has to be non-negative.");
+    }
+
     if (inputSettings.complementarity == DynamicalPlanner::ComplementarityType::Classical) {
         errors += checkError(inputSettings.classicalComplementarityTolerance < 0,
                               "The classicalComplementarityTolerance has to be non-negative.");
@@ -209,10 +216,11 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::toEigen(defaults.forceMaximumDerivative).setConstant(10.0);
     defaults.normalForceDissipationRatio = 10.0;
     defaults.normalForceHyperbolicSecantScaling = 300.0;
-    defaults.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantControl;
+    defaults.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
 
     //Dynamical Complementarity Constraint
     defaults.complementarityDissipation = 10.0;
+    defaults.dynamicComplementarityUpperBound = 0.01;
 
     //Classical Complementarity Constraint
     defaults.classicalComplementarityTolerance = 0.1;

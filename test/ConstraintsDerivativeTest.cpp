@@ -119,6 +119,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     double forceMaximumDerivative = 10.0;
     double forceDissipationRatios = 1.0;
     double complementarityDissipation = 10.0;
+    double dynamicalComplementarityUpperBound = 0.01;
     double complementarityTolerance = 0.001;
     iDynTree::toEigen(velocityMaximumDerivative).setConstant(10.0);
 
@@ -191,7 +192,8 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ASSERT_IS_TRUE(ok);
 
         constraints.leftComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateVariables, controlVariables,
-                                                                                                  "Left", i, complementarityDissipation);
+                                                                                                  "Left", i, complementarityDissipation,
+                                                                                                  dynamicalComplementarityUpperBound);
         ok = ocProblem.addConstraint(constraints.leftComplementarity[i]);
         ASSERT_IS_TRUE(ok);
 
@@ -233,7 +235,8 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ASSERT_IS_TRUE(ok);
 
         constraints.rightComplementarity[i] = std::make_shared<DynamicalComplementarityConstraint>(stateVariables, controlVariables,
-                                                                                                  "Right", i, complementarityDissipation);
+                                                                                                  "Right", i, complementarityDissipation,
+                                                                                                   dynamicalComplementarityUpperBound);
         ok = ocProblem.addConstraint(constraints.rightComplementarity[i]);
         ASSERT_IS_TRUE(ok);
 
