@@ -42,6 +42,7 @@ typedef struct {
     std::vector<std::shared_ptr<ContactPositionConsistencyConstraint>> leftContactsPosition, rightContactsPosition;
     std::shared_ptr<FeetLateralDistanceConstraint> feetLateralDistance;
     std::shared_ptr<QuaternionNormConstraint> quaternionNorm;
+    std::shared_ptr<FeetRelativeHeightConstraint> feetRelativeHeight;
 } ConstraintSet;
 
 typedef struct {
@@ -811,6 +812,13 @@ public:
         constraints.quaternionNorm = std::make_shared<QuaternionNormConstraint>(stateStructure, controlStructure);
         constraints.quaternionNorm->setEqualityTolerance(st.quaternionModulusConstraintTolerance);
         ok = ocp->addConstraint(constraints.quaternionNorm);
+        if (!ok) {
+            return false;
+        }
+
+        constraints.feetRelativeHeight = std::make_shared<FeetRelativeHeightConstraint>(stateStructure, controlStructure,
+                                                                                        st.feetMaximumRelativeHeight);
+        ok = ocp->addConstraint(constraints.feetRelativeHeight);
         if (!ok) {
             return false;
         }

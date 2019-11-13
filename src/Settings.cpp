@@ -87,6 +87,8 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
                              "The lower velocity limit of joint " + std::to_string(j) + " is bigger than its upper limit.");
     }
 
+    errors += checkError(inputSettings.feetMaximumRelativeHeight < 0, "The feetMaximumRelativeHeight has to be non-negative.");
+
     if (inputSettings.constrainTargetCoMPosition) {
         errors += checkError(!inputSettings.constrainTargetCoMPositionRange.isValid(), "The constrainTargetCoMPositionRange is not valid.");
         errors += checkError(!inputSettings.targetCoMPositionTolerance, "The targetCoMPositionTolerance pointer is empty.");
@@ -239,6 +241,9 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.minimumFeetDistance = 0.1;
     defaults.referenceFrameNameForFeetDistance = "r_sole";
     defaults.otherFrameNameForFeetDistance = "l_sole";
+
+    //Feet relative height constraint
+    defaults.feetMaximumRelativeHeight = 0.04;
 
     //Equality constraints tolerances
     defaults.comPositionConstraintTolerance = 1e-3;

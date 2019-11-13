@@ -38,6 +38,7 @@ typedef struct {
     std::shared_ptr<QuaternionNormConstraint> quaternionNorm;
     std::vector<std::shared_ptr<DynamicalComplementarityConstraint>> leftComplementarity, rightComplementarity;
     std::vector<std::shared_ptr<ClassicalComplementarityConstraint>> leftClassicalComplementarity, rightClassicalComplementarity;
+    std::shared_ptr<FeetRelativeHeightConstraint> relativeHeight;
 } ConstraintSet;
 
 void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, const std::string& footName, size_t numberOfPoints) {
@@ -121,6 +122,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     double complementarityDissipation = 10.0;
     double dynamicalComplementarityUpperBound = 0.01;
     double complementarityTolerance = 0.001;
+    double relativeHeight = 0.03;
     iDynTree::toEigen(velocityMaximumDerivative).setConstant(10.0);
 
     HyperbolicSecant forceActivation, velocityActivationZ;
@@ -251,18 +253,22 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     ok = ocProblem.addConstraint(constraints.centroidalMomentum);
     ASSERT_IS_TRUE(ok);
 
-//    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer);
-//    ok = ocProblem.addConstraint(constraints.comPosition);
-//    ASSERT_IS_TRUE(ok);
+    constraints.comPosition = std::make_shared<CoMPositionConstraint>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer);
+    ok = ocProblem.addConstraint(constraints.comPosition);
+    ASSERT_IS_TRUE(ok);
 
-//    constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, timelySharedKinDyn,
-//                                                                                      expressionsServer, 1, rightFrame, leftFrame);
-//    ok = ocProblem.addConstraint(constraints.feetLateralDistance);
-//    ASSERT_IS_TRUE(ok);
+    constraints.feetLateralDistance = std::make_shared<FeetLateralDistanceConstraint>(stateVariables, controlVariables, timelySharedKinDyn,
+                                                                                      expressionsServer, 1, rightFrame, leftFrame);
+    ok = ocProblem.addConstraint(constraints.feetLateralDistance);
+    ASSERT_IS_TRUE(ok);
 
-//    constraints.quaternionNorm = std::make_shared<QuaternionNormConstraint>(stateVariables, controlVariables);
-//    ok = ocProblem.addConstraint(constraints.quaternionNorm);
-//    ASSERT_IS_TRUE(ok);
+    constraints.quaternionNorm = std::make_shared<QuaternionNormConstraint>(stateVariables, controlVariables);
+    ok = ocProblem.addConstraint(constraints.quaternionNorm);
+    ASSERT_IS_TRUE(ok);
+
+    constraints.relativeHeight = std::make_shared<FeetRelativeHeightConstraint>(stateVariables, controlVariables, relativeHeight);
+    ok = ocProblem.addConstraint(constraints.relativeHeight);
+    ASSERT_IS_TRUE(ok);
 }
 
 void checkDynamicalConstraintDerivative(double time, const iDynTree::VectorDynSize& originalStateVector, const iDynTree::VectorDynSize& originalControlVector,

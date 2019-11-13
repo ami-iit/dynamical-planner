@@ -18,5 +18,6 @@
 #include <DynamicalPlannerPrivate/Constraints/QuaternionNormConstraint.h>
 #include <DynamicalPlannerPrivate/Constraints/DynamicalComplementarityConstraint.h>
 #include <DynamicalPlannerPrivate/Constraints/ClassicalComplementarityConstraint.h>
+#include <DynamicalPlannerPrivate/Constraints/FeetRelativeHeightConstraint.h>
 
 #endif // DPLANNER_CONSTRAINTS_H

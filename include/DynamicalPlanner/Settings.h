@@ -71,13 +71,14 @@ namespace DynamicalPlanner {
         double normalVelocityHyperbolicSecantScaling;
         bool contactVelocityControlConstraintsAsSeparateConstraints;
 
-
-
         //Feet lateral distance constraint
         unsigned int indexOfLateralDirection;
         double minimumFeetDistance;
         std::string referenceFrameNameForFeetDistance;
         std::string otherFrameNameForFeetDistance;
+
+        //Feet relative height constraint
+        double feetMaximumRelativeHeight;
 
         //Equality constraints tolerances
         double comPositionConstraintTolerance;

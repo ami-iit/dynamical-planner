@@ -531,8 +531,8 @@ int main() {
 
     settingsStruct.jointsLimits[4].first = iDynTree::deg2rad(+10.0); //l_shoulder_roll
     settingsStruct.jointsLimits[8].first = iDynTree::deg2rad(+10.0); // r_shoulder_roll
-    settingsStruct.jointsLimits[12].first = iDynTree::deg2rad(-5.0); //l_hip_roll
-    settingsStruct.jointsLimits[18].first = iDynTree::deg2rad(-5.0); // r_shoulder_roll
+//    settingsStruct.jointsLimits[12].first = iDynTree::deg2rad(-5.0); //l_hip_roll
+//    settingsStruct.jointsLimits[18].first = iDynTree::deg2rad(-5.0); // r_hip_roll
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
@@ -559,7 +559,7 @@ int main() {
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.forceMeanCostOverallWeight = 1e-1;
+    settingsStruct.forceMeanCostOverallWeight = 1e-2;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
     settingsStruct.pointAccelerationCostOverallWeight = 5.0;
     settingsStruct.pointAccelerationWeights(0) = 1.0;
@@ -620,8 +620,6 @@ int main() {
     meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
     meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
 
-    settingsStruct.desiredSwingHeight = 0.02;
-
     settingsStruct.constrainTargetCoMPosition = false;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
     settingsStruct.constrainTargetCoMPositionRange.setTimeInterval(settingsStruct.horizon * 0.6, settingsStruct.horizon);
@@ -632,8 +630,8 @@ int main() {
     settingsStruct.pointPositionConstraintTolerance = 1e-4*0;
 
     iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
-    settingsStruct.forceMaximumDerivative(0) = 10.0;
-    settingsStruct.forceMaximumDerivative(1) = 10.0;
+//    settingsStruct.forceMaximumDerivative(0) = 10.0;
+//    settingsStruct.forceMaximumDerivative(1) = 10.0;
 
     settingsStruct.normalForceDissipationRatio = 200.0;
 //    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
@@ -642,6 +640,9 @@ int main() {
     settingsStruct.frictionCoefficient = 0.3;
 
     settingsStruct.minimumFeetDistance = 0.10;
+    settingsStruct.feetMaximumRelativeHeight = 0.04;
+    settingsStruct.desiredSwingHeight = 0.02;
+
 
     //ContactVelocityControlConstraints
     iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(5.0);
@@ -650,7 +651,7 @@ int main() {
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
 
-    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
+    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
     settingsStruct.complementarityDissipation = 1.0;
     settingsStruct.classicalComplementarityTolerance = 0.1;
 
