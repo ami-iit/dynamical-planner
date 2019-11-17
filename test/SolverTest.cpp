@@ -633,9 +633,6 @@ int main() {
 //    settingsStruct.forceMaximumDerivative(0) = 10.0;
 //    settingsStruct.forceMaximumDerivative(1) = 10.0;
 
-    settingsStruct.normalForceDissipationRatio = 200.0;
-//    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
-
     //ContactFrictionConstraint
     settingsStruct.frictionCoefficient = 0.3;
 
@@ -651,9 +648,12 @@ int main() {
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
 
-    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
-    settingsStruct.complementarityDissipation = 1.0;
-    settingsStruct.classicalComplementarityTolerance = 0.1;
+    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
+    settingsStruct.normalForceDissipationRatio = 300.0;
+    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
+    settingsStruct.complementarityDissipation = 20.0;
+    settingsStruct.dynamicComplementarityUpperBound = 0.2;
+    settingsStruct.classicalComplementarityTolerance = 0.02;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 
