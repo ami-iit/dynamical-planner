@@ -211,6 +211,28 @@ double minimumPointForceOnForwardFoot(const DynamicalPlanner::State &state) {
     }
 }
 
+double maximumComplementarity(const DynamicalPlanner::State &state) {
+
+    double maximum = 0;
+    double complementarity;
+
+    for (size_t i = 1; i < state.leftContactPointsState.size(); ++i) {
+        complementarity = state.leftContactPointsState[i].pointForce(2) * state.leftContactPointsState[i].pointPosition(2);
+        if (complementarity > maximum) {
+            maximum = complementarity;
+        }
+    }
+
+    for (size_t i = 1; i < state.rightContactPointsState.size(); ++i) {
+        complementarity = state.rightContactPointsState[i].pointForce(2) * state.rightContactPointsState[i].pointPosition(2);
+        if (complementarity > maximum) {
+            maximum = complementarity;
+        }
+    }
+
+    return maximum;
+}
+
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
     iDynTree::VectorDynSize desiredCoM;
     double xVelocity, yVelocity, zVelocity;
@@ -648,12 +670,12 @@ int main() {
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
 
-    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
+    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
     settingsStruct.normalForceDissipationRatio = 300.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
     settingsStruct.complementarityDissipation = 20.0;
     settingsStruct.dynamicComplementarityUpperBound = 0.2;
-    settingsStruct.classicalComplementarityTolerance = 0.02;
+    settingsStruct.classicalComplementarityTolerance = 0.015;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 
@@ -858,7 +880,9 @@ int main() {
     meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
-    for (size_t i = 0; i < 100; ++i) {
+    double runningMean = 0;
+    double currentDuration;
+    for (size_t i = 0; i < 200; ++i) {
         double initialTime;
         initialState = mpcStates.back();
         initialTime = initialState.time;
@@ -871,7 +895,12 @@ int main() {
         if (!ok)
             break;
         end= std::chrono::steady_clock::now();
-        std::cout << "Elapsed time (" << i << "): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
+        currentDuration = (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0;
+        runningMean = (runningMean * i + currentDuration)/(i+1);
+        std::cout << "Elapsed time (" << i << "): " << currentDuration <<std::endl;
+        std::cout << "Complementarity: " << maximumComplementarity(optimalStates.front()) << std::endl;
+        std::cout << "Mean Time: " << runningMean << std::endl;
+
         mpcStates.push_back(optimalStates.front());
         mpcStates.back().time += initialTime;
         mpcControls.push_back(optimalControls.front());
@@ -893,8 +922,6 @@ int main() {
             meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.1, 0.00, 0.0);
             std::cerr << "Setting new position (" << meanPointReferenceGenerator[1].desiredPosition.toString() << ") at the end of the horizon." << std::endl;
         }
-
-
 
         if (meanPointReferenceGenerator[1].activeRange.initTime() <= settingsStruct.horizon) {
 
