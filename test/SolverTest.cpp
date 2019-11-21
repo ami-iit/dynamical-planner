@@ -672,7 +672,7 @@ int main() {
 
     settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
     settingsStruct.normalForceDissipationRatio = 300.0;
-    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
+    settingsStruct.normalForceHyperbolicSecantScaling = 350.0;
     settingsStruct.complementarityDissipation = 20.0;
     settingsStruct.dynamicComplementarityUpperBound = 0.2;
     settingsStruct.classicalComplementarityTolerance = 0.015;

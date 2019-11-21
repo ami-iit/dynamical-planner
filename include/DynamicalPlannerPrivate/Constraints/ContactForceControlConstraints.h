@@ -32,16 +32,16 @@ public:
 
     ContactForceControlConstraints(const VariablesLabeller& stateVariables, const VariablesLabeller& controlVariables,
                                    const std::string &footName, size_t contactIndex, const HyperbolicSecant& forceActivation,
-                                   double maximumNormalDerivative, double dissipationRatio, double deactivationTime);
+                                   double maximumNormalDerivative, double dissipationRatio);
 
     ~ContactForceControlConstraints() override;
 
-    virtual bool evaluateConstraint(double time,
+    virtual bool evaluateConstraint(double,
                                     const iDynTree::VectorDynSize& state,
                                     const iDynTree::VectorDynSize& control,
                                     iDynTree::VectorDynSize& constraint) override;
 
-    virtual bool constraintJacobianWRTState(double time,
+    virtual bool constraintJacobianWRTState(double,
                                             const iDynTree::VectorDynSize& state,
                                             const iDynTree::VectorDynSize& control,
                                             iDynTree::MatrixDynSize& jacobian) override;
@@ -60,7 +60,7 @@ public:
 
     virtual bool constraintJacobianWRTControlSparsity(iDynTree::optimalcontrol::SparsityStructure& controlSparsity) override;
 
-    virtual bool constraintSecondPartialDerivativeWRTState(double time,
+    virtual bool constraintSecondPartialDerivativeWRTState(double,
                                                            const iDynTree::VectorDynSize& state,
                                                            const iDynTree::VectorDynSize& control,
                                                            const iDynTree::VectorDynSize& lambda,

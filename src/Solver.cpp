@@ -858,8 +858,7 @@ public:
                 constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Left",
                                                                                                            i, forceActivation,
                                                                                                            st.forceMaximumDerivative(2),
-                                                                                                           st.normalForceDissipationRatio,
-                                                                                                           st.horizon * st.activeControlPercentage);
+                                                                                                           st.normalForceDissipationRatio);
                 ok = ocp->addConstraint(constraints.leftContactsForceControl[i]);
                 if (!ok) {
                     return false;
@@ -944,8 +943,7 @@ public:
                 constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateStructure, controlStructure, "Right",
                                                                                                             i, forceActivation,
                                                                                                             st.forceMaximumDerivative(2),
-                                                                                                            st.normalForceDissipationRatio,
-                                                                                                            st.horizon * st.activeControlPercentage);
+                                                                                                            st.normalForceDissipationRatio);
                 ok = ocp->addConstraint(constraints.rightContactsForceControl[i]);
                 if (!ok) {
                     return false;
@@ -995,12 +993,12 @@ public:
             segment(stateLowerBound, ranges.left.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.left.forcePoints[i])(2) = 0.0;
 
-            if (st.complementarity == ComplementarityType::HyperbolicSecantInDynamics ||
-                st.complementarity == ComplementarityType::Classical ||
-                st.complementarity == ComplementarityType::Dynamical) {
+//            if (st.complementarity == ComplementarityType::HyperbolicSecantInDynamics ||
+//                st.complementarity == ComplementarityType::Classical ||
+//                st.complementarity == ComplementarityType::Dynamical) {
                 segment(controlLowerBound, ranges.left.forceControlPoints[i])(2) = -st.forceMaximumDerivative(2);
                 segment(controlUpperBound, ranges.left.forceControlPoints[i])(2) = st.forceMaximumDerivative(2);
-            }
+//            }
 
             iDynTree::toEigen(segment(controlLowerBound, ranges.left.forceControlPoints[i])).topRows<2>() =
                 -iDynTree::toEigen(st.forceMaximumDerivative).topRows<2>();
@@ -1015,12 +1013,12 @@ public:
             segment(stateLowerBound, ranges.right.positionPoints[i])(2) = 0.0;
             segment(stateLowerBound, ranges.right.forcePoints[i])(2) = 0.0;
 
-            if (st.complementarity == ComplementarityType::HyperbolicSecantInDynamics ||
-                st.complementarity == ComplementarityType::Classical ||
-                st.complementarity == ComplementarityType::Dynamical) {
+//            if (st.complementarity == ComplementarityType::HyperbolicSecantInDynamics ||
+//                st.complementarity == ComplementarityType::Classical ||
+//                st.complementarity == ComplementarityType::Dynamical) {
                 segment(controlLowerBound, ranges.right.forceControlPoints[i])(2) = -st.forceMaximumDerivative(2);
                 segment(controlUpperBound, ranges.right.forceControlPoints[i])(2) = st.forceMaximumDerivative(2);
-            }
+//            }
 
             iDynTree::toEigen(segment(controlLowerBound, ranges.right.forceControlPoints[i])).topRows<2>() =
                 -iDynTree::toEigen(st.forceMaximumDerivative).topRows<2>();
@@ -1059,11 +1057,15 @@ public:
         for (size_t i = 0; i < ranges.left.positionPoints.size(); ++i) {
             iDynTree::toEigen(segment(secondControlLowerBound, ranges.left.velocityControlPoints[i])).setZero();
             iDynTree::toEigen(segment(secondControlUpperBound, ranges.left.velocityControlPoints[i])).setZero();
+            iDynTree::toEigen(segment(secondControlLowerBound, ranges.left.forceControlPoints[i])).setZero();
+            iDynTree::toEigen(segment(secondControlUpperBound, ranges.left.forceControlPoints[i])).setZero();
         }
 
         for (size_t i = 0; i < ranges.right.positionPoints.size(); ++i) {
             iDynTree::toEigen(segment(secondControlLowerBound, ranges.right.velocityControlPoints[i])).setZero();
             iDynTree::toEigen(segment(secondControlUpperBound, ranges.right.velocityControlPoints[i])).setZero();
+            iDynTree::toEigen(segment(secondControlLowerBound, ranges.right.forceControlPoints[i])).setZero();
+            iDynTree::toEigen(segment(secondControlUpperBound, ranges.right.forceControlPoints[i])).setZero();
         }
 
         std::shared_ptr<VariableBound> variableStateLowerBounds;

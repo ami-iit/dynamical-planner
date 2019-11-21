@@ -177,8 +177,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
         constraints.leftContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Left",
                                                                                                    i, forceActivation, forceMaximumDerivative,
-                                                                                                   forceDissipationRatios,
-                                                                                                   0.5);
+                                                                                                   forceDissipationRatios);
         ok = ocProblem.addConstraint(constraints.leftContactsForceControl[i]);
         ASSERT_IS_TRUE(ok);
 
@@ -220,8 +219,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
 
         constraints.rightContactsForceControl[i] = std::make_shared<ContactForceControlConstraints>(stateVariables, controlVariables, "Right",
                                                                                                    i, forceActivation, forceMaximumDerivative,
-                                                                                                   forceDissipationRatios,
-                                                                                                   0.5);
+                                                                                                   forceDissipationRatios);
         ok = ocProblem.addConstraint(constraints.rightContactsForceControl[i]);
         ASSERT_IS_TRUE(ok);
 
