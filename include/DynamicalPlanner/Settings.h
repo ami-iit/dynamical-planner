@@ -197,6 +197,11 @@ namespace DynamicalPlanner {
         iDynTree::VectorDynSize basePositionCostWeights;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredBasePositionTrajectory;
 
+        //Base quaternion task
+        bool baseQuaternionCostActive;
+        double baseQuaternionCostOverallWeight;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredBaseQuaternionTrajectory;
+
         //Frame orientation (this uses the same frame of the frame orientation cost
         bool frameAngularVelocityCostActive;
         double frameAngularVelocityCostOverallWeight;

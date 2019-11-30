@@ -533,7 +533,7 @@ int main() {
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).topRows<3>().setConstant(0.1);
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
-    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(1.0);
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(5.0);
 
 //    iDynTree::toEigen(settingsStruct.jointsVelocityCostWeights).topRows<3>().setConstant(100.0);
 
@@ -553,8 +553,14 @@ int main() {
 
     settingsStruct.jointsLimits[4].first = iDynTree::deg2rad(+10.0); //l_shoulder_roll
     settingsStruct.jointsLimits[8].first = iDynTree::deg2rad(+10.0); // r_shoulder_roll
-//    settingsStruct.jointsLimits[12].first = iDynTree::deg2rad(-5.0); //l_hip_roll
-//    settingsStruct.jointsLimits[18].first = iDynTree::deg2rad(-5.0); // r_hip_roll
+    settingsStruct.jointsLimits[11].first = iDynTree::deg2rad(-25.0); //l_hip_pitch
+    settingsStruct.jointsLimits[17].first = iDynTree::deg2rad(-25.0); // r_hip_pitch
+    settingsStruct.jointsLimits[1].first = iDynTree::deg2rad(-12.0); //torso_roll
+    settingsStruct.jointsLimits[1].second = iDynTree::deg2rad(12.0); //torso_roll
+    settingsStruct.jointsLimits[14].second = iDynTree::deg2rad(-8.0); //l_knee
+    settingsStruct.jointsLimits[20].second = iDynTree::deg2rad(-8.0); //r_knee
+
+
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
@@ -575,6 +581,7 @@ int main() {
     settingsStruct.complementarityCostActive = false;
     settingsStruct.basePositionCostActive = false;
     settingsStruct.frameAngularVelocityCostActive = true;
+    settingsStruct.baseQuaternionCostActive = true;
 
 
     settingsStruct.frameCostOverallWeight = 90.0;
@@ -609,6 +616,7 @@ int main() {
     settingsStruct.complementarityCostOverallWeight = 1e-3;
     settingsStruct.frameAngularVelocityCostOverallWeight = 0.1;//1.0;
     settingsStruct.rotationalPIDgain = 0.0;//10.0;
+    settingsStruct.baseQuaternionCostOverallWeight = 20.0;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -659,7 +667,7 @@ int main() {
     settingsStruct.frictionCoefficient = 0.3;
 
     settingsStruct.minimumFeetDistance = 0.10;
-    settingsStruct.feetMaximumRelativeHeight = 0.04;
+    settingsStruct.feetMaximumRelativeHeight = 0.02;
     settingsStruct.desiredSwingHeight = 0.02;
 
 
@@ -670,7 +678,7 @@ int main() {
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
 
-    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
+    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
     settingsStruct.normalForceDissipationRatio = 300.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 350.0;
     settingsStruct.complementarityDissipation = 20.0;
@@ -678,6 +686,10 @@ int main() {
     settingsStruct.classicalComplementarityTolerance = 0.015;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
+
+    iDynTree::VectorDynSize desiredQuaternion(4);
+    desiredQuaternion = initialState.worldToBaseTransform.getRotation().asQuaternion();
+    settingsStruct.desiredBaseQuaternionTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredQuaternion);
 
     ok = settings.setFromStruct(settingsStruct);
     ASSERT_IS_TRUE(ok);

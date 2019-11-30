@@ -150,6 +150,10 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.desiredBasePositionTrajectory, "The desiredBasePositionTrajectory is empty.");
     }
 
+    if (inputSettings.baseQuaternionCostActive) {
+        errors += checkError(!inputSettings.desiredBaseQuaternionTrajectory, "The desiredBasePositionTrajectory is empty.");
+    }
+
     if (inputSettings.complementarity == DynamicalPlanner::ComplementarityType::Dynamical) {
         errors += checkError(inputSettings.complementarityDissipation < 0,
                              "The complementarityDissipation has to be non-negative.");
@@ -412,6 +416,13 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     desiredBasePosition.zero();
     desiredBasePosition(2) = 0.5;
     defaults.desiredBasePositionTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredBasePosition);
+
+    //Base orientation task
+    defaults.baseQuaternionCostActive = true;
+    defaults.baseQuaternionCostOverallWeight = 1.0;
+    iDynTree::VectorDynSize baseQuaternion(4);
+    baseQuaternion = iDynTree::Rotation::Identity().asQuaternion();
+    defaults.desiredBaseQuaternionTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(baseQuaternion);
 
     return defaults;
 }

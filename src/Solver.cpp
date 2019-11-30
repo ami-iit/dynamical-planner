@@ -63,6 +63,7 @@ typedef struct {
     std::shared_ptr<JointsVelocityForPosturalCost> velocityAsPostural;
     std::vector<std::shared_ptr<ComplementarityCost>> leftComplementarities, rightComplementarities;
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> basePosition;
+    std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> baseQuaternion;
     std::shared_ptr<FrameAngularVelocityCost> frameAngularVelocity;
 } CostsSet;
 
@@ -734,6 +735,26 @@ public:
             if (!ok) {
                 return false;
             }
+        }
+
+        if (st.baseQuaternionCostActive) {
+
+            costs.baseQuaternion = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("BaseOrientationCost",
+                                                                                          stateStructure.getIndexRange("BaseQuaternion"),
+                                                                                          stateStructure.size(),
+                                                                                          iDynTree::IndexRange::InvalidRange(),
+                                                                                          controlStructure.size());
+
+            ok = costs.baseQuaternion->setStateDesiredTrajectory(st.desiredBaseQuaternionTrajectory);
+            if (!ok) {
+                return false;
+            }
+
+            ok = ocp->addLagrangeTerm(st.baseQuaternionCostOverallWeight, costs.baseQuaternion);
+            if (!ok) {
+                return false;
+            }
+
         }
 
         if (st.frameAngularVelocityCostActive) {
