@@ -527,8 +527,8 @@ int main() {
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     for (auto& joint : settingsStruct.jointsVelocityLimits) {
-        joint.first = -2;
-        joint.second = 2;
+        joint.first = -1;
+        joint.second = 1;
     }
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).topRows<3>().setConstant(0.1);
@@ -537,7 +537,7 @@ int main() {
 
 //    iDynTree::toEigen(settingsStruct.jointsVelocityCostWeights).topRows<3>().setConstant(100.0);
 
-    double torsoVelocityLimit = 0.6;
+    double torsoVelocityLimit = 0.3;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[0].second = torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[1].first = -torsoVelocityLimit;
@@ -545,7 +545,7 @@ int main() {
     settingsStruct.jointsVelocityLimits[2].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[2].second = torsoVelocityLimit;
 
-    double armsVelocityLimit = 1.0;
+    double armsVelocityLimit = 0.5;
     for (size_t i = 3; i < 11; ++i) {
         settingsStruct.jointsVelocityLimits[i].first = -armsVelocityLimit;
         settingsStruct.jointsVelocityLimits[i].second = armsVelocityLimit;
@@ -588,7 +588,7 @@ int main() {
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.forceMeanCostOverallWeight = 1e-2;
+    settingsStruct.forceMeanCostOverallWeight = 1e-1;
     settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
     settingsStruct.pointAccelerationCostOverallWeight = 5.0;
     settingsStruct.pointAccelerationWeights(0) = 1.0;
@@ -636,15 +636,15 @@ int main() {
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     iDynTree::VectorDynSize comVelocityReference(3);
-    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.05, 0.0, 0.0));
+    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.03, 0.0, 0.0));
     auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 30.0, 30.0, 1.0);
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 60.0, 60.0, 1.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
-    iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
+    iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(meanPointPosition(initialState)) + iDynTree::toEigen(iDynTree::Position(0.04, 0.0, 0.0));
     meanPointReferenceGenerator[0].desiredPosition(2) = 0.0;
     meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, settingsStruct.horizon);
     meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
@@ -659,7 +659,7 @@ int main() {
     settingsStruct.quaternionModulusConstraintTolerance = 1e-2*0;
     settingsStruct.pointPositionConstraintTolerance = 1e-4*0;
 
-    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
+    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(50.0);
 //    settingsStruct.forceMaximumDerivative(0) = 10.0;
 //    settingsStruct.forceMaximumDerivative(1) = 10.0;
 
@@ -672,7 +672,7 @@ int main() {
 
 
     //ContactVelocityControlConstraints
-    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(5.0);
+    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(4.0);
     settingsStruct.velocityMaximumDerivative(0) = 2.0;
     settingsStruct.velocityMaximumDerivative(1) = 2.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
@@ -889,7 +889,8 @@ int main() {
     double meanPositionError, minimumForce, futureMeanPositionError;
 
     double stepStart = -mpcStates.back().time;
-    meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
+    double stepDuration = settingsStruct.horizon;
+    meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + stepDuration);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
     double runningMean = 0;
@@ -930,8 +931,9 @@ int main() {
         std::cerr << "Minimum force: " << minimumForce << std::endl;
 
         if ((futureMeanPositionError < 5e-3) && (meanPointReferenceGenerator[1].activeRange.initTime() > settingsStruct.horizon) && (meanPointReferenceGenerator[0].activeRange.endTime() < (0.6 * settingsStruct.horizon))) {
-            meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, 2 * settingsStruct.horizon);
-            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.1, 0.00, 0.0);
+            //You are here if the step is already completed in the future. The end time of the current step has to be early enough to insert the new step at the end of the horizon.
+            meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, settingsStruct.horizon + stepDuration);
+            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.06, 0.00, 0.0);
             std::cerr << "Setting new position (" << meanPointReferenceGenerator[1].desiredPosition.toString() << ") at the end of the horizon." << std::endl;
         }
 
@@ -939,27 +941,31 @@ int main() {
 
             stepStart = meanPointReferenceGenerator[0].activeRange.initTime() - optimalStates.front().time;
 
-            if ((stepStart < 0.3*settingsStruct.horizon) && (minimumForce < 30)) {
-
+            if ((stepStart < 0.3*settingsStruct.horizon) && (minimumForce < 40)) {
+            // You are here if the second step is about to substitute the first, but the force in the forward foot is still too low
                 meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, meanPointReferenceGenerator[0].activeRange.endTime());
                 std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
                 std::cerr << "Second step is kept constant: [" << meanPointReferenceGenerator[1].activeRange.initTime() << ", " << meanPointReferenceGenerator[1].activeRange.endTime() << "]." << std::endl;
 
-            } else if ((stepStart +  settingsStruct.horizon) < settingsStruct.minimumDt) {
+            } else if ((stepStart +  stepDuration) < settingsStruct.minimumDt) {
+                // You are here when the robot is ready to perform a new step.
                 meanPointReferenceGenerator[0].desiredPosition = meanPointReferenceGenerator[1].desiredPosition;
-                meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, settingsStruct.horizon);
-                meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
+                meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, stepDuration);
+                meanPointReferenceGenerator[1].activeRange.setTimeInterval(stepDuration + 1.0, stepDuration + 1.0);
                 std::cerr << "Second step is now first step." << std::endl;
             } else {
-                meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
+                // You are here if the force on the forward foot is high enough, but it is too early to perform a new step
+                meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + stepDuration);
                 std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
                 stepStart = meanPointReferenceGenerator[1].activeRange.initTime() - optimalStates.front().time;
-                meanPointReferenceGenerator[1].activeRange.setTimeInterval(stepStart, stepStart + settingsStruct.horizon);
+                meanPointReferenceGenerator[1].activeRange.setTimeInterval(stepStart, stepStart + stepDuration);
                 std::cerr << "New second step interval: [" << meanPointReferenceGenerator[1].activeRange.initTime() << ", " << meanPointReferenceGenerator[1].activeRange.endTime() << "]." << std::endl;
             }
         } else {
+            // You are here if you are performing a step and it is not done yet. Hence the second step is not planned yet
+
             stepStart = meanPointReferenceGenerator[0].activeRange.initTime() - optimalStates.front().time;
-            meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, std::max(stepStart + settingsStruct.horizon, 0.3 * settingsStruct.horizon));
+            meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, std::max(stepStart + stepDuration, 0.3 * settingsStruct.horizon));
             std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
         }
 
