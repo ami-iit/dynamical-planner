@@ -154,6 +154,24 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.desiredBaseQuaternionTrajectory, "The desiredBasePositionTrajectory is empty.");
     }
 
+    if (inputSettings.forceRatioCostActive) {
+        errors += checkError(inputSettings.leftPointsPosition.size() != inputSettings.desiredLeftRatios.size(),
+                             "The number of desired ratios for the left foot should be equal to the number of points.");
+
+        for (size_t i = 0; i < inputSettings.desiredLeftRatios.size(); ++i) {
+            errors += checkError(inputSettings.desiredLeftRatios[i] < 0.0 || inputSettings.desiredLeftRatios[i] > 1.0,
+                                 "The left desired ratio with index " + std::to_string(i) + " is not in the range [0, 1].");
+        }
+
+        errors += checkError(inputSettings.rightPointsPosition.size() != inputSettings.desiredRightRatios.size(),
+                             "The number of desired ratios for the right foot should be equal to the number of points.");
+
+        for (size_t i = 0; i < inputSettings.desiredRightRatios.size(); ++i) {
+            errors += checkError(inputSettings.desiredRightRatios[i] < 0.0 || inputSettings.desiredRightRatios[i] > 1.0,
+                                 "The right desired ratio with index " + std::to_string(i) + " is not in the range [0, 1].");
+        }
+    }
+
     if (inputSettings.complementarity == DynamicalPlanner::ComplementarityType::Dynamical) {
         errors += checkError(inputSettings.complementarityDissipation < 0,
                              "The complementarityDissipation has to be non-negative.");
@@ -316,6 +334,20 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.forceMeanCostActive = true;
     defaults.forceMeanCostOverallWeight = 0.01;
 
+    //Force ratios
+    defaults.forceRatioCostActive = true;
+    defaults.forceRatioCostOverallWeight = 0.01;
+    defaults.desiredLeftRatios.resize(defaults.leftPointsPosition.size());
+
+    for (size_t i = 0; i < defaults.desiredLeftRatios.size(); ++i) {
+        defaults.desiredLeftRatios[i] = 1.0 / defaults.desiredLeftRatios.size();
+    }
+
+    defaults.desiredRightRatios.resize(defaults.rightPointsPosition.size());
+
+    for (size_t i = 0; i < defaults.desiredRightRatios.size(); ++i) {
+        defaults.desiredRightRatios[i] = 1.0 / defaults.desiredRightRatios.size();
+    }
 
     //Joints regularization
     defaults.jointsRegularizationCostActive = true;

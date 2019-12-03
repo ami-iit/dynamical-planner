@@ -50,6 +50,7 @@ typedef struct {
     std::shared_ptr<CoMVelocityCost> comVelocity;
     std::shared_ptr<FrameOrientationCost> frameOrientation;
     std::vector<std::shared_ptr<ForceMeanCost>> leftForceMeans, rightForceMeans;
+    std::vector<std::shared_ptr<ForceRatioCost>> leftForceRatios, rightForceRatios;
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> jointsRegularization;
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> jointsVelocity;
     std::shared_ptr<StaticTorquesCost> staticTorques;
@@ -429,6 +430,27 @@ public:
             for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
                 costs.rightForceMeans[i] = std::make_shared<ForceMeanCost>(stateStructure, controlStructure, "Right", i);
                 ok = ocProblem->addLagrangeTerm(st.forceMeanCostOverallWeight, costs.rightForceMeans[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+        }
+
+        if (st.forceRatioCostActive) {
+            costs.leftForceRatios.resize(st.leftPointsPosition.size());
+            for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
+                costs.leftForceRatios[i] = std::make_shared<ForceRatioCost>(stateStructure, controlStructure, "Left", i);
+                costs.leftForceRatios[i]->setDesiredRatio(st.desiredLeftRatios[i]);
+                ok = ocProblem->addLagrangeTerm(st.forceMeanCostOverallWeight, costs.leftForceRatios[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+            costs.rightForceRatios.resize(st.rightPointsPosition.size());
+            for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
+                costs.rightForceRatios[i] = std::make_shared<ForceRatioCost>(stateStructure, controlStructure, "Right", i);
+                costs.rightForceRatios[i]->setDesiredRatio(st.desiredRightRatios[i]);
+                ok = ocProblem->addLagrangeTerm(st.forceMeanCostOverallWeight, costs.rightForceRatios[i]);
                 if (!ok) {
                     return false;
                 }

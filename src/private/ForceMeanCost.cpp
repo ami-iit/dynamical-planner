@@ -56,24 +56,24 @@ ForceMeanCost::ForceMeanCost(const VariablesLabeller &stateVariables, const Vari
     m_pimpl->controlGradientBuffer.zero();
 
     m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->forcePointRange.offset),
-                                                   static_cast<size_t>(m_pimpl->forcePointRange.offset), 3);
+                                                   static_cast<size_t>(m_pimpl->forcePointRange.offset), 2);
 
     for (auto& force : m_pimpl->otherPointsRanges) {
         m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->forcePointRange.offset),
-                                                       static_cast<size_t>(force.offset), 3);
+                                                       static_cast<size_t>(force.offset), 2);
         m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(force.offset),
-                                                       static_cast<size_t>(m_pimpl->forcePointRange.offset), 3);
+                                                       static_cast<size_t>(m_pimpl->forcePointRange.offset), 2);
     }
 
     for (size_t i = 0; i < m_pimpl->otherPointsRanges.size(); ++i) {
         for (size_t j = i; j < m_pimpl->otherPointsRanges.size(); ++j) {
 
             m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->otherPointsRanges[i].offset),
-                                                           static_cast<size_t>(m_pimpl->otherPointsRanges[j].offset), 3);
+                                                           static_cast<size_t>(m_pimpl->otherPointsRanges[j].offset), 2);
 
             if (i != j) {
                 m_pimpl->stateHessianSparsity.addIdentityBlock(static_cast<size_t>(m_pimpl->otherPointsRanges[j].offset),
-                                                               static_cast<size_t>(m_pimpl->otherPointsRanges[i].offset), 3);
+                                                               static_cast<size_t>(m_pimpl->otherPointsRanges[i].offset), 2);
             }
         }
     }
@@ -100,7 +100,7 @@ bool ForceMeanCost::costEvaluation(double /*time*/, const iDynTree::VectorDynSiz
     iDynTree::toEigen(m_pimpl->differenceFromMean) = iDynTree::toEigen(m_pimpl->stateVariables(m_pimpl->forcePointRange)) -
             1.0/numberOfPoints * iDynTree::toEigen(m_pimpl->sumOfForces);
 
-    costValue = 0.5 * iDynTree::toEigen(m_pimpl->differenceFromMean).squaredNorm();
+    costValue = 0.5 * iDynTree::toEigen(m_pimpl->differenceFromMean).segment<2>(0).squaredNorm();
 
     return true;
 }
@@ -122,10 +122,10 @@ bool ForceMeanCost::costFirstPartialDerivativeWRTState(double /*time*/, const iD
 
     iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
 
-    gradientMap.segment<3>(m_pimpl->forcePointRange.offset) = (1.0 - numberOfPointsInverse) * iDynTree::toEigen(m_pimpl->differenceFromMean);
+    gradientMap.segment<2>(m_pimpl->forcePointRange.offset) = (1.0 - numberOfPointsInverse) * iDynTree::toEigen(m_pimpl->differenceFromMean).segment<2>(0);
 
     for (auto force : m_pimpl->otherPointsRanges) {
-        gradientMap.segment<3>(force.offset) = -numberOfPointsInverse * iDynTree::toEigen(m_pimpl->differenceFromMean);
+        gradientMap.segment<2>(force.offset) = -numberOfPointsInverse * iDynTree::toEigen(m_pimpl->differenceFromMean).segment<2>(0);
     }
 
     partialDerivative = m_pimpl->stateGradientBuffer;
@@ -148,26 +148,26 @@ bool ForceMeanCost::costSecondPartialDerivativeWRTState(double /*time*/, const i
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 
-    hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, m_pimpl->forcePointRange.offset).setIdentity();
-    hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, m_pimpl->forcePointRange.offset) *= (1.0 - numberOfPointsInverse) *
+    hessianMap.block<2,2>(m_pimpl->forcePointRange.offset, m_pimpl->forcePointRange.offset).setIdentity();
+    hessianMap.block<2,2>(m_pimpl->forcePointRange.offset, m_pimpl->forcePointRange.offset) *= (1.0 - numberOfPointsInverse) *
         (1.0 - numberOfPointsInverse);
 
     for (auto& force : m_pimpl->otherPointsRanges) {
-        hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, force.offset).setIdentity();
-        hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, force.offset) *= -numberOfPointsInverse * (1.0 - numberOfPointsInverse);
-        hessianMap.block<3,3>(force.offset, m_pimpl->forcePointRange.offset) =
-            hessianMap.block<3,3>(m_pimpl->forcePointRange.offset, force.offset);
+        hessianMap.block<2,2>(m_pimpl->forcePointRange.offset, force.offset).setIdentity();
+        hessianMap.block<2,2>(m_pimpl->forcePointRange.offset, force.offset) *= -numberOfPointsInverse * (1.0 - numberOfPointsInverse);
+        hessianMap.block<2,2>(force.offset, m_pimpl->forcePointRange.offset) =
+            hessianMap.block<2,2>(m_pimpl->forcePointRange.offset, force.offset);
     }
 
     for (size_t i = 0; i < m_pimpl->otherPointsRanges.size(); ++i) {
         for (size_t j = i; j < m_pimpl->otherPointsRanges.size(); ++j) {
-            hessianMap.block<3,3>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset).setIdentity();
-            hessianMap.block<3,3>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset) *= numberOfPointsInverse *
+            hessianMap.block<2,2>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset).setIdentity();
+            hessianMap.block<2,2>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset) *= numberOfPointsInverse *
                 numberOfPointsInverse;
 
             if (i != j) {
-                hessianMap.block<3,3>(m_pimpl->otherPointsRanges[j].offset, m_pimpl->otherPointsRanges[i].offset) =
-                    hessianMap.block<3,3>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset);
+                hessianMap.block<2,2>(m_pimpl->otherPointsRanges[j].offset, m_pimpl->otherPointsRanges[i].offset) =
+                    hessianMap.block<2,2>(m_pimpl->otherPointsRanges[i].offset, m_pimpl->otherPointsRanges[j].offset);
             }
         }
     }

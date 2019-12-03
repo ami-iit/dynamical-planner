@@ -35,8 +35,9 @@ public:
 
     bool getPoints(const iDynTree::Transform& frameTransform, std::vector<iDynTree::Position>& pointsPosition) const;
 
-    bool getForces(const iDynTree::Wrench& footWrench, std::vector<iDynTree::Force>& pointsForces); //Friction constraints may not satisfied in some points even if they are satisfied in the footWrench. The footWrench is supposed to be in foot coordinates. The output is in foot coordinates.
+    void getNormalRatiosFromCoP(double copX, double copY, std::vector<double>& pointsRatios); //The CoP is expressed in frame centered in the foot, i.e. not necessarily the foot frame.
 
+    bool getForces(const iDynTree::Wrench& footWrench, std::vector<iDynTree::Force>& pointsForces); //Friction constraints may not satisfied in some points even if they are satisfied in the footWrench. The footWrench is supposed to be in foot coordinates. The output is in foot coordinates.
 };
 
 

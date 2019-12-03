@@ -120,6 +120,11 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
         ok = ocProblem.addLagrangeTerm(1.0, forceCost);
         ASSERT_IS_TRUE(ok);
 
+        std::shared_ptr<ForceRatioCost> forceRatiosCost = std::make_shared<ForceRatioCost>(stateVariables, controlVariables, "Left", i);
+        forceRatiosCost->setDesiredRatio(iDynTree::getRandomDouble());
+        ok = ocProblem.addLagrangeTerm(1.0, forceRatiosCost);
+        ASSERT_IS_TRUE(ok);
+
         std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Left", i, 0.03, swingWeights);
         ok = ocProblem.addLagrangeTerm(1.0, swingCost);
         ASSERT_IS_TRUE(ok);
@@ -137,6 +142,11 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     for (size_t i = 0; i < rightPositions.size(); ++i) {
         std::shared_ptr<ForceMeanCost> forceCost = std::make_shared<ForceMeanCost>(stateVariables, controlVariables, "Right", i);
         ok = ocProblem.addLagrangeTerm(1.0, forceCost);
+        ASSERT_IS_TRUE(ok);
+
+        std::shared_ptr<ForceRatioCost> forceRatiosCost = std::make_shared<ForceRatioCost>(stateVariables, controlVariables, "Right", i);
+        forceRatiosCost->setDesiredRatio(iDynTree::getRandomDouble());
+        ok = ocProblem.addLagrangeTerm(1.0, forceRatiosCost);
         ASSERT_IS_TRUE(ok);
 
         std::shared_ptr<SwingCost> swingCost = std::make_shared<SwingCost>(stateVariables, controlVariables, "Right", i,

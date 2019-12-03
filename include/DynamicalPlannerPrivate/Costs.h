@@ -19,6 +19,7 @@
 #include <DynamicalPlannerPrivate/Costs/JointsVelocityForPosturalCost.h>
 #include <DynamicalPlannerPrivate/Costs/ComplementarityCost.h>
 #include <DynamicalPlannerPrivate/Costs/FrameAngularVelocityCost.h>
+#include <DynamicalPlannerPrivate/Costs/ForceRatioCost.h>
 #include <iDynTree/L2NormCost.h>
 
 #endif // DPLANNER_COSTS_H

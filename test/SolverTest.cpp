@@ -25,8 +25,8 @@
 
 
 void fillInitialState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings,
-                      const iDynTree::VectorDynSize& desiredJoints, DynamicalPlanner::RectangularFoot &foot,
-                      DynamicalPlanner::State &initialState) {
+                      const iDynTree::VectorDynSize& desiredJoints, DynamicalPlanner::RectangularFoot &leftFoot,
+                      DynamicalPlanner::RectangularFoot &rightFoot, DynamicalPlanner::State &initialState) {
 
     const iDynTree::Model& model = kinDyn.model();
 
@@ -85,10 +85,10 @@ void fillInitialState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlann
 
     std::vector<iDynTree::Force> leftPointForces, rightPointForces;
 
-    ok = foot.getForces(leftWrench, leftPointForces);
+    ok = leftFoot.getForces(leftWrench, leftPointForces);
     ASSERT_IS_TRUE(ok);
 
-    ok = foot.getForces(rightWrench, rightPointForces);
+    ok = rightFoot.getForces(rightWrench, rightPointForces);
     ASSERT_IS_TRUE(ok);
 
     for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
@@ -484,19 +484,24 @@ int main() {
 
     DynamicalPlanner::SettingsStruct settingsStruct = DynamicalPlanner::Settings::Defaults(modelLoader.model());
 
-    DynamicalPlanner::RectangularFoot foot;
+    DynamicalPlanner::RectangularFoot leftFoot, rightFoot;
 
     double d = 0.09;
     double l = 0.19;
 
-    iDynTree::Position topLeftPosition(0.1265,  0.041, -0.01);
-    ok = foot.setFoot(l, d, topLeftPosition);
+    iDynTree::Position topLeftPositionOfLeft(0.1265,  0.049, -0.01);
+    ok = leftFoot.setFoot(l, d, topLeftPositionOfLeft);
     ASSERT_IS_TRUE(ok);
 
-    ok = foot.getPoints(iDynTree::Transform::Identity(), settingsStruct.leftPointsPosition);
+    ok = leftFoot.getPoints(iDynTree::Transform::Identity(), settingsStruct.leftPointsPosition);
     ASSERT_IS_TRUE(ok);
 
-    settingsStruct.rightPointsPosition = settingsStruct.leftPointsPosition;
+    iDynTree::Position topLeftPositionOfRight(0.1265,  0.041, -0.01);
+    ok = rightFoot.setFoot(l, d, topLeftPositionOfRight);
+    ASSERT_IS_TRUE(ok);
+
+    ok = rightFoot.getPoints(iDynTree::Transform::Identity(), settingsStruct.rightPointsPosition);
+    ASSERT_IS_TRUE(ok);
 
     DynamicalPlanner::State initialState;
 
@@ -520,8 +525,11 @@ int main() {
     ok = kinDyn.loadRobotModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
 
-    fillInitialState(kinDyn, settingsStruct, desiredInitialJoints, foot, initialState);
+    fillInitialState(kinDyn, settingsStruct, desiredInitialJoints, leftFoot, rightFoot, initialState);
     reconstructState(kinDyn, settingsStruct, initialState);
+
+    leftFoot.getNormalRatiosFromCoP(0.01, -0.01, settingsStruct.desiredLeftRatios);
+    rightFoot.getNormalRatiosFromCoP(0.01, 0.01, settingsStruct.desiredRightRatios);
 
 
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
@@ -582,6 +590,7 @@ int main() {
     settingsStruct.basePositionCostActive = false;
     settingsStruct.frameAngularVelocityCostActive = true;
     settingsStruct.baseQuaternionCostActive = true;
+    settingsStruct.forceRatioCostActive = true;
 
 
     settingsStruct.frameCostOverallWeight = 90.0;
@@ -617,6 +626,7 @@ int main() {
     settingsStruct.frameAngularVelocityCostOverallWeight = 0.1;//1.0;
     settingsStruct.rotationalPIDgain = 0.0;//10.0;
     settingsStruct.baseQuaternionCostOverallWeight = 20.0;
+    settingsStruct.forceRatioCostOverallWeight = 1.0;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;

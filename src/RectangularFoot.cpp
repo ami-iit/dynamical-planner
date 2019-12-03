@@ -109,6 +109,23 @@ bool RectangularFoot::getPoints(const iDynTree::Transform &frameTransform, std::
     return true;
 }
 
+void RectangularFoot::getNormalRatiosFromCoP(double copX, double copY, std::vector<double> &pointsRatios)
+{
+    pointsRatios.resize(4);
+
+    double l = 2.0 * m_pimpl->halfL;
+    double d = 2.0 * m_pimpl->halfD;
+
+    if ((std::fabs(copX) > m_pimpl->halfL) || (std::fabs(copY) > m_pimpl->halfD)) {
+        std::cerr << "[WARNING][RectangularFoot::getNormalRatiosFromCoP] The COP is outside the foot boundaries. Some of the normal forces may result negative." << std::endl;
+    }
+
+    pointsRatios[3] = (std::max(0.0, -copX/l - copY/d) + std::min(0.5 - copY/d, 0.5 - copX/l))/2;
+    pointsRatios[0] = pointsRatios[3] + copX/l + copY/d;
+    pointsRatios[1] = -pointsRatios[3] + 0.5 - copY/d;
+    pointsRatios[2] = 1.0 - pointsRatios[0] - pointsRatios[1] - pointsRatios[3];
+}
+
 bool RectangularFoot::getForces(const iDynTree::Wrench &footWrench, std::vector<iDynTree::Force> &pointsForces)
 {
     // See https://github.com/loc2/component_wholebody-teleoperation/issues/107
@@ -134,12 +151,6 @@ bool RectangularFoot::getForces(const iDynTree::Wrench &footWrench, std::vector<
     double copX = - ty/fz;
     double copY = tx/fz;
 
-    double l = 2.0 * m_pimpl->halfL;
-    double d = 2.0 * m_pimpl->halfD;
-
-    if ((std::fabs(copX) > m_pimpl->halfL) || (std::fabs(copY) > m_pimpl->halfD)) {
-        std::cerr << "[WARNING][RectangularFoot::getForces] The COP is outside the foot boundaries. Some of the normal forces may result negative." << std::endl;
-    }
 
     if (fz < 1e-7) {
         for (unsigned int i = 0; i < 4; ++i) {
@@ -148,17 +159,12 @@ bool RectangularFoot::getForces(const iDynTree::Wrench &footWrench, std::vector<
         return true;
     }
 
-    iDynTree::Vector4 alphas;
+    std::vector<double> alphas;
+    getNormalRatiosFromCoP(copX, copY, alphas);
 
-    alphas(3) = (std::max(0.0, -copX/l - copY/d) + std::min(0.5 - copY/d, 0.5 - copX/l))/2;
-
-    pointsForces[3](2) = alphas(3) * fz;
-    pointsForces[0](2) = pointsForces[3](2) - ty/l + tx/d;
-    alphas(0) = pointsForces[0](2) / fz;
-    pointsForces[1](2) = -(pointsForces[3](2)) + fz/2.0 - tx/d;
-    alphas(1) = pointsForces[1](2) / fz;
-    alphas(2) = 1.0 - alphas(0) - alphas(1) - alphas(3);
-    pointsForces[2](2) = fz - pointsForces[3](2) - pointsForces[0](2) - pointsForces[1](2);
+    for (size_t i = 0; i < 4; ++i) {
+        pointsForces[i](2) = alphas[i] * fz;
+    }
 
     //Having obtained the normal forces we can obtain the remaining components using pseudoinverse
 
@@ -168,7 +174,7 @@ bool RectangularFoot::getForces(const iDynTree::Wrench &footWrench, std::vector<
 
     size_t activePoints = 0;
     for (unsigned int i = 0; i < 4; ++i) {
-        if (std::fabs(alphas(i)) > 1e-7) {
+        if (std::fabs(alphas[i]) > 1e-7) {
             m_pimpl->pointActive[i] = true;
             activePoints++;
         } else {

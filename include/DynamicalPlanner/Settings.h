@@ -121,6 +121,12 @@ namespace DynamicalPlanner {
         bool forceMeanCostActive;
         double forceMeanCostOverallWeight;
 
+        //Force ratio (each contact point has a different cost with same settings)
+        bool forceRatioCostActive;
+        double forceRatioCostOverallWeight;
+        std::vector<double> desiredLeftRatios;
+        std::vector<double> desiredRightRatios;
+
         //Joint regularization
         bool jointsRegularizationCostActive;
         double jointsRegularizationCostOverallWeight;
