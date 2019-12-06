@@ -489,14 +489,14 @@ int main() {
     double d = 0.09;
     double l = 0.19;
 
-    iDynTree::Position topLeftPositionOfLeft(0.1265,  0.049, -0.01);
+    iDynTree::Position topLeftPositionOfLeft(0.1265,  0.049, -0.015);
     ok = leftFoot.setFoot(l, d, topLeftPositionOfLeft);
     ASSERT_IS_TRUE(ok);
 
     ok = leftFoot.getPoints(iDynTree::Transform::Identity(), settingsStruct.leftPointsPosition);
     ASSERT_IS_TRUE(ok);
 
-    iDynTree::Position topLeftPositionOfRight(0.1265,  0.041, -0.01);
+    iDynTree::Position topLeftPositionOfRight(0.1265,  0.041, -0.015);
     ok = rightFoot.setFoot(l, d, topLeftPositionOfRight);
     ASSERT_IS_TRUE(ok);
 
@@ -528,8 +528,8 @@ int main() {
     fillInitialState(kinDyn, settingsStruct, desiredInitialJoints, leftFoot, rightFoot, initialState);
     reconstructState(kinDyn, settingsStruct, initialState);
 
-    leftFoot.getNormalRatiosFromCoP(0.01, -0.01, settingsStruct.desiredLeftRatios);
-    rightFoot.getNormalRatiosFromCoP(0.01, 0.01, settingsStruct.desiredRightRatios);
+    leftFoot.getNormalRatiosFromCoP(0.005, -0.01, settingsStruct.desiredLeftRatios);
+    rightFoot.getNormalRatiosFromCoP(0.005, 0.01, settingsStruct.desiredRightRatios);
 
 
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
@@ -682,7 +682,7 @@ int main() {
 
 
     //ContactVelocityControlConstraints
-    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(4.0);
+    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(2.0);
     settingsStruct.velocityMaximumDerivative(0) = 2.0;
     settingsStruct.velocityMaximumDerivative(1) = 2.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
@@ -691,8 +691,8 @@ int main() {
     settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
     settingsStruct.normalForceDissipationRatio = 300.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 350.0;
-    settingsStruct.complementarityDissipation = 20.0;
-    settingsStruct.dynamicComplementarityUpperBound = 0.2;
+    settingsStruct.complementarityDissipation = 15.0;
+    settingsStruct.dynamicComplementarityUpperBound = 0.15;
     settingsStruct.classicalComplementarityTolerance = 0.015;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
