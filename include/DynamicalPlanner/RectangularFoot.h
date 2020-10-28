@@ -11,7 +11,7 @@
 #include <iDynTree/Core/Transform.h>
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/Wrench.h>
-#include <iDynTree/Core/LinearForceVector3.h>
+#include <iDynTree/Core/GeomVector3.h>
 #include <vector>
 #include <memory>
 

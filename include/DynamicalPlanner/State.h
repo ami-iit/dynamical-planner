@@ -11,7 +11,7 @@
 #include <iDynTree/Core/VectorDynSize.h>
 #include <iDynTree/Core/Transform.h>
 #include <iDynTree/TimeVaryingObject.h>
-#include <iDynTree/Core/LinearForceVector3.h>
+#include <iDynTree/Core/GeomVector3.h>
 #include <vector>
 
 namespace DynamicalPlanner {
