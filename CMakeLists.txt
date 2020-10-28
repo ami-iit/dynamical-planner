@@ -48,7 +48,7 @@ endif()
 find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(levi 0.0.101 REQUIRED)
-find_package(matlogger2 REQUIRED)
+find_package(matioCpp REQUIRED)
 find_package(FFmpeg REQUIRED)
 
 set(CONSTRAINTS_HEADERS_DIR include/DynamicalPlannerPrivate/Constraints)
@@ -185,7 +185,7 @@ target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CUR
 target_include_directories(DynamicalPlanner PUBLIC $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_include_directories(DynamicalPlannerPrivate PRIVATE ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(DynamicalPlanner PRIVATE DynamicalPlannerPrivate)
-target_link_libraries(DynamicalPlanner PRIVATE matlogger2::matlogger2)
+target_link_libraries(DynamicalPlanner PRIVATE matioCpp::matioCpp)
 target_link_libraries(DynamicalPlanner PUBLIC ${iDynTree_LIBRARIES})
 
 include(AddUninstallTarget)

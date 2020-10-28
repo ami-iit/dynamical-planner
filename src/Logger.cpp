@@ -6,101 +6,120 @@
  */
 
 #include <DynamicalPlanner/Logger.h>
-#include <matlogger2/matlogger2.h>
 #include <iDynTree/Core/EigenHelpers.h>
+#include <matioCpp/matioCpp.h>
 
 using namespace DynamicalPlanner;
 
 template <typename Vector>
-void addToLogger(XBot::MatLogger2::Ptr logger, const std::string& variableName, const Vector& value) {
-    logger->add(variableName, iDynTree::toEigen(value));
+void addToLogger(std::unordered_map<std::string, matioCpp::MultiDimensionalArray<double>>& loggedVariables, const std::string& variableName, const Vector& value, size_t column) {
+
+    matioCpp::MultiDimensionalArray<double>& var = loggedVariables[variableName];
+
+    Eigen::Map<Eigen::MatrixXd> map(var.data(), var.dimensions()[0], var.dimensions()[1]);
+    map.col(column) = iDynTree::toEigen(value);
+}
+
+void addToLogger(std::unordered_map<std::string, matioCpp::MultiDimensionalArray<double>>& loggedVariables, const std::string& variableName, double value, size_t column) {
+
+    loggedVariables[variableName]({0, column}) = value;
 }
 
 void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const std::vector<State> &states, const std::vector<Control> &controls)
 {
-    auto logger = XBot::MatLogger2::MakeLogger(matFileName);
+    std::unordered_map<std::string, matioCpp::MultiDimensionalArray<double>> loggedVariables;
 
-    int statesSize = static_cast<int>(states.size());
-    int controlsSize = static_cast<int>(controls.size());
-
-    if (statesSize) {
+    if (states.size()) {
         for (size_t point = 0; point < states.front().leftContactPointsState.size(); ++point) {
-            logger->create("leftPoint" + std::to_string(point) + "Force", 3, 1, statesSize);
-            logger->create("leftPoint" + std::to_string(point) + "Position", 3, 1, statesSize);
+            std::string name = "leftPoint" + std::to_string(point) + "Force";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, states.size()});
+            name = "leftPoint" + std::to_string(point) + "Position";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, states.size()});
         }
 
         for (size_t point = 0; point < states.front().rightContactPointsState.size(); ++point) {
-            logger->create("rightPoint" + std::to_string(point) + "Force", 3, 1, statesSize);
-            logger->create("rightPoint" + std::to_string(point) + "Position", 3, 1, statesSize);
+            std::string name = "rightPoint" + std::to_string(point) + "Force";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, states.size()});
+            name = "rightPoint" + std::to_string(point) + "Position";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, states.size()});
         }
 
-        logger->create("momentumInCoM", 6, 1, statesSize);
-        logger->create("comPosition", 3, 1, statesSize);
-        logger->create("basePosition", 3, 1, statesSize);
-        logger->create("baseQuaternion", 4, 1, statesSize);
-        logger->create("jointsConfiguraion", static_cast<int>(states.front().jointsConfiguration.size()), 1, statesSize);
-        logger->create("stateTime", 1, 1, statesSize);
+        loggedVariables["momentumInCoM"] = matioCpp::MultiDimensionalArray<double>("momentumInCoM", {6, states.size()});
+        loggedVariables["comPosition"] = matioCpp::MultiDimensionalArray<double>("comPosition", {3, states.size()});
+        loggedVariables["basePosition"] = matioCpp::MultiDimensionalArray<double>("basePosition", {3, states.size()});
+        loggedVariables["baseQuaternion"] = matioCpp::MultiDimensionalArray<double>("baseQuaternion", {4, states.size()});
+        loggedVariables["jointsConfiguraion"] = matioCpp::MultiDimensionalArray<double>("jointsConfiguraion", {states.front().jointsConfiguration.size(), states.size()});
+        loggedVariables["stateTime"] = matioCpp::MultiDimensionalArray<double>("stateTime", {2, states.size()});
     }
 
-    if (controlsSize) {
+    if (controls.size()) {
         for (size_t point = 0; point < controls.front().leftContactPointsControl.size(); ++point) {
-            logger->create("leftPoint" + std::to_string(point) + "ForceControl", 3, 1, controlsSize);
-            logger->create("leftPoint" + std::to_string(point) + "VelocityControl", 3, 1, controlsSize);
+            std::string name = "leftPoint" + std::to_string(point) + "ForceControl";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, controls.size()});
+            name = "leftPoint" + std::to_string(point) + "VelocityControl";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, controls.size()});
         }
 
         for (size_t point = 0; point < controls.front().rightContactPointsControl.size(); ++point) {
-            logger->create("rightPoint" + std::to_string(point) + "ForceControl", 3, 1, controlsSize);
-            logger->create("rightPoint" + std::to_string(point) + "VelocityControl", 3, 1, controlsSize);
+            std::string name = "rightPoint" + std::to_string(point) + "ForceControl";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, controls.size()});
+            name = "rightPoint" + std::to_string(point) + "VelocityControl";
+            loggedVariables[name] = matioCpp::MultiDimensionalArray<double>(name, {3, controls.size()});
         }
 
-        logger->create("baseLinearVelocity", 3, 1, controlsSize);
-        logger->create("baseQuaternionDerivative", 4, 1, controlsSize);
-        logger->create("jointsVelocity", static_cast<int>(controls.front().jointsVelocity.size()), 1, controlsSize);
-        logger->create("controlTime", 1, 1, controlsSize);
+        loggedVariables["baseLinearVelocity"] = matioCpp::MultiDimensionalArray<double>("baseLinearVelocity", {3, controls.size()});
+        loggedVariables["baseQuaternionDerivative"] = matioCpp::MultiDimensionalArray<double>("baseQuaternionDerivative", {4, controls.size()});
+        loggedVariables["jointsVelocity"] = matioCpp::MultiDimensionalArray<double>("jointsVelocity", {controls.front().jointsVelocity.size(), controls.size()});
+        loggedVariables["controlTime"] = matioCpp::MultiDimensionalArray<double>("controlTime", {2, controls.size()});
+
     }
 
-    for (auto state = states.begin(); state != states.end(); ++state) {
+    for (size_t i = 0; i < states.size(); ++i) {
         for (size_t point = 0; point < states.front().leftContactPointsState.size(); ++point) {
-            addToLogger(logger, "leftPoint" + std::to_string(point) + "Force", state->leftContactPointsState[point].pointForce);
-            addToLogger(logger,"leftPoint" + std::to_string(point) + "Position", state->leftContactPointsState[point].pointPosition);
+            addToLogger(loggedVariables, "leftPoint" + std::to_string(point) + "Force", states[i].leftContactPointsState[point].pointForce, i);
+            addToLogger(loggedVariables,"leftPoint" + std::to_string(point) + "Position", states[i].leftContactPointsState[point].pointPosition, i);
         }
 
         for (size_t point = 0; point < states.front().rightContactPointsState.size(); ++point) {
-            addToLogger(logger, "rightPoint" + std::to_string(point) + "Force", state->rightContactPointsState[point].pointForce);
-            addToLogger(logger,"rightPoint" + std::to_string(point) + "Position", state->rightContactPointsState[point].pointPosition);
+            addToLogger(loggedVariables, "rightPoint" + std::to_string(point) + "Force", states[i].rightContactPointsState[point].pointForce, i);
+            addToLogger(loggedVariables,"rightPoint" + std::to_string(point) + "Position", states[i].rightContactPointsState[point].pointPosition, i);
         }
 
-        addToLogger(logger, "momentumInCoM", state->momentumInCoM);
-        addToLogger(logger, "comPosition", state->comPosition);
-        addToLogger(logger, "basePosition", state->worldToBaseTransform.getPosition());
-        addToLogger(logger, "baseQuaternion", state->worldToBaseTransform.getRotation().asQuaternion());
-        addToLogger(logger, "jointsConfiguraion", state->jointsConfiguration);
-        logger->add("stateTime", state->time);
+        addToLogger(loggedVariables, "momentumInCoM", states[i].momentumInCoM, i);
+        addToLogger(loggedVariables, "comPosition", states[i].comPosition, i);
+        addToLogger(loggedVariables, "basePosition", states[i].worldToBaseTransform.getPosition(), i);
+        addToLogger(loggedVariables, "baseQuaternion", states[i].worldToBaseTransform.getRotation().asQuaternion(), i);
+        addToLogger(loggedVariables, "jointsConfiguraion", states[i].jointsConfiguration, i);
+        addToLogger(loggedVariables, "stateTime", states[i].time, i);
 
-        logger->flush_available_data();
     }
 
-    for (auto control = controls.begin(); control != controls.end(); ++control) {
+    for (size_t i = 0; i < controls.size(); ++i) {
         for (size_t point = 0; point < controls.front().leftContactPointsControl.size(); ++point) {
-            addToLogger(logger, "leftPoint" + std::to_string(point) + "ForceControl", control->leftContactPointsControl[point].pointForceControl);
-            addToLogger(logger, "leftPoint" + std::to_string(point) + "VelocityControl",
-                        control->leftContactPointsControl[point].pointVelocityControl);
+            addToLogger(loggedVariables, "leftPoint" + std::to_string(point) + "ForceControl", controls[i].leftContactPointsControl[point].pointForceControl, i);
+            addToLogger(loggedVariables, "leftPoint" + std::to_string(point) + "VelocityControl",
+                        controls[i].leftContactPointsControl[point].pointVelocityControl, i);
         }
 
         for (size_t point = 0; point < controls.front().rightContactPointsControl.size(); ++point) {
-            addToLogger(logger, "rightPoint" + std::to_string(point) + "ForceControl", control->rightContactPointsControl[point].pointForceControl);
-            addToLogger(logger, "rightPoint" + std::to_string(point) + "VelocityControl",
-                        control->rightContactPointsControl[point].pointVelocityControl);
+            addToLogger(loggedVariables, "rightPoint" + std::to_string(point) + "ForceControl", controls[i].rightContactPointsControl[point].pointForceControl, i);
+            addToLogger(loggedVariables, "rightPoint" + std::to_string(point) + "VelocityControl",
+                        controls[i].rightContactPointsControl[point].pointVelocityControl, i);
         }
 
-        addToLogger(logger, "baseLinearVelocity", control->baseLinearVelocity);
-        addToLogger(logger, "baseQuaternionDerivative", control->baseQuaternionDerivative);
-        addToLogger(logger, "jointsVelocity", control->jointsVelocity);
-        logger->add("controlTime", control->time);
+        addToLogger(loggedVariables, "baseLinearVelocity", controls[i].baseLinearVelocity, i);
+        addToLogger(loggedVariables, "baseQuaternionDerivative", controls[i].baseQuaternionDerivative, i);
+        addToLogger(loggedVariables, "jointsVelocity", controls[i].jointsVelocity, i);
+        addToLogger(loggedVariables, "controlTime", controls[i].time, i);
 
-        logger->flush_available_data();
     }
 
-    logger.reset(); // manually destroy the logger in order to flush to disk
+    matioCpp::File file = matioCpp::File::Create(matFileName);
+
+    for (auto var : loggedVariables)
+    {
+        file.write(var.second);
+    }
+
 }
 
