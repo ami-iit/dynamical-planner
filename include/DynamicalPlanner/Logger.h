@@ -9,6 +9,7 @@
 
 #include <DynamicalPlanner/State.h>
 #include <DynamicalPlanner/Control.h>
+#include <DynamicalPlanner/Settings.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -20,8 +21,11 @@ namespace DynamicalPlanner {
 class DynamicalPlanner::Logger {
 public:
 
-    static void saveSolutionVectorsToFile(const std::string& matFileName, const std::vector<DynamicalPlanner::State>& states = {},
-                                          const std::vector<DynamicalPlanner::Control>& controls = {});
+    static void saveSolutionVectorsToFile(const std::string& matFileName,
+                                          const SettingsStruct &settings,
+                                          const std::vector<DynamicalPlanner::State>& states = {},
+                                          const std::vector<DynamicalPlanner::Control>& controls = {},
+                                          const std::vector<double>& computationalTime = {});
 };
 
 #endif // DPLANNERLOGGER_H

@@ -25,7 +25,66 @@ void addToLogger(std::unordered_map<std::string, matioCpp::MultiDimensionalArray
     loggedVariables[variableName]({0, column}) = value;
 }
 
-void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const std::vector<State> &states, const std::vector<Control> &controls)
+matioCpp::Struct populateSettingsStruct(const SettingsStruct& settings)
+{
+    matioCpp::Struct settingsVar("settings");
+
+    settingsVar.setField(matioCpp::Element<double>("minimumDt", settings.minimumDt));
+    settingsVar.setField(matioCpp::Element<double>("maximumDt", settings.maximumDt));
+    settingsVar.setField(matioCpp::Element<double>("controlPeriod", settings.controlPeriod));
+    settingsVar.setField(matioCpp::Element<double>("horizon", settings.horizon));
+    settingsVar.setField(matioCpp::Element<double>("activeControlPercentage", settings.activeControlPercentage));
+
+    settingsVar.setField(matioCpp::String("robotModel", settings.robotModel.toString()));
+    settingsVar.setField(matioCpp::Vector<double>("gravity", settings.gravity));
+    settingsVar.setField(matioCpp::Element<double>("updateTolerance", settings.updateTolerance));
+    settingsVar.setField(matioCpp::String("floatingBaseName", settings.floatingBaseName));
+
+    std::vector<matioCpp::Variable> pointsPosition;
+    for (auto& pos : settings.leftPointsPosition)
+    {
+        pointsPosition.push_back(matioCpp::Vector<double>("contactPoint", pos));
+    }
+    settingsVar.setField(matioCpp::CellArray("leftPointsPosition", {settings.leftPointsPosition.size(), 1}, pointsPosition));
+
+    pointsPosition.clear();
+    for (auto& pos : settings.rightPointsPosition)
+    {
+        pointsPosition.push_back(matioCpp::Vector<double>("contactPoint", pos));
+    }
+    settingsVar.setField(matioCpp::CellArray("rightPointsPosition", {settings.rightPointsPosition.size(), 1}, pointsPosition));
+    settingsVar.setField(matioCpp::String("leftFrameName", settings.leftFrameName));
+    settingsVar.setField(matioCpp::String("rightFrameName", settings.rightFrameName));
+
+    switch (settings.complementarity)
+    {
+    case ComplementarityType::Classical:
+        settingsVar.setField(matioCpp::String("complementarity", "Classical"));
+        break;
+    case ComplementarityType::Dynamical:
+        settingsVar.setField(matioCpp::String("complementarity", "Dynamical"));
+        break;
+    case ComplementarityType::HyperbolicSecantInDynamics:
+        settingsVar.setField(matioCpp::String("complementarity", "HyperbolicSecantInDynamics"));
+        break;
+
+    case ComplementarityType::HyperbolicSecantInequality:
+        settingsVar.setField(matioCpp::String("complementarity", "HyperbolicSecantInequality"));
+        break;
+    }
+
+    settingsVar.setField(matioCpp::Vector<double>("forceMaximumDerivative", settings.forceMaximumDerivative));
+    settingsVar.setField(matioCpp::Element<double>("normalForceDissipationRatio", settings.normalForceDissipationRatio));
+    settingsVar.setField(matioCpp::Element<double>("normalForceHyperbolicSecantScaling", settings.normalForceHyperbolicSecantScaling));
+    settingsVar.setField(matioCpp::Element<double>("complementarityDissipation", settings.complementarityDissipation));
+    settingsVar.setField(matioCpp::Element<double>("dynamicComplementarityUpperBound", settings.dynamicComplementarityUpperBound));
+    settingsVar.setField(matioCpp::Element<double>("classicalComplementarityTolerance", settings.classicalComplementarityTolerance));
+
+
+    return settingsVar;
+}
+
+void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const SettingsStruct& settings, const std::vector<State> &states, const std::vector<Control> &controls, const std::vector<double> &computationalTime)
 {
     std::unordered_map<std::string, matioCpp::MultiDimensionalArray<double>> loggedVariables;
 
@@ -49,7 +108,7 @@ void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const std
         loggedVariables["basePosition"] = matioCpp::MultiDimensionalArray<double>("basePosition", {3, states.size()});
         loggedVariables["baseQuaternion"] = matioCpp::MultiDimensionalArray<double>("baseQuaternion", {4, states.size()});
         loggedVariables["jointsConfiguraion"] = matioCpp::MultiDimensionalArray<double>("jointsConfiguraion", {states.front().jointsConfiguration.size(), states.size()});
-        loggedVariables["stateTime"] = matioCpp::MultiDimensionalArray<double>("stateTime", {2, states.size()});
+        loggedVariables["stateTime"] = matioCpp::MultiDimensionalArray<double>("stateTime", {1, states.size()});
     }
 
     if (controls.size()) {
@@ -70,8 +129,13 @@ void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const std
         loggedVariables["baseLinearVelocity"] = matioCpp::MultiDimensionalArray<double>("baseLinearVelocity", {3, controls.size()});
         loggedVariables["baseQuaternionDerivative"] = matioCpp::MultiDimensionalArray<double>("baseQuaternionDerivative", {4, controls.size()});
         loggedVariables["jointsVelocity"] = matioCpp::MultiDimensionalArray<double>("jointsVelocity", {controls.front().jointsVelocity.size(), controls.size()});
-        loggedVariables["controlTime"] = matioCpp::MultiDimensionalArray<double>("controlTime", {2, controls.size()});
+        loggedVariables["controlTime"] = matioCpp::MultiDimensionalArray<double>("controlTime", {1, controls.size()});
 
+    }
+
+    if (computationalTime.size())
+    {
+        loggedVariables["computationalTime"] = matioCpp::MultiDimensionalArray<double>("computationalTime", {1, computationalTime.size()});
     }
 
     for (size_t i = 0; i < states.size(); ++i) {
@@ -114,12 +178,15 @@ void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const std
 
     }
 
+    for (size_t i = 0; i < computationalTime.size(); ++i)
+    {
+        addToLogger(loggedVariables, "computationalTime", computationalTime[i], i);
+    }
+
     matioCpp::File file = matioCpp::File::Create(matFileName);
 
-    for (auto var : loggedVariables)
-    {
-        file.write(var.second);
-    }
+    file.write(loggedVariables.begin(), loggedVariables.end());
+    file.write(populateSettingsStruct(settings));
 
 }
 

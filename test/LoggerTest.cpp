@@ -6,6 +6,8 @@
  */
 
 #include <DynamicalPlanner/Logger.h>
+#include <iDynTree/ModelIO/ModelLoader.h>
+#include <URDFdir.h>
 #include <FolderPath.h>
 #include <chrono>
 
@@ -13,6 +15,10 @@ int main()
 {
     std::vector<DynamicalPlanner::State> states(4, DynamicalPlanner::State(23, 4));
     std::vector<DynamicalPlanner::Control> controls(5, DynamicalPlanner::Control(23, 4));
+
+    iDynTree::ModelLoader modelLoader;
+    modelLoader.loadModelFromFile(getAbsModelPath("iCubGenova04.urdf"));
+    DynamicalPlanner::SettingsStruct settings = DynamicalPlanner::Settings::Defaults(modelLoader.model());
 
     states[0].time = 1.0;
     controls[0].time = 2.0;
@@ -28,7 +34,7 @@ int main()
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , states, controls);
+    DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , settings, states, controls);
 
     return EXIT_SUCCESS;
 }

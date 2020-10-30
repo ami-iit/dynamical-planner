@@ -233,33 +233,6 @@ double maximumComplementarity(const DynamicalPlanner::State &state) {
     return maximum;
 }
 
-class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
-    iDynTree::VectorDynSize desiredCoM;
-    double xVelocity, yVelocity, zVelocity;
-    iDynTree::Vector3 initialCoM;
-
-public:
-    CoMReference(iDynTree::Vector3 &CoMinitial, double velX, double velY, double velZ)
-        : desiredCoM(3)
-        , xVelocity(velX)
-        , yVelocity(velY)
-        , zVelocity(velZ)
-        , initialCoM(CoMinitial)
-    { }
-
-    ~CoMReference() override;
-
-    iDynTree::VectorDynSize &get(double time, bool &isValid) override {
-        desiredCoM(0) = initialCoM(0) + xVelocity * time;
-        desiredCoM(1) = initialCoM(1) + yVelocity * time;
-        desiredCoM(2) = initialCoM(2) + zVelocity * time;
-        isValid = true;
-        return desiredCoM;
-    }
-
-};
-CoMReference::~CoMReference() { }
-
 class StateGuess : public DynamicalPlanner::TimeVaryingState {
     DynamicalPlanner::State m_state, m_initialState;
     std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> m_comReference;
@@ -528,24 +501,24 @@ int main() {
     fillInitialState(kinDyn, settingsStruct, desiredInitialJoints, leftFoot, rightFoot, initialState);
     reconstructState(kinDyn, settingsStruct, initialState);
 
-    leftFoot.getNormalRatiosFromCoP(0.005, -0.01, settingsStruct.desiredLeftRatios);
-    rightFoot.getNormalRatiosFromCoP(0.005, 0.01, settingsStruct.desiredRightRatios);
+//    leftFoot.getNormalRatiosFromCoP(0.005, -0.01, settingsStruct.desiredLeftRatios);
+//    rightFoot.getNormalRatiosFromCoP(0.005, 0.01, settingsStruct.desiredRightRatios);
 
 
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     for (auto& joint : settingsStruct.jointsVelocityLimits) {
-        joint.first = -1;
-        joint.second = 1;
+        joint.first = -2;
+        joint.second = 2;
     }
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).topRows<3>().setConstant(0.1);
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).segment<8>(3).setConstant(10.0);
-    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(5.0);
+    iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).bottomRows<12>().setConstant(1.0);
 
 //    iDynTree::toEigen(settingsStruct.jointsVelocityCostWeights).topRows<3>().setConstant(100.0);
 
-    double torsoVelocityLimit = 0.3;
+    double torsoVelocityLimit = 0.6;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[0].second = torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[1].first = -torsoVelocityLimit;
@@ -553,7 +526,7 @@ int main() {
     settingsStruct.jointsVelocityLimits[2].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[2].second = torsoVelocityLimit;
 
-    double armsVelocityLimit = 0.5;
+    double armsVelocityLimit = 1.0;
     for (size_t i = 3; i < 11; ++i) {
         settingsStruct.jointsVelocityLimits[i].first = -armsVelocityLimit;
         settingsStruct.jointsVelocityLimits[i].second = armsVelocityLimit;
@@ -561,14 +534,8 @@ int main() {
 
     settingsStruct.jointsLimits[4].first = iDynTree::deg2rad(+10.0); //l_shoulder_roll
     settingsStruct.jointsLimits[8].first = iDynTree::deg2rad(+10.0); // r_shoulder_roll
-    settingsStruct.jointsLimits[11].first = iDynTree::deg2rad(-25.0); //l_hip_pitch
-    settingsStruct.jointsLimits[17].first = iDynTree::deg2rad(-25.0); // r_hip_pitch
-    settingsStruct.jointsLimits[1].first = iDynTree::deg2rad(-12.0); //torso_roll
-    settingsStruct.jointsLimits[1].second = iDynTree::deg2rad(12.0); //torso_roll
-    settingsStruct.jointsLimits[14].second = iDynTree::deg2rad(-8.0); //l_knee
-    settingsStruct.jointsLimits[20].second = iDynTree::deg2rad(-8.0); //r_knee
-
-
+//    settingsStruct.jointsLimits[12].first = iDynTree::deg2rad(-5.0); //l_hip_roll
+//    settingsStruct.jointsLimits[18].first = iDynTree::deg2rad(-5.0); // r_hip_roll
 
     settingsStruct.frameCostActive = true;
     settingsStruct.staticTorquesCostActive = false;
@@ -618,15 +585,15 @@ int main() {
     settingsStruct.comVelocityWeights(0) = 10.0;
     settingsStruct.comVelocityWeights(1) = 0.1;
     settingsStruct.comVelocityWeights(2) = 1.0;
-    settingsStruct.leftFootYawCostOverallWeight = 1000.0;
-    settingsStruct.rightFootYawCostOverallWeight = 1000.0;
+    settingsStruct.leftFootYawCostOverallWeight = 2000.0;
+    settingsStruct.rightFootYawCostOverallWeight = 2000.0;
     settingsStruct.feetDistanceCostOverallWeight = 1.0;
     settingsStruct.jointsVelocityForPosturalCostOverallWeight = 1e-1;
     settingsStruct.complementarityCostOverallWeight = 1e-3;
     settingsStruct.frameAngularVelocityCostOverallWeight = 0.1;//1.0;
     settingsStruct.rotationalPIDgain = 0.0;//10.0;
-    settingsStruct.baseQuaternionCostOverallWeight = 20.0;
-    settingsStruct.forceRatioCostOverallWeight = 1.0;
+    settingsStruct.baseQuaternionCostOverallWeight = 50.0;
+    settingsStruct.forceRatioCostOverallWeight = 1e-1;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;
@@ -646,15 +613,15 @@ int main() {
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     iDynTree::VectorDynSize comVelocityReference(3);
-    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.03, 0.0, 0.0));
+    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.05, 0.0, 0.0));
     auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 60.0, 60.0, 1.0);
+    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 30.0, 30.0, 1.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
-    iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(meanPointPosition(initialState)) + iDynTree::toEigen(iDynTree::Position(0.04, 0.0, 0.0));
+    iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
     meanPointReferenceGenerator[0].desiredPosition(2) = 0.0;
     meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, settingsStruct.horizon);
     meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
@@ -669,7 +636,7 @@ int main() {
     settingsStruct.quaternionModulusConstraintTolerance = 1e-2*0;
     settingsStruct.pointPositionConstraintTolerance = 1e-4*0;
 
-    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(50.0);
+    iDynTree::toEigen(settingsStruct.forceMaximumDerivative).setConstant(100.0);
 //    settingsStruct.forceMaximumDerivative(0) = 10.0;
 //    settingsStruct.forceMaximumDerivative(1) = 10.0;
 
@@ -677,22 +644,22 @@ int main() {
     settingsStruct.frictionCoefficient = 0.3;
 
     settingsStruct.minimumFeetDistance = 0.10;
-    settingsStruct.feetMaximumRelativeHeight = 0.02;
+    settingsStruct.feetMaximumRelativeHeight = 0.04;
     settingsStruct.desiredSwingHeight = 0.02;
 
 
     //ContactVelocityControlConstraints
-    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(2.0);
+    iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(5.0);
     settingsStruct.velocityMaximumDerivative(0) = 2.0;
     settingsStruct.velocityMaximumDerivative(1) = 2.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
 
-    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
-    settingsStruct.normalForceDissipationRatio = 300.0;
-    settingsStruct.normalForceHyperbolicSecantScaling = 350.0;
-    settingsStruct.complementarityDissipation = 15.0;
-    settingsStruct.dynamicComplementarityUpperBound = 0.15;
+    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
+    settingsStruct.normalForceDissipationRatio = 250.0;
+    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
+    settingsStruct.complementarityDissipation = 20.0;
+    settingsStruct.dynamicComplementarityUpperBound = 0.2;
     settingsStruct.classicalComplementarityTolerance = 0.015;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
@@ -708,9 +675,9 @@ int main() {
 
     ASSERT_IS_TRUE(ipoptSolver->isAvailable());
 
-    ok = ipoptSolver->setIpoptOption("linear_solver", "ma97");
+    ok = ipoptSolver->setIpoptOption("linear_solver", "ma57");
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("ma97_order", "metis");
+    ok = ipoptSolver->setIpoptOption("ma57_pivtol", 1e-6);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("print_level", 5);
     ASSERT_IS_TRUE(ok);
@@ -779,40 +746,7 @@ int main() {
 //    ok = ipoptSolver->setIpoptOption("soft_resto_pderror_reduction_factor", 0.0);
 //    ok = ipoptSolver->setIpoptOption("linear_system_scaling", "slack-based");
 
-
-
-
     ipoptSolver->useApproximatedHessians(true);
-
-//    ok = ipoptSolver->setIpoptOption("limited_memory_aug_solver", "extended");
-//    ASSERT_IS_TRUE(ok);
-//    ok = ipoptSolver->setIpoptOption("mu_strategy", "adaptive");
-//    ASSERT_IS_TRUE(ok);
-
-//    auto eulerIntegrator = std::make_shared<iDynTree::optimalcontrol::integrators::ForwardEuler>();
-
-//    ok = solver.setIntegrator(eulerIntegrator);
-//    ASSERT_IS_TRUE(ok);
-
-    auto worhpSolver = std::make_shared<iDynTree::optimization::WorhpInterface>();
-
-    worhpSolver->setWorhpParam("TolOpti", 1e-4);
-    worhpSolver->setWorhpParam("TolFeas", 1e-4);
-    worhpSolver->setWorhpParam("TolComp", 1e-5);
-    worhpSolver->setWorhpParam("AcceptTolOpti", 1e-1);
-    worhpSolver->setWorhpParam("AcceptTolFeas", 1e-3);
-//    worhpSolver->setWorhpParam("Algorithm", 1);
-//    worhpSolver->setWorhpParam("LineSearchMethod", 3);
-//    worhpSolver->setWorhpParam("ArmijoMinAlpha", 5.0e-10);
-//    worhpSolver->setWorhpParam("ArmijoMinAlphaRec", 1e-9);
-
-//    worhpSolver->setWorhpParam("Crossover", 2);
-//    worhpSolver->setWorhpParam("FeasibleDual", true);
-
-
-
-//    ok = solver.setOptimizer(worhpSolver);
-//    ASSERT_IS_TRUE(ok);
 
     ok = solver.setOptimizer(ipoptSolver);
     ASSERT_IS_TRUE(ok);
@@ -855,38 +789,6 @@ int main() {
     ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-1stIteration-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
-//    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
-//    ASSERT_IS_TRUE(ok);
-
-    //ok = ipoptSolver->setIpoptOption("print_level", 3);
-    //ASSERT_IS_TRUE(ok);
-
-//    begin = std::chrono::steady_clock::now();
-//    ok = solver.solve(optimalStates, optimalControls);
-//    ASSERT_IS_TRUE(ok);
-//    end= std::chrono::steady_clock::now();
-//    std::cout << "Elapsed time (2nd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
-
-//    ok = visualizer.visualizeStates(optimalStates, settingsStruct.horizon * settingsStruct.activeControlPercentage);
-//    ASSERT_IS_TRUE(ok);
-
-//    begin = std::chrono::steady_clock::now();
-//    ok = solver.solve(optimalStates, optimalControls);
-//    ASSERT_IS_TRUE(ok);
-//    end= std::chrono::steady_clock::now();
-//    std::cout << "Elapsed time (3rd): " << (std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count())/1000.0 <<std::endl;
-
-//    auto timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-//    struct tm timeStruct;
-//    timeStruct = *std::localtime(&timeNow);
-//    std::ostringstream timeString;
-//    timeString << timeStruct.tm_year + 1900 << "-" << timeStruct.tm_mon << "-";
-//    timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
-//    timeString << "_" << timeStruct.tm_sec;
-
-//    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
-//    ASSERT_IS_TRUE(ok);
-
     //-----------------------
 
     ok = ipoptSolver->setIpoptOption("print_level", 0);
@@ -894,6 +796,7 @@ int main() {
 
     std::vector<DynamicalPlanner::State> mpcStates;
     std::vector<DynamicalPlanner::Control> mpcControls;
+    std::vector<double> durations;
     mpcStates.push_back(initialState);
 
     double meanPositionError, minimumForce, futureMeanPositionError;
@@ -912,7 +815,6 @@ int main() {
         reconstructState(kinDyn, settingsStruct, initialState);
         ok = solver.setInitialState(initialState);
         ASSERT_IS_TRUE(ok);
-//        iDynTree::toEigen(comReference->get()) += iDynTree::toEigen(iDynTree::Position(0.005, 0.005, 0.0));
         begin = std::chrono::steady_clock::now();
         ok = solver.solve(optimalStates, optimalControls);
         if (!ok)
@@ -924,6 +826,7 @@ int main() {
         std::cout << "Complementarity: " << maximumComplementarity(optimalStates.front()) << std::endl;
         std::cout << "Mean Time: " << runningMean << std::endl;
 
+        durations.push_back(currentDuration);
         mpcStates.push_back(optimalStates.front());
         mpcStates.back().time += initialTime;
         mpcControls.push_back(optimalControls.front());
@@ -943,7 +846,7 @@ int main() {
         if ((futureMeanPositionError < 5e-3) && (meanPointReferenceGenerator[1].activeRange.initTime() > settingsStruct.horizon) && (meanPointReferenceGenerator[0].activeRange.endTime() < (0.6 * settingsStruct.horizon))) {
             //You are here if the step is already completed in the future. The end time of the current step has to be early enough to insert the new step at the end of the horizon.
             meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, settingsStruct.horizon + stepDuration);
-            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.06, 0.00, 0.0);
+            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.1, 0.00, 0.0);
             std::cerr << "Setting new position (" << meanPointReferenceGenerator[1].desiredPosition.toString() << ") at the end of the horizon." << std::endl;
         }
 
@@ -990,7 +893,7 @@ int main() {
     ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
-    DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls);
+    DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations);
 
     return EXIT_SUCCESS;
 }
