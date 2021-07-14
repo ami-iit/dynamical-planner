@@ -76,6 +76,7 @@ typedef struct {
     FootRanges left, right;
     iDynTree::IndexRange momentum, comPosition, basePosition;
     iDynTree::IndexRange baseQuaternion, jointsPosition, baseLinearVelocity, baseQuaternionDerivative, jointsVelocity;
+    size_t stateDimension, controlDimension;
 } VariablesRanges;
 
 class StateGuesses : public iDynTree::optimalcontrol::TimeVaryingVector {
@@ -92,7 +93,13 @@ public:
 
     StateGuesses(std::shared_ptr<TimeVaryingState> originalGuess, const VariablesRanges &ranges)
         : m_originalGuesses(originalGuess)
-        , m_buffer(static_cast<unsigned int>(ranges.left.positionPoints.size() * 2 * 6 + 16 + static_cast<size_t>(ranges.jointsPosition.size)))
+        , m_buffer(ranges.stateDimension)
+        , m_ranges(ranges)
+    { }
+
+    StateGuesses(const DynamicalPlanner::State& constantState, const VariablesRanges &ranges)
+        : m_originalGuesses(std::make_shared<DynamicalPlanner::TimeInvariantState>(constantState))
+        , m_buffer(ranges.stateDimension)
         , m_ranges(ranges)
     { }
 
@@ -153,7 +160,13 @@ public:
 
     ControlGuesses(std::shared_ptr<TimeVaryingControl> originalGuess, const VariablesRanges &ranges)
         : m_originalGuesses(originalGuess)
-        , m_buffer(static_cast<unsigned int>(ranges.left.positionPoints.size() * 12 + 7 + static_cast<size_t>(ranges.jointsPosition.size)))
+        , m_buffer(ranges.controlDimension)
+        , m_ranges(ranges)
+    { }
+
+    ControlGuesses(const DynamicalPlanner::Control& constantControl, const VariablesRanges &ranges)
+        : m_originalGuesses(std::make_shared<DynamicalPlanner::TimeInvariantControl>(constantControl))
+        , m_buffer(ranges.controlDimension)
         , m_ranges(ranges)
     { }
 
@@ -356,6 +369,9 @@ public:
         if (!ranges.jointsVelocity.isValid()) {
             return false;
         }
+
+        ranges.stateDimension = stateStructure.size();
+        ranges.controlDimension = controlStructure.size();
 
         return true;
     }
@@ -1482,6 +1498,10 @@ bool Solver::specifySettings(const Settings &settings)
         m_pimpl->multipleShootingSolver->disableConstraintsHessianRegularization();
     }
 
+    //We set some initial dummy guess to make sure that the quaternion is initialized with a unitary modulus.
+    m_pimpl->controlGuess = std::make_shared<ControlGuesses>(DynamicalPlanner::Control(numberOfDofs, numberOfPoints), m_pimpl->ranges);
+    m_pimpl->stateGuess   = std::make_shared<StateGuesses>(DynamicalPlanner::State(numberOfDofs, numberOfPoints), m_pimpl->ranges);
+
     m_pimpl->prepared = true;
 
     return true;
@@ -1507,6 +1527,11 @@ bool Solver::setInitialState(const State &initialState)
 
 bool Solver::setGuesses(std::shared_ptr<TimeVaryingState> stateGuesses, std::shared_ptr<TimeVaryingControl> controlGuesses)
 {
+    if (!(m_pimpl->prepared)) {
+        std::cerr << "[ERROR][Solver::setInitialCondition] First you have to specify the settings." << std::endl;
+        return false;
+    }
+
     if (!stateGuesses) {
         std::cerr << "[ERROR][Solver::setGuesses] The stateGuesses pointer is empty."
                   << std::endl;

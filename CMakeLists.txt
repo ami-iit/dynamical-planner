@@ -170,7 +170,9 @@ set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
                      include/DynamicalPlanner/Control.h
                      include/DynamicalPlanner/Visualizer.h
                      include/DynamicalPlanner/RectangularFoot.h
-                     include/DynamicalPlanner/Logger.h)
+                     include/DynamicalPlanner/Logger.h
+                     include/DynamicalPlanner/PositionReferenceGenerator.h
+                     include/DynamicalPlanner/Utilities.h)
 
 set(DPLANNER_SOURCES src/Settings.cpp
                      src/Solver.cpp
@@ -178,7 +180,9 @@ set(DPLANNER_SOURCES src/Settings.cpp
                      src/Control.cpp
                      src/RectangularFoot.cpp
                      src/Visualizer.cpp
-                     src/Logger.cpp)
+                     src/Logger.cpp
+                     src/PositionReferenceGenerator.cpp
+                     src/Utilities.cpp)
 
 add_library(DynamicalPlanner ${DPLANNER_HEADERS} ${DPLANNER_SOURCES})
 target_include_directories(DynamicalPlanner PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

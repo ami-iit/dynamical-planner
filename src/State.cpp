@@ -6,6 +6,7 @@
  */
 
 #include <DynamicalPlanner/State.h>
+#include <iDynTree/Core/EigenHelpers.h>
 
 using namespace DynamicalPlanner;
 
@@ -96,4 +97,26 @@ bool State::checkSize(size_t numberOfDofs, size_t numberOfPoints) const
     return ((leftContactPointsState.size() == numberOfPoints)
             && (rightContactPointsState.size() == numberOfPoints)
             && (jointsConfiguration.size() == numberOfDofs));
+}
+
+iDynTree::Vector3 State::computeFeetCentroid() const{
+    iDynTree::Vector3 meanPosition;
+    meanPosition.zero();
+
+    if (leftContactPointsState.size() + rightContactPointsState.size() == 0)
+    {
+        return meanPosition;
+    }
+
+    for (size_t i = 0; i < leftContactPointsState.size(); ++i) {
+        iDynTree::toEigen(meanPosition) += iDynTree::toEigen(leftContactPointsState[i].pointPosition);
+    }
+
+    for (size_t i = 0; i < rightContactPointsState.size(); ++i) {
+        iDynTree::toEigen(meanPosition) += iDynTree::toEigen(rightContactPointsState[i].pointPosition);
+    }
+
+    iDynTree::toEigen(meanPosition) /= leftContactPointsState.size() + rightContactPointsState.size();
+
+    return meanPosition;
 }

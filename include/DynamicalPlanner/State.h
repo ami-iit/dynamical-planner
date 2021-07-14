@@ -50,6 +50,9 @@ public:
     bool sameSize(const State& other) const;
 
     bool checkSize(size_t numberOfDofs, size_t numberOfPoints) const;
+
+    iDynTree::Vector3 computeFeetCentroid() const;
+
 };
 
 extern template class iDynTree::optimalcontrol::TimeInvariantObject<DynamicalPlanner::State>;
