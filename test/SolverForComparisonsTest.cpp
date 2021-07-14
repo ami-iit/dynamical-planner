@@ -655,7 +655,7 @@ int main() {
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
 
-    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
+    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
     settingsStruct.normalForceDissipationRatio = 250.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
     settingsStruct.complementarityDissipation = 20.0;
@@ -890,7 +890,7 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations);
