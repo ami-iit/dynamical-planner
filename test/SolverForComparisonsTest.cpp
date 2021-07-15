@@ -14,7 +14,6 @@
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
-#include <iDynTree/KinDynComputations.h>
 #include <iDynTree/Optimizers/IpoptInterface.h>
 #include <iDynTree/Optimizers/WorhpInterface.h>
 #include <iDynTree/Integrators/ForwardEuler.h>
@@ -24,52 +23,6 @@
 #include <ctime>
 #include <sstream>
 #include <iDynTree/Core/Utils.h>
-
-
-void reconstructState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings, DynamicalPlanner::State &initialState) {
-
-    bool ok = kinDyn.setFloatingBase(settings.floatingBaseName);
-    ASSERT_IS_TRUE(ok);
-
-    iDynTree::Vector3 gravity;
-    gravity.zero();
-    gravity(2) = -9.81;
-
-    ok = kinDyn.setRobotState(initialState.worldToBaseTransform, initialState.jointsConfiguration,
-                                   iDynTree::Twist::Zero(), iDynTree::VectorDynSize(initialState.jointsConfiguration.size()), gravity);
-    ASSERT_IS_TRUE(ok);
-
-    initialState.comPosition = kinDyn.getCenterOfMassPosition();
-
-    initialState.time = 0.0;
-
-    iDynTree::Transform leftTransform = kinDyn.getWorldTransform(settings.leftFrameName);
-    iDynTree::Transform rightTransform = kinDyn.getWorldTransform(settings.rightFrameName);
-
-    double minZ = 1.0;
-
-    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
-        initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
-
-        if (initialState.leftContactPointsState[i].pointPosition(2) < minZ) {
-            minZ = initialState.leftContactPointsState[i].pointPosition(2);
-        }
-
-        initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
-
-        if (initialState.rightContactPointsState[i].pointPosition(2) < minZ) {
-            minZ = initialState.rightContactPointsState[i].pointPosition(2);
-        }
-    }
-
-    if (!iDynTree::checkDoublesAreEqual(minZ, 0.0, 1e-6)) {
-        iDynTree::Position initialPosition = initialState.worldToBaseTransform.getPosition();
-        initialPosition(2) -= minZ;
-        initialState.worldToBaseTransform.setPosition(initialPosition);
-        reconstructState(kinDyn, settings, initialState);
-    }
-
-}
 
 bool leftIsForward(const DynamicalPlanner::State &state) {
     iDynTree::Vector3 leftPosition, rightPosition;
@@ -252,14 +205,10 @@ int main() {
 
     iDynTree::toEigen(desiredInitialJoints) *= iDynTree::deg2rad(1.0);
 
-    iDynTree::KinDynComputations kinDyn;
-
-    ok = kinDyn.loadRobotModel(modelLoader.model());
-    ASSERT_IS_TRUE(ok);
-
     ok = DynamicalPlanner::Utilities::FillDefaultInitialState(settingsStruct, desiredInitialJoints, leftFoot, rightFoot, initialState);
     ASSERT_IS_TRUE(ok);
-    reconstructState(kinDyn, settingsStruct, initialState);
+    ok = DynamicalPlanner::Utilities::SetMinContactPointToZero(settingsStruct, initialState);
+    ASSERT_IS_TRUE(ok);
 
 //    leftFoot.getNormalRatiosFromCoP(0.005, -0.01, settingsStruct.desiredLeftRatios);
 //    rightFoot.getNormalRatiosFromCoP(0.005, 0.01, settingsStruct.desiredRightRatios);
@@ -547,7 +496,7 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-1stIteration-" + timeString.str(), "gif", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-1stIteration-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     //-----------------------
@@ -573,7 +522,9 @@ int main() {
         double initialTime;
         initialState = mpcStates.back();
         initialTime = initialState.time;
-        reconstructState(kinDyn, settingsStruct, initialState);
+        initialState.time = 0.0;
+        ok = DynamicalPlanner::Utilities::SetMinContactPointToZero(settingsStruct, initialState);
+        ASSERT_IS_TRUE(ok);
         ok = solver.setInitialState(initialState);
         ASSERT_IS_TRUE(ok);
         begin = std::chrono::steady_clock::now();

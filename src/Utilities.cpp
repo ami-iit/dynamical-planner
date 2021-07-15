@@ -114,5 +114,76 @@ bool FillDefaultInitialState(const Settings &inputSettings, const iDynTree::Vect
     return true;
 }
 
+bool SetMinContactPointToZero_impl(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings, DynamicalPlanner::State &initialState) {
+
+    iDynTree::Vector3 gravity;
+    gravity.zero();
+    gravity(2) = -9.81;
+
+    if (!kinDyn.setRobotState(initialState.worldToBaseTransform, initialState.jointsConfiguration,
+                              iDynTree::Twist::Zero(), iDynTree::VectorDynSize(initialState.jointsConfiguration.size()), gravity))
+    {
+        std::cerr << "[ERROR][DynamicalPlanner::Utilities::SetMinContactPointToZero] Failed to set the robot state in the KinDynComputations object." <<std::endl;
+        return false;
+    }
+
+    initialState.comPosition = kinDyn.getCenterOfMassPosition();
+
+    iDynTree::Transform leftTransform = kinDyn.getWorldTransform(settings.leftFrameName);
+    iDynTree::Transform rightTransform = kinDyn.getWorldTransform(settings.rightFrameName);
+
+    double minZ = 1.0;
+
+    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
+        initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
+
+        if (initialState.leftContactPointsState[i].pointPosition(2) < minZ) {
+            minZ = initialState.leftContactPointsState[i].pointPosition(2);
+        }
+
+        initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
+
+        if (initialState.rightContactPointsState[i].pointPosition(2) < minZ) {
+            minZ = initialState.rightContactPointsState[i].pointPosition(2);
+        }
+    }
+
+    if (!iDynTree::checkDoublesAreEqual(minZ, 0.0, 1e-6)) {
+        iDynTree::Position initialPosition = initialState.worldToBaseTransform.getPosition();
+        initialPosition(2) -= minZ;
+        initialState.worldToBaseTransform.setPosition(initialPosition);
+        return SetMinContactPointToZero_impl(kinDyn, settings, initialState);
+    }
+
+    return true;
+}
+
+bool SetMinContactPointToZero(const Settings &inputSettings, State &initialState) {
+
+    if (!inputSettings.isValid())
+    {
+        std::cerr << "[ERROR][DynamicalPlanner::Utilities::SetMinContactPointToZero] The input settings are not valid." <<std::endl;
+        return false;
+    }
+
+    const DynamicalPlanner::SettingsStruct& settings = inputSettings.getSettings();
+
+    iDynTree::KinDynComputations kinDyn;
+
+    if (!kinDyn.loadRobotModel(settings.robotModel))
+    {
+        std::cerr << "[ERROR][DynamicalPlanner::Utilities::SetMinContactPointToZero] Failed to load the robot model in the KinDynComputations object." <<std::endl;
+        return false;
+    }
+
+    if (!kinDyn.setFloatingBase(settings.floatingBaseName))
+    {
+        std::cerr << "[ERROR][DynamicalPlanner::Utilities::SetMinContactPointToZero] Failed to set the floating base to the KinDynComputations object." <<std::endl;
+        return false;
+    }
+
+    return SetMinContactPointToZero_impl(kinDyn, settings, initialState);
+}
+
 }
 }

@@ -29,7 +29,7 @@ Settings::Settings()
     : m_isValid(false)
 { }
 
-Settings::Settings(SettingsStruct &inputSettings)
+Settings::Settings(const SettingsStruct &inputSettings)
 {
     m_isValid = setFromStruct(inputSettings);
 }

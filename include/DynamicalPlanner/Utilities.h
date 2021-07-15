@@ -18,6 +18,8 @@ bool FillDefaultInitialState(const DynamicalPlanner::Settings& inputSettings, co
                              DynamicalPlanner::RectangularFoot &leftFoot, DynamicalPlanner::RectangularFoot &rightFoot,
                              DynamicalPlanner::State& initialState);
 
+bool SetMinContactPointToZero(const DynamicalPlanner::Settings& inputSettings, DynamicalPlanner::State &initialState);
+
 }
 }
 

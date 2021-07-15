@@ -25,7 +25,6 @@ namespace DynamicalPlanner {
         HyperbolicSecantInDynamics
     };
 
-    class Solver;
     class Settings;
 
     typedef struct {
@@ -93,8 +92,6 @@ namespace DynamicalPlanner {
         bool constrainTargetCoMPosition;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> targetCoMPositionTolerance;
         iDynTree::optimalcontrol::TimeRange constrainTargetCoMPositionRange;
-
-
 
         //Costs
         //CoM cost
@@ -230,7 +227,7 @@ class DynamicalPlanner::Settings {
 public:
     Settings();
 
-    Settings(DynamicalPlanner::SettingsStruct& inputSettings);
+    Settings(const DynamicalPlanner::SettingsStruct& inputSettings);
 
     bool setFromStruct(const SettingsStruct &inputSettings);
 
