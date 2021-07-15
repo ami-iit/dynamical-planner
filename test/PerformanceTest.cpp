@@ -7,6 +7,7 @@
 
 #include <DynamicalPlanner/Solver.h>
 #include <DynamicalPlanner/RectangularFoot.h>
+#include <DynamicalPlanner/Utilities.h>
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
@@ -72,80 +73,6 @@ public:
     }
 };
 OptimizerTest::~OptimizerTest(){}
-
-void fillInitialState(const iDynTree::Model& model, const DynamicalPlanner::SettingsStruct settings,
-                      const iDynTree::VectorDynSize desiredJoints, DynamicalPlanner::RectangularFoot &foot,
-                      DynamicalPlanner::State &initialState) {
-
-    iDynTree::KinDynComputations kinDyn;
-
-    bool ok = kinDyn.loadRobotModel(model);
-    ASSERT_IS_TRUE(ok);
-
-    ok = kinDyn.setFloatingBase(model.getLinkName(model.getFrameLink(model.getFrameIndex(settings.leftFrameName))));
-    ASSERT_IS_TRUE(ok);
-
-    iDynTree::Vector3 gravity;
-    gravity.zero();
-    gravity(2) = -9.81;
-
-    ok = kinDyn.setRobotState(model.getFrameTransform(model.getFrameIndex(settings.leftFrameName)).inverse(), desiredJoints,
-                              iDynTree::Twist::Zero(), iDynTree::VectorDynSize(desiredJoints.size()), gravity);
-    ASSERT_IS_TRUE(ok);
-
-    initialState.comPosition = kinDyn.getCenterOfMassPosition();
-
-    initialState.jointsConfiguration = desiredJoints;
-
-    kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
-    initialState.momentumInCoM = kinDyn.getCentroidalTotalMomentum().asVector();
-
-    initialState.time = 0.0;
-
-    initialState.worldToBaseTransform = kinDyn.getWorldTransform(settings.floatingBaseName);
-
-    iDynTree::Transform leftTransform = kinDyn.getWorldTransform(settings.leftFrameName);
-    iDynTree::Transform rightTransform = kinDyn.getWorldTransform(settings.rightFrameName);
-
-    double totalMass = 0.0;
-
-    for(size_t l=0; l < model.getNrOfLinks(); l++)
-    {
-        totalMass += model.getLink(static_cast<iDynTree::LinkIndex>(l))->getInertia().getMass();
-    }
-
-    double normalForce = totalMass * 9.81;
-
-    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
-        initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
-        initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
-    }
-
-    iDynTree::Wrench leftWrench, rightWrench;
-    leftWrench.zero();
-    rightWrench.zero();
-
-    leftWrench(2) = normalForce/(1 + std::fabs(initialState.comPosition(1) - leftTransform.getPosition()(1))/std::fabs(initialState.comPosition(1) - rightTransform.getPosition()(1)));
-
-    rightWrench(2) = normalForce - leftWrench(2);
-
-    leftWrench(4) = -leftWrench(2) * (initialState.comPosition(0) - leftTransform.getPosition()(0));
-    rightWrench(4) = -rightWrench(2) * (initialState.comPosition(0) - rightTransform.getPosition()(0));
-
-    std::vector<iDynTree::Force> leftPointForces, rightPointForces;
-
-    ok = foot.getForces(leftWrench, leftPointForces);
-    ASSERT_IS_TRUE(ok);
-
-    ok = foot.getForces(rightWrench, rightPointForces);
-    ASSERT_IS_TRUE(ok);
-
-    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
-        initialState.leftContactPointsState[i].pointForce = leftPointForces[i];
-        initialState.rightContactPointsState[i].pointForce =rightPointForces[i];
-    }
-
-}
 
 class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
     iDynTree::VectorDynSize desiredCoM;
@@ -277,7 +204,7 @@ int main() {
     iDynTree::toEigen(desiredInitialJoints) *= iDynTree::deg2rad(1.0);
 
 
-    fillInitialState(modelLoader.model(), settingsStruct, desiredInitialJoints, foot, initialState);
+    DynamicalPlanner::Utilities::FillDefaultInitialState(settingsStruct, desiredInitialJoints, foot, foot, initialState);
 
 //    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.2, 0.0, 0.0);
     iDynTree::VectorDynSize comPointReference(3);

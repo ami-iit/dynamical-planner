@@ -320,6 +320,7 @@ public:
     std::shared_ptr<ControlGuesses> controlGuess;
 
     bool prepared;
+    bool firstRun;
 
 
     bool setVariablesStructure(size_t numberOfDofs, size_t numberOfPoints) {
@@ -1498,11 +1499,8 @@ bool Solver::specifySettings(const Settings &settings)
         m_pimpl->multipleShootingSolver->disableConstraintsHessianRegularization();
     }
 
-    //We set some initial dummy guess to make sure that the quaternion is initialized with a unitary modulus.
-    m_pimpl->controlGuess = std::make_shared<ControlGuesses>(DynamicalPlanner::Control(numberOfDofs, numberOfPoints), m_pimpl->ranges);
-    m_pimpl->stateGuess   = std::make_shared<StateGuesses>(DynamicalPlanner::State(numberOfDofs, numberOfPoints), m_pimpl->ranges);
-
     m_pimpl->prepared = true;
+    m_pimpl->firstRun = true;
 
     return true;
 }
@@ -1598,8 +1596,10 @@ bool Solver::solve(std::vector<State> &optimalStates, std::vector<Control> &opti
         return false;
     }
 
-    if (!m_pimpl->initialState.checkSize(m_pimpl->settings.robotModel.getNrOfDOFs(),
-                                         m_pimpl->settings.leftPointsPosition.size())) {
+    size_t numberOfDofs = m_pimpl->settings.robotModel.getNrOfDOFs();
+    size_t numberOfPoints = m_pimpl->settings.leftPointsPosition.size();
+
+    if (!m_pimpl->initialState.checkSize(numberOfDofs, numberOfPoints)) {
         std::cerr <<"[ERROR][Solver::solve] The specified initial dimensions do not match those of the problem." << std::endl;
         return false;
     }
@@ -1626,6 +1626,17 @@ bool Solver::solve(std::vector<State> &optimalStates, std::vector<Control> &opti
         ok = m_pimpl->multipleShootingSolver->setGuesses(m_pimpl->stateGuess, m_pimpl->controlGuess);
         if (!ok) {
             std::cerr << "[ERROR][Solver::solve] Failed to set guesses." << std::endl;
+            return false;
+        }
+    }
+    else if (m_pimpl->firstRun)
+    {
+        //We set some initial dummy guess to make sure that the quaternion is initialized with a unitary modulus.
+        //We also assume that the solver will use the previous solution if it is not the first run
+        ok = m_pimpl->multipleShootingSolver->setGuesses(std::make_shared<StateGuesses>(m_pimpl->initialState, m_pimpl->ranges),
+                                                         std::make_shared<ControlGuesses>(DynamicalPlanner::Control(numberOfDofs, numberOfPoints), m_pimpl->ranges));
+        if (!ok) {
+            std::cerr << "[ERROR][Solver::solve] Failed to set default guesses." << std::endl;
             return false;
         }
     }
@@ -1660,6 +1671,7 @@ bool Solver::solve(std::vector<State> &optimalStates, std::vector<Control> &opti
 
     m_pimpl->stateGuess = nullptr;
     m_pimpl->controlGuess = nullptr;
+    m_pimpl->firstRun = false;
 
 
     return true;

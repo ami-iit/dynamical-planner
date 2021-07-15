@@ -13,6 +13,8 @@
 #include <iDynTree/Core/EigenHelpers.h>
 #include <DynamicalPlanner/Solver.h>
 #include <DynamicalPlanner/RectangularFoot.h>
+#include <DynamicalPlanner/PositionReferenceGenerator.h>
+#include <DynamicalPlanner/Utilities.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
 #include <iDynTree/KinDynComputations.h>
 #include <iDynTree/Integrators/ForwardEuler.h>
@@ -344,80 +346,6 @@ public:
 };
 OptimizerTest::~OptimizerTest(){}
 
-void fillInitialState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings,
-                      const iDynTree::VectorDynSize& desiredJoints, DynamicalPlanner::RectangularFoot &foot,
-                      DynamicalPlanner::State &initialState) {
-
-    const iDynTree::Model& model = kinDyn.model();
-
-    bool ok = kinDyn.setFloatingBase(model.getLinkName(model.getFrameLink(model.getFrameIndex(settings.leftFrameName))));
-    ASSERT_IS_TRUE(ok);
-
-    iDynTree::Vector3 gravity;
-    gravity.zero();
-    gravity(2) = -9.81;
-
-    iDynTree::Twist baseVelocity = iDynTree::Twist::Zero();
-    baseVelocity(0) = 0.3*0;
-
-    ok = kinDyn.setRobotState(model.getFrameTransform(model.getFrameIndex(settings.leftFrameName)).inverse(), desiredJoints,
-                              baseVelocity, iDynTree::VectorDynSize(desiredJoints.size()), gravity);
-    ASSERT_IS_TRUE(ok);
-
-    initialState.comPosition = kinDyn.getCenterOfMassPosition();
-
-    initialState.jointsConfiguration = desiredJoints;
-
-    kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::MIXED_REPRESENTATION);
-    initialState.momentumInCoM = kinDyn.getCentroidalTotalMomentum().asVector();
-
-    initialState.time = 0.0;
-
-    initialState.worldToBaseTransform = kinDyn.getWorldTransform(settings.floatingBaseName);
-
-    iDynTree::Transform leftTransform = kinDyn.getWorldTransform(settings.leftFrameName);
-    iDynTree::Transform rightTransform = kinDyn.getWorldTransform(settings.rightFrameName);
-
-    double totalMass = 0.0;
-
-    for(size_t l=0; l < model.getNrOfLinks(); l++)
-    {
-        totalMass += model.getLink(static_cast<iDynTree::LinkIndex>(l))->getInertia().getMass();
-    }
-
-    double normalForce = totalMass * 9.81;
-
-    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
-        initialState.leftContactPointsState[i].pointPosition = leftTransform * settings.leftPointsPosition[i];
-        initialState.rightContactPointsState[i].pointPosition = rightTransform * settings.rightPointsPosition[i];
-    }
-
-    iDynTree::Wrench leftWrench, rightWrench;
-    leftWrench.zero();
-    rightWrench.zero();
-
-    leftWrench(2) = normalForce/(1 + std::fabs(initialState.comPosition(1) - leftTransform.getPosition()(1))/std::fabs(initialState.comPosition(1) - rightTransform.getPosition()(1)));
-
-    rightWrench(2) = normalForce - leftWrench(2);
-
-    leftWrench(4) = -leftWrench(2) * (initialState.comPosition(0) - leftTransform.getPosition()(0));
-    rightWrench(4) = -rightWrench(2) * (initialState.comPosition(0) - rightTransform.getPosition()(0));
-
-    std::vector<iDynTree::Force> leftPointForces, rightPointForces;
-
-    ok = foot.getForces(leftWrench, leftPointForces);
-    ASSERT_IS_TRUE(ok);
-
-    ok = foot.getForces(rightWrench, rightPointForces);
-    ASSERT_IS_TRUE(ok);
-
-    for (size_t i = 0; i < settings.leftPointsPosition.size(); ++i) {
-        initialState.leftContactPointsState[i].pointForce = leftPointForces[i];
-        initialState.rightContactPointsState[i].pointForce =rightPointForces[i];
-    }
-
-}
-
 void reconstructState(iDynTree::KinDynComputations& kinDyn, const DynamicalPlanner::SettingsStruct& settings, DynamicalPlanner::State &initialState) {
 
     bool ok = kinDyn.setFloatingBase(settings.floatingBaseName);
@@ -486,159 +414,6 @@ public:
 };
 StateGuess::~StateGuess() {}
 
-typedef struct {
-    iDynTree::Position desiredPosition;
-    iDynTree::optimalcontrol::TimeRange activeRange;
-} PositionWithTimeRange;
-
-class MeanPointReferenceGenerator;
-
-class MeanPointReferenceGeneratorData {
-
-    friend class MeanPointReferenceGenerator;
-
-    MeanPointReferenceGeneratorData(size_t desiredPoints) {
-
-        desiredPositions.resize(desiredPoints);
-
-        for (auto& el : desiredPositions) {
-            el.desiredPosition.zero();
-        }
-
-    }
-
-public:
-
-    ~MeanPointReferenceGeneratorData() {}
-
-    std::vector<PositionWithTimeRange> desiredPositions;
-
-};
-
-class TimeVaryingWeight : public iDynTree::optimalcontrol::TimeVaryingVector {
-
-    friend class MeanPointReferenceGenerator;
-
-    std::shared_ptr<MeanPointReferenceGeneratorData> m_data;
-    iDynTree::VectorDynSize m_outputWeight, m_increaseFactors;
-
-    TimeVaryingWeight(std::shared_ptr<MeanPointReferenceGeneratorData> data, double increaseFactorX,
-                      double increaseFactorY, double increaseFactorZ) {
-        m_data = data;
-        m_increaseFactors.resize(3);
-        m_increaseFactors.zero();
-        m_increaseFactors(0) = increaseFactorX;
-        m_increaseFactors(1) = increaseFactorY;
-        m_increaseFactors(2) = increaseFactorZ;
-
-        m_outputWeight.resize(3);
-        m_outputWeight.zero();
-    }
-
-public:
-
-    ~TimeVaryingWeight() override;
-
-    const iDynTree::VectorDynSize& get(double time, bool& isValid) override {
-
-        isValid = true;
-        std::vector<PositionWithTimeRange>::reverse_iterator activeElement;
-        activeElement = std::find_if(m_data->desiredPositions.rbegin(),
-                                     m_data->desiredPositions.rend(),
-                                     [time](const PositionWithTimeRange& a) -> bool { return a.activeRange.isInRange(time); }); //find the last element in the vector with init time lower than the specified time
-
-        if (activeElement == m_data->desiredPositions.rend()) {
-            m_outputWeight.zero();
-            return m_outputWeight;
-        }
-
-        double increaseAmount = (time - activeElement->activeRange.initTime())/(activeElement->activeRange.endTime() - activeElement->activeRange.initTime());
-
-        for (unsigned int i = 0; i < 3; ++i) {
-            m_outputWeight(i) = (m_increaseFactors(i) * increaseAmount + 1.0) * (m_increaseFactors(i) * increaseAmount + 1.0);
-        }
-
-        return m_outputWeight;
-    }
-};
-TimeVaryingWeight::~TimeVaryingWeight(){}
-
-class MeanPointReferencePosition : public iDynTree::optimalcontrol::TimeVaryingPosition {
-
-    friend class MeanPointReferenceGenerator;
-    std::shared_ptr<MeanPointReferenceGeneratorData> m_data;
-    iDynTree::Position m_zeroPosition;
-
-    MeanPointReferencePosition(std::shared_ptr<MeanPointReferenceGeneratorData> data) {
-        m_data = data;
-    }
-
-public:
-
-    ~MeanPointReferencePosition() override;
-
-    const iDynTree::Position& get(double time, bool& isValid) override {
-
-        isValid = true;
-        if (!m_data->desiredPositions.size()) {
-            return m_zeroPosition;
-        }
-
-        std::vector<PositionWithTimeRange>::reverse_iterator activeElement;
-        activeElement = std::find_if(m_data->desiredPositions.rbegin(),
-                                     m_data->desiredPositions.rend(),
-                                     [time](const PositionWithTimeRange& a) -> bool { return a.activeRange.isInRange(time); }); //find the last element in the vector with init time lower than the specified time
-
-        if (activeElement == m_data->desiredPositions.rend()) {
-            return m_zeroPosition;
-        }
-
-        return activeElement->desiredPosition;
-    }
-};
-MeanPointReferencePosition::~MeanPointReferencePosition(){}
-
-class MeanPointReferenceGenerator {
-
-    std::shared_ptr<TimeVaryingWeight> m_weightPointer;
-    std::shared_ptr<MeanPointReferencePosition> m_positionPointer;
-    std::shared_ptr<MeanPointReferenceGeneratorData> m_data;
-
-public:
-
-    MeanPointReferenceGenerator(unsigned int desiredPoints, double increaseFactorX,
-                                double increaseFactorY, double increaseFactorZ) {
-        m_data.reset(new MeanPointReferenceGeneratorData(desiredPoints));
-        m_weightPointer.reset(new TimeVaryingWeight(m_data, increaseFactorX, increaseFactorY, increaseFactorZ));
-        m_positionPointer.reset(new MeanPointReferencePosition(m_data));
-    }
-
-    ~MeanPointReferenceGenerator() {}
-
-    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> timeVaryingWeight() {
-        return m_weightPointer;
-    }
-
-    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> timeVaryingReference() {
-        return m_positionPointer;
-    }
-
-    PositionWithTimeRange& operator[](size_t index) {
-        return m_data->desiredPositions[index];
-    }
-
-    const PositionWithTimeRange& operator[](size_t index) const {
-        return m_data->desiredPositions[index];
-    }
-
-
-    void resize(size_t newSize) {
-        PositionWithTimeRange zeroElement;
-        zeroElement.desiredPosition.zero();
-        m_data->desiredPositions.resize(newSize, zeroElement);
-    }
-};
-
 int main() {
 
     DynamicalPlanner::Solver solver;
@@ -687,7 +462,8 @@ int main() {
     ok = kinDyn.loadRobotModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
 
-    fillInitialState(kinDyn, settingsStruct, desiredInitialJoints, foot, initialState);
+    ok = DynamicalPlanner::Utilities::FillDefaultInitialState(settingsStruct, desiredInitialJoints, foot, foot, initialState);
+    ASSERT_IS_TRUE(ok);
     reconstructState(kinDyn, settingsStruct, initialState);
 
 
@@ -754,7 +530,7 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    MeanPointReferenceGenerator meanPointReferenceGenerator(2, 15.0, 15.0, 15.0);
+    DynamicalPlanner::PositionReferenceGenerator meanPointReferenceGenerator(2, 15.0, 15.0, 15.0);
     settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
     iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
