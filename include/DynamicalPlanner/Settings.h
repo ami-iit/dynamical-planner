@@ -27,7 +27,7 @@ namespace DynamicalPlanner {
 
     class Settings;
 
-    typedef struct {
+    struct SettingsStruct {
         //Timings
         double minimumDt; //in seconds
         double maximumDt; //in seconds
@@ -215,8 +215,7 @@ namespace DynamicalPlanner {
         double constraintsHessianRegularization;
         bool useCostsHessianRegularization;
         double costsHessianRegularization;
-
-    } SettingsStruct;
+    };
 }
 
 class DynamicalPlanner::Settings {

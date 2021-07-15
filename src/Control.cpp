@@ -66,12 +66,12 @@ void Control::resize(size_t numberOfDofs, size_t numberOfPoints)
 
 void Control::zero()
 {
-    for (auto leftPoints : leftContactPointsControl) {
+    for (auto& leftPoints : leftContactPointsControl) {
         leftPoints.pointForceControl.zero();
         leftPoints.pointVelocityControl.zero();
     }
 
-    for (auto rightPoints : rightContactPointsControl) {
+    for (auto& rightPoints : rightContactPointsControl) {
         rightPoints.pointForceControl.zero();
         rightPoints.pointVelocityControl.zero();
     }

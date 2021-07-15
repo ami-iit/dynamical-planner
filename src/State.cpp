@@ -68,12 +68,12 @@ void State::resize(size_t numberOfDofs, size_t numberOfPoints)
 
 void State::zero()
 {
-    for (auto leftPoint : leftContactPointsState) {
+    for (auto& leftPoint : leftContactPointsState) {
         leftPoint.pointForce.zero();
         leftPoint.pointPosition.zero();
     }
 
-    for (auto rightPoint : rightContactPointsState) {
+    for (auto& rightPoint : rightContactPointsState) {
         rightPoint.pointForce.zero();
         rightPoint.pointPosition.zero();
     }
