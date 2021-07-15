@@ -20,6 +20,18 @@ bool FillDefaultInitialState(const DynamicalPlanner::Settings& inputSettings, co
 
 bool SetMinContactPointToZero(const DynamicalPlanner::Settings& inputSettings, DynamicalPlanner::State &initialState);
 
+class TranslatingCoMStateGuess : public DynamicalPlanner::TimeVaryingState {
+    DynamicalPlanner::State m_state, m_initialState;
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> m_comReference;
+public:
+
+    TranslatingCoMStateGuess(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> comReference, const DynamicalPlanner::State &initialState);
+
+    ~TranslatingCoMStateGuess() override;
+
+    DynamicalPlanner::State &get(double time, bool &isValid) override;
+};
+
 }
 }
 

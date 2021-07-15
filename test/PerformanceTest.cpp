@@ -11,7 +11,6 @@
 #include <iDynTree/Core/TestUtils.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <iDynTree/ModelIO/ModelLoader.h>
-#include <iDynTree/KinDynComputations.h>
 #include <iDynTree/Integrators/ForwardEuler.h>
 #include <URDFdir.h>
 #include <FolderPath.h>
@@ -74,78 +73,9 @@ public:
 };
 OptimizerTest::~OptimizerTest(){}
 
-class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
-    iDynTree::VectorDynSize desiredCoM;
-    double xVelocity, yVelocity, zVelocity;
-    iDynTree::Vector3 initialCoM;
-
-public:
-    CoMReference(iDynTree::Vector3 &CoMinitial, double velX, double velY, double velZ)
-        : desiredCoM(3)
-        , xVelocity(velX)
-        , yVelocity(velY)
-        , zVelocity(velZ)
-        , initialCoM(CoMinitial)
-    { }
-
-    ~CoMReference() override;
-
-    iDynTree::VectorDynSize &get(double time, bool &isValid) override {
-        desiredCoM(0) = initialCoM(0) + xVelocity * time;
-        desiredCoM(1) = initialCoM(1) + yVelocity * time;
-        desiredCoM(2) = initialCoM(2) + zVelocity * time;
-        isValid = true;
-        return desiredCoM;
-    }
-
-};
-CoMReference::~CoMReference() { }
-
-class StateGuess : public DynamicalPlanner::TimeVaryingState {
-    DynamicalPlanner::State m_state, m_initialState;
-    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> m_comReference;
-public:
-
-    StateGuess(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> comReference, const DynamicalPlanner::State &initialState)
-        : m_state(initialState)
-        , m_initialState(initialState)
-        , m_comReference(comReference)
-    { }
-
-    ~StateGuess() override;
-
-    DynamicalPlanner::State &get(double time, bool &isValid) override {
-        iDynTree::toEigen(m_state.comPosition) = iDynTree::toEigen(m_comReference->get(time, isValid));
-        m_state.jointsConfiguration = m_initialState.jointsConfiguration;
-        m_state.momentumInCoM.zero();
-        m_state.worldToBaseTransform.setRotation(m_initialState.worldToBaseTransform.getRotation());
-        iDynTree::Position basePosition, comDifference;
-        iDynTree::toEigen(comDifference) = iDynTree::toEigen(m_state.comPosition) - iDynTree::toEigen(m_initialState.comPosition);
-        iDynTree::toEigen(basePosition) = iDynTree::toEigen(m_initialState.worldToBaseTransform.getPosition()) + iDynTree::toEigen(comDifference);
-        m_state.worldToBaseTransform.setPosition(basePosition);
-
-        for (size_t i = 0; i < m_state.leftContactPointsState.size(); ++i) {
-            iDynTree::toEigen(m_state.leftContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.leftContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-            m_state.leftContactPointsState[i].pointPosition(2) = 0;
-        }
-
-        for (size_t i = 0; i < m_state.rightContactPointsState.size(); ++i) {
-            iDynTree::toEigen(m_state.rightContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.rightContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-            m_state.rightContactPointsState[i].pointPosition(2) = 0;
-        }
-
-        isValid = true;
-
-        m_state.time = time;
-        return m_state;
-    }
-};
-StateGuess::~StateGuess() {}
-
 int main() {
 
     DynamicalPlanner::Solver solver;
-    DynamicalPlanner::Settings settings;
 
 //    std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
 //                                         "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
@@ -280,21 +210,18 @@ int main() {
 
     settingsStruct.minimumCoMHeight = 0.95 * initialState.comPosition(2);
 
-    ok = settings.setFromStruct(settingsStruct);
-    ASSERT_IS_TRUE(ok);
-
     auto optimizerTest = std::make_shared<OptimizerTest>();
 
     ok = solver.setOptimizer(optimizerTest);
     ASSERT_IS_TRUE(ok);
 
-    ok = solver.specifySettings(settings);
+    ok = solver.specifySettings(settingsStruct);
     ASSERT_IS_TRUE(ok);
 
     ok = solver.setInitialState(initialState);
     ASSERT_IS_TRUE(ok);
 
-    auto stateGuesses = std::make_shared<StateGuess>(comReference, initialState);
+    auto stateGuesses = std::make_shared<DynamicalPlanner::Utilities::TranslatingCoMStateGuess>(comReference, initialState);
     auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(DynamicalPlanner::Control(vectorList.size(), settingsStruct.leftPointsPosition.size()));
 
     ok = solver.setGuesses(stateGuesses, controlGuesses);

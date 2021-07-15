@@ -53,6 +53,10 @@ public:
 
     iDynTree::Vector3 computeFeetCentroid() const;
 
+    bool leftIsForward(const iDynTree::Vector3& forward);
+
+    double minimumPointForceOnForwardFoot(const iDynTree::Vector3& forwardDirection);
+
 };
 
 extern template class iDynTree::optimalcontrol::TimeInvariantObject<DynamicalPlanner::State>;

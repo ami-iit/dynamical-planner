@@ -7,6 +7,7 @@
 
 #include <DynamicalPlanner/Utilities.h>
 #include <iDynTree/KinDynComputations.h>
+#include <iDynTree/Core/EigenHelpers.h>
 #include <cmath>
 
 namespace DynamicalPlanner {
@@ -183,6 +184,41 @@ bool SetMinContactPointToZero(const Settings &inputSettings, State &initialState
     }
 
     return SetMinContactPointToZero_impl(kinDyn, settings, initialState);
+}
+
+TranslatingCoMStateGuess::TranslatingCoMStateGuess(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> comReference, const State &initialState)
+    : m_state(initialState)
+    , m_initialState(initialState)
+    , m_comReference(comReference)
+{ }
+
+TranslatingCoMStateGuess::~TranslatingCoMStateGuess()
+{ }
+
+State &TranslatingCoMStateGuess::get(double time, bool &isValid) {
+    iDynTree::toEigen(m_state.comPosition) = iDynTree::toEigen(m_comReference->get(time, isValid));
+    m_state.jointsConfiguration = m_initialState.jointsConfiguration;
+    m_state.momentumInCoM.zero();
+    m_state.worldToBaseTransform.setRotation(m_initialState.worldToBaseTransform.getRotation());
+    iDynTree::Position basePosition, comDifference;
+    iDynTree::toEigen(comDifference) = iDynTree::toEigen(m_state.comPosition) - iDynTree::toEigen(m_initialState.comPosition);
+    iDynTree::toEigen(basePosition) = iDynTree::toEigen(m_initialState.worldToBaseTransform.getPosition()) + iDynTree::toEigen(comDifference);
+    m_state.worldToBaseTransform.setPosition(basePosition);
+
+    for (size_t i = 0; i < m_state.leftContactPointsState.size(); ++i) {
+        iDynTree::toEigen(m_state.leftContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.leftContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
+        m_state.leftContactPointsState[i].pointPosition(2) = 0;
+    }
+
+    for (size_t i = 0; i < m_state.rightContactPointsState.size(); ++i) {
+        iDynTree::toEigen(m_state.rightContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.rightContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
+        m_state.rightContactPointsState[i].pointPosition(2) = 0;
+    }
+
+    isValid = true;
+
+    m_state.time = time;
+    return m_state;
 }
 
 }

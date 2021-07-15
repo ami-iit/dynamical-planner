@@ -24,57 +24,6 @@
 #include <sstream>
 #include <iDynTree/Core/Utils.h>
 
-bool leftIsForward(const DynamicalPlanner::State &state) {
-    iDynTree::Vector3 leftPosition, rightPosition;
-    leftPosition.zero();
-    rightPosition.zero();
-
-    for (size_t i = 0; i < state.leftContactPointsState.size(); ++i) {
-        iDynTree::toEigen(leftPosition) += iDynTree::toEigen(state.leftContactPointsState[i].pointPosition);
-    }
-
-    iDynTree::toEigen(leftPosition) /= state.leftContactPointsState.size();
-
-
-    for (size_t i = 0; i < state.rightContactPointsState.size(); ++i) {
-        iDynTree::toEigen(rightPosition) += iDynTree::toEigen(state.rightContactPointsState[i].pointPosition);
-    }
-
-    iDynTree::toEigen(rightPosition) /= state.rightContactPointsState.size();
-
-
-    return leftPosition(0) > rightPosition(0);
-}
-
-double minimumPointForceOnForwardFoot(const DynamicalPlanner::State &state) {
-
-    bool isLeftForward = leftIsForward(state);
-
-    if (isLeftForward) {
-        double minForceNorm = iDynTree::toEigen(state.leftContactPointsState.begin()->pointForce).norm();
-        double forceNorm;
-
-        for (size_t i = 1; i < state.leftContactPointsState.size(); ++i) {
-            forceNorm = iDynTree::toEigen(state.leftContactPointsState[i].pointForce).norm();
-            if (forceNorm < minForceNorm)
-                minForceNorm = forceNorm;
-        }
-
-        return minForceNorm;
-    } else {
-        double minForceNorm = iDynTree::toEigen(state.rightContactPointsState.begin()->pointForce).norm();
-        double forceNorm;
-
-        for (size_t i = 1; i < state.rightContactPointsState.size(); ++i) {
-            forceNorm = iDynTree::toEigen(state.rightContactPointsState[i].pointForce).norm();
-            if (forceNorm < minForceNorm)
-                minForceNorm = forceNorm;
-        }
-
-        return minForceNorm;
-    }
-}
-
 double maximumComplementarity(const DynamicalPlanner::State &state) {
 
     double maximum = 0;
@@ -97,52 +46,9 @@ double maximumComplementarity(const DynamicalPlanner::State &state) {
     return maximum;
 }
 
-class StateGuess : public DynamicalPlanner::TimeVaryingState {
-    DynamicalPlanner::State m_state, m_initialState;
-    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> m_comReference;
-public:
-
-    StateGuess(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> comReference, const DynamicalPlanner::State &initialState)
-        : m_state(initialState)
-        , m_initialState(initialState)
-        , m_comReference(comReference)
-    { }
-
-    ~StateGuess() override;
-
-    DynamicalPlanner::State &get(double time, bool &isValid) override {
-        iDynTree::toEigen(m_state.comPosition) = iDynTree::toEigen(m_comReference->get(time, isValid));
-        m_state.jointsConfiguration = m_initialState.jointsConfiguration;
-        m_state.momentumInCoM.zero();
-        m_state.worldToBaseTransform.setRotation(m_initialState.worldToBaseTransform.getRotation());
-        iDynTree::Position basePosition, comDifference;
-        iDynTree::toEigen(comDifference) = iDynTree::toEigen(m_state.comPosition) - iDynTree::toEigen(m_initialState.comPosition);
-        iDynTree::toEigen(basePosition) = iDynTree::toEigen(m_initialState.worldToBaseTransform.getPosition()) + iDynTree::toEigen(comDifference);
-        m_state.worldToBaseTransform.setPosition(basePosition);
-
-        for (size_t i = 0; i < m_state.leftContactPointsState.size(); ++i) {
-            iDynTree::toEigen(m_state.leftContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.leftContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-            m_state.leftContactPointsState[i].pointPosition(2) = 0;
-        }
-
-        for (size_t i = 0; i < m_state.rightContactPointsState.size(); ++i) {
-            iDynTree::toEigen(m_state.rightContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.rightContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-            m_state.rightContactPointsState[i].pointPosition(2) = 0;
-        }
-
-        isValid = true;
-
-        m_state.time = time;
-        return m_state;
-    }
-};
-StateGuess::~StateGuess() {}
-
-
 int main() {
 
     DynamicalPlanner::Solver solver;
-    DynamicalPlanner::Settings settings;
 
     std::vector<std::string> vectorList({"torso_pitch", "torso_roll", "torso_yaw", "l_shoulder_pitch", "l_shoulder_roll",
                                          "l_shoulder_yaw", "l_elbow", "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw",
@@ -377,9 +283,6 @@ int main() {
     desiredQuaternion = initialState.worldToBaseTransform.getRotation().asQuaternion();
     settingsStruct.desiredBaseQuaternionTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredQuaternion);
 
-    ok = settings.setFromStruct(settingsStruct);
-    ASSERT_IS_TRUE(ok);
-
     auto ipoptSolver = std::make_shared<iDynTree::optimization::IpoptInterface>();
 
     ASSERT_IS_TRUE(ipoptSolver->isAvailable());
@@ -460,13 +363,13 @@ int main() {
     ok = solver.setOptimizer(ipoptSolver);
     ASSERT_IS_TRUE(ok);
 
-    ok = solver.specifySettings(settings);
+    ok = solver.specifySettings(settingsStruct);
     ASSERT_IS_TRUE(ok);
 
     ok = solver.setInitialState(initialState);
     ASSERT_IS_TRUE(ok);
 
-    auto stateGuesses = std::make_shared<StateGuess>(comReference, initialState);
+    auto stateGuesses = std::make_shared<DynamicalPlanner::Utilities::TranslatingCoMStateGuess>(comReference, initialState);
     auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(DynamicalPlanner::Control(vectorList.size(), settingsStruct.leftPointsPosition.size()));
 
     ok = solver.setGuesses(stateGuesses, controlGuesses);
@@ -516,6 +419,7 @@ int main() {
     meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + stepDuration);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
+    iDynTree::Position stepIncrement(0.1, 0.00, 0.0);
     double runningMean = 0;
     double currentDuration;
     for (size_t i = 0; i < 200; ++i) {
@@ -552,13 +456,13 @@ int main() {
         meanPositionError = (iDynTree::toEigen(optimalStates.front().computeFeetCentroid()) - iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition)).norm();
         std::cerr << "Mean point error: " << meanPositionError << std::endl;
 
-        minimumForce = minimumPointForceOnForwardFoot(optimalStates.front());
+        minimumForce = optimalStates.front().minimumPointForceOnForwardFoot(stepIncrement);
         std::cerr << "Minimum force: " << minimumForce << std::endl;
 
         if ((futureMeanPositionError < 5e-3) && (meanPointReferenceGenerator[1].activeRange.initTime() > settingsStruct.horizon) && (meanPointReferenceGenerator[0].activeRange.endTime() < (0.6 * settingsStruct.horizon))) {
             //You are here if the step is already completed in the future. The end time of the current step has to be early enough to insert the new step at the end of the horizon.
             meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, settingsStruct.horizon + stepDuration);
-            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + iDynTree::Position(0.1, 0.00, 0.0);
+            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + stepIncrement;
             std::cerr << "Setting new position (" << meanPointReferenceGenerator[1].desiredPosition.toString() << ") at the end of the horizon." << std::endl;
         }
 

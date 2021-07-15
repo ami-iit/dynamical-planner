@@ -120,3 +120,55 @@ iDynTree::Vector3 State::computeFeetCentroid() const{
 
     return meanPosition;
 }
+
+bool State::leftIsForward(const iDynTree::Vector3 &forward) {
+    iDynTree::Vector3 leftPosition, rightPosition;
+    leftPosition.zero();
+    rightPosition.zero();
+
+    for (size_t i = 0; i < leftContactPointsState.size(); ++i) {
+        iDynTree::toEigen(leftPosition) += iDynTree::toEigen(leftContactPointsState[i].pointPosition);
+    }
+
+    iDynTree::toEigen(leftPosition) /= leftContactPointsState.size();
+
+
+    for (size_t i = 0; i < rightContactPointsState.size(); ++i) {
+        iDynTree::toEigen(rightPosition) += iDynTree::toEigen(rightContactPointsState[i].pointPosition);
+    }
+
+    iDynTree::toEigen(rightPosition) /= rightContactPointsState.size();
+
+
+    return iDynTree::toEigen(leftPosition).dot(iDynTree::toEigen(forward)) >
+            iDynTree::toEigen(rightPosition).dot(iDynTree::toEigen(forward));
+}
+
+double State::minimumPointForceOnForwardFoot(const iDynTree::Vector3 &forwardDirection) {
+
+    bool isLeftForward = leftIsForward(forwardDirection);
+
+    if (isLeftForward) {
+        double minForceNorm = iDynTree::toEigen(leftContactPointsState.begin()->pointForce).norm();
+        double forceNorm;
+
+        for (size_t i = 1; i < leftContactPointsState.size(); ++i) {
+            forceNorm = iDynTree::toEigen(leftContactPointsState[i].pointForce).norm();
+            if (forceNorm < minForceNorm)
+                minForceNorm = forceNorm;
+        }
+
+        return minForceNorm;
+    } else {
+        double minForceNorm = iDynTree::toEigen(rightContactPointsState.begin()->pointForce).norm();
+        double forceNorm;
+
+        for (size_t i = 1; i < rightContactPointsState.size(); ++i) {
+            forceNorm = iDynTree::toEigen(rightContactPointsState[i].pointForce).norm();
+            if (forceNorm < minForceNorm)
+                minForceNorm = forceNorm;
+        }
+
+        return minForceNorm;
+    }
+}
