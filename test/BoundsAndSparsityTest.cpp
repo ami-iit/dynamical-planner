@@ -116,73 +116,6 @@ public:
 };
 OptimizerTest::~OptimizerTest(){}
 
-class CoMReference : public iDynTree::optimalcontrol::TimeVaryingVector {
-    iDynTree::VectorDynSize desiredCoM;
-    double xVelocity, yVelocity;
-    iDynTree::Vector3 initialCoM;
-
-public:
-    CoMReference(iDynTree::Vector3 &CoMinitial, double velX, double velY)
-        : desiredCoM(3)
-        , xVelocity(velX)
-        , yVelocity(velY)
-        , initialCoM(CoMinitial)
-    { }
-
-    ~CoMReference() override;
-
-    iDynTree::VectorDynSize &get(double time, bool &isValid) override {
-        desiredCoM(0) = initialCoM(0) + xVelocity * time;
-        desiredCoM(1) = initialCoM(1) + yVelocity * time;
-        desiredCoM(2) = initialCoM(2);
-        isValid = true;
-        return desiredCoM;
-    }
-
-};
-CoMReference::~CoMReference() { }
-
-class StateGuess : public DynamicalPlanner::TimeVaryingState {
-    DynamicalPlanner::State m_state, m_initialState;
-    std::shared_ptr<CoMReference> m_comReference;
-public:
-
-    StateGuess(std::shared_ptr<CoMReference> comReference, const DynamicalPlanner::State &initialState)
-        : m_state(initialState)
-        , m_initialState(initialState)
-        , m_comReference(comReference)
-    { }
-
-    ~StateGuess() override;
-
-    DynamicalPlanner::State &get(double time, bool &isValid) override {
-        m_state.comPosition = m_comReference->get(time, isValid);
-        m_state.jointsConfiguration = m_initialState.jointsConfiguration;
-        m_state.momentumInCoM.zero();
-        m_state.worldToBaseTransform.setRotation(m_initialState.worldToBaseTransform.getRotation());
-        iDynTree::Position basePosition, comDifference;
-        iDynTree::toEigen(comDifference) = iDynTree::toEigen(m_state.comPosition) - iDynTree::toEigen(m_initialState.comPosition);
-        iDynTree::toEigen(basePosition) = iDynTree::toEigen(m_initialState.worldToBaseTransform.getPosition()) + iDynTree::toEigen(comDifference);
-        m_state.worldToBaseTransform.setPosition(basePosition);
-
-        for (size_t i = 0; i < m_state.leftContactPointsState.size(); ++i) {
-            iDynTree::toEigen(m_state.leftContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.leftContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-            m_state.leftContactPointsState[i].pointPosition(2) = 0;
-        }
-
-        for (size_t i = 0; i < m_state.rightContactPointsState.size(); ++i) {
-            iDynTree::toEigen(m_state.rightContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.rightContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-            m_state.rightContactPointsState[i].pointPosition(2) = 0;
-        }
-
-        isValid = true;
-
-        m_state.time = time;
-        return m_state;
-    }
-};
-StateGuess::~StateGuess() {}
-
 int main() {
 
     DynamicalPlanner::Solver solver;
@@ -228,7 +161,9 @@ int main() {
 
     DynamicalPlanner::Utilities::FillDefaultInitialState(settingsStruct, desiredInitialJoints, foot, foot, initialState);
 
-    auto comReference = std::make_shared<CoMReference>(initialState.comPosition, 0.0, 0.0);
+    iDynTree::VectorDynSize comPointReference(3);
+    comPointReference = initialState.comPosition;
+    auto comReference = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comPointReference);
 
     settingsStruct.desiredCoMTrajectory  = comReference;
 
@@ -254,7 +189,7 @@ int main() {
     ok = solver.setInitialState(initialState);
     ASSERT_IS_TRUE(ok);
 
-    auto stateGuesses = std::make_shared<StateGuess>(comReference, initialState);
+    auto stateGuesses = std::make_shared<DynamicalPlanner::Utilities::TranslatingCoMStateGuess>(comReference, initialState);
     auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(DynamicalPlanner::Control(vectorList.size(), settingsStruct.leftPointsPosition.size()));
 
     std::vector<DynamicalPlanner::State> optimalStates;
