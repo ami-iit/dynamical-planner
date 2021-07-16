@@ -99,8 +99,8 @@ bool State::checkSize(size_t numberOfDofs, size_t numberOfPoints) const
             && (jointsConfiguration.size() == numberOfDofs));
 }
 
-iDynTree::Vector3 State::computeFeetCentroid() const{
-    iDynTree::Vector3 meanPosition;
+iDynTree::Position State::computeFeetCentroid() const{
+    iDynTree::Position meanPosition;
     meanPosition.zero();
 
     if (leftContactPointsState.size() + rightContactPointsState.size() == 0)
@@ -121,7 +121,7 @@ iDynTree::Vector3 State::computeFeetCentroid() const{
     return meanPosition;
 }
 
-bool State::leftIsForward(const iDynTree::Vector3 &forward) {
+bool State::leftIsForward(const iDynTree::Vector3 &forward) const {
     iDynTree::Vector3 leftPosition, rightPosition;
     leftPosition.zero();
     rightPosition.zero();
@@ -144,7 +144,7 @@ bool State::leftIsForward(const iDynTree::Vector3 &forward) {
             iDynTree::toEigen(rightPosition).dot(iDynTree::toEigen(forward));
 }
 
-double State::minimumPointForceOnForwardFoot(const iDynTree::Vector3 &forwardDirection) {
+double State::minimumPointForceOnForwardFoot(const iDynTree::Vector3 &forwardDirection) const {
 
     bool isLeftForward = leftIsForward(forwardDirection);
 

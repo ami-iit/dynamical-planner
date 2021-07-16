@@ -9,6 +9,47 @@
 
 namespace DynamicalPlanner {
 
+class PositionReferenceGeneratorData {
+
+public:
+
+    PositionReferenceGeneratorData(size_t desiredPoints);
+
+    ~PositionReferenceGeneratorData();
+
+    std::vector<PositionWithTimeRange> desiredPositions;
+
+};
+
+class TimeVaryingWeight : public iDynTree::optimalcontrol::TimeVaryingVector {
+
+    std::shared_ptr<PositionReferenceGeneratorData> m_data;
+    iDynTree::VectorDynSize m_outputWeight, m_increaseFactors;
+
+public:
+
+    TimeVaryingWeight(std::shared_ptr<PositionReferenceGeneratorData> data, double increaseFactorX,
+                      double increaseFactorY, double increaseFactorZ);
+
+    ~TimeVaryingWeight() override;
+
+    const iDynTree::VectorDynSize& get(double time, bool& isValid) override;
+};
+
+class PositionReference : public iDynTree::optimalcontrol::TimeVaryingPosition {
+
+    std::shared_ptr<PositionReferenceGeneratorData> m_data;
+    iDynTree::Position m_zeroPosition;
+
+public:
+
+    PositionReference(std::shared_ptr<PositionReferenceGeneratorData> data);
+
+    ~PositionReference() override;
+
+    const iDynTree::Position& get(double time, bool& isValid) override;
+};
+
 PositionReferenceGeneratorData::PositionReferenceGeneratorData(size_t desiredPoints) {
 
     desiredPositions.resize(desiredPoints);
@@ -81,34 +122,66 @@ const iDynTree::Position &PositionReference::get(double time, bool &isValid) {
 
 DynamicalPlanner::PositionReference::~PositionReference(){}
 
+class PositionReferenceGenerator::Implementation
+{
+public:
+    std::shared_ptr<TimeVaryingWeight> weightPointer;
+    std::shared_ptr<PositionReference> positionPointer;
+    std::shared_ptr<PositionReferenceGeneratorData> data;
+};
+
+PositionReferenceGenerator::PositionReferenceGenerator()
+{
+    m_pimpl = std::make_unique<PositionReferenceGenerator::Implementation>();
+    m_pimpl->data = std::make_shared<PositionReferenceGeneratorData>(0);
+}
+
 PositionReferenceGenerator::PositionReferenceGenerator(unsigned int desiredPoints, double increaseFactorX, double increaseFactorY, double increaseFactorZ) {
-    m_data.reset(new PositionReferenceGeneratorData(desiredPoints));
-    m_weightPointer.reset(new TimeVaryingWeight(m_data, increaseFactorX, increaseFactorY, increaseFactorZ));
-    m_positionPointer.reset(new PositionReference(m_data));
+
+    m_pimpl = std::make_unique<PositionReferenceGenerator::Implementation>();
+    init(desiredPoints, increaseFactorX, increaseFactorY, increaseFactorZ);
 }
 
 PositionReferenceGenerator::~PositionReferenceGenerator() {}
 
+void PositionReferenceGenerator::init(unsigned int desiredPoints, double increaseFactorX, double increaseFactorY, double increaseFactorZ)
+{
+    m_pimpl->data = std::make_shared<PositionReferenceGeneratorData>(desiredPoints);
+    m_pimpl->weightPointer = std::make_shared<TimeVaryingWeight>(m_pimpl->data, increaseFactorX, increaseFactorY, increaseFactorZ);
+    m_pimpl->positionPointer = std::make_shared<PositionReference>(m_pimpl->data);
+}
+
 std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> PositionReferenceGenerator::timeVaryingWeight() {
-    return m_weightPointer;
+    return m_pimpl->weightPointer;
 }
 
 std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingPosition> PositionReferenceGenerator::timeVaryingReference() {
-    return m_positionPointer;
+    return m_pimpl->positionPointer;
 }
 
 PositionWithTimeRange &PositionReferenceGenerator::operator[](size_t index) {
-    return m_data->desiredPositions[index];
+    return at(index);
+}
+
+const PositionWithTimeRange &PositionReferenceGenerator::operator[](size_t index) const{
+    return at(index);
+}
+
+PositionWithTimeRange &PositionReferenceGenerator::at(size_t index)
+{
+    return m_pimpl->data->desiredPositions[index];
+
+}
+
+const PositionWithTimeRange &PositionReferenceGenerator::at(size_t index) const
+{
+    return m_pimpl->data->desiredPositions[index];
 }
 
 void PositionReferenceGenerator::resize(size_t newSize) {
     PositionWithTimeRange zeroElement;
     zeroElement.desiredPosition.zero();
-    m_data->desiredPositions.resize(newSize, zeroElement);
-}
-
-const PositionWithTimeRange &PositionReferenceGenerator::operator[](size_t index) const {
-    return m_data->desiredPositions[index];
+    m_pimpl->data->desiredPositions.resize(newSize, zeroElement);
 }
 
 

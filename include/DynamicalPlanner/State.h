@@ -51,11 +51,11 @@ public:
 
     bool checkSize(size_t numberOfDofs, size_t numberOfPoints) const;
 
-    iDynTree::Vector3 computeFeetCentroid() const;
+    iDynTree::Position computeFeetCentroid() const;
 
-    bool leftIsForward(const iDynTree::Vector3& forward);
+    bool leftIsForward(const iDynTree::Vector3& forward) const;
 
-    double minimumPointForceOnForwardFoot(const iDynTree::Vector3& forwardDirection);
+    double minimumPointForceOnForwardFoot(const iDynTree::Vector3& forwardDirection) const;
 
 };
 

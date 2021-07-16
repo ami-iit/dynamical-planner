@@ -10,6 +10,10 @@
 #include <DynamicalPlanner/Settings.h>
 #include <DynamicalPlanner/RectangularFoot.h>
 #include <DynamicalPlanner/State.h>
+#include <DynamicalPlanner/PositionReferenceGenerator.h>
+#include <iDynTree/TimeVaryingObject.h>
+#include <iDynTree/Core/VectorFixSize.h>
+#include <memory>
 
 namespace DynamicalPlanner {
 namespace Utilities {
@@ -30,6 +34,32 @@ public:
     ~TranslatingCoMStateGuess() override;
 
     DynamicalPlanner::State &get(double time, bool &isValid) override;
+};
+
+class SimpleWalkingStateMachine
+{
+    std::shared_ptr<PositionReferenceGenerator> m_references;
+
+    iDynTree::Position m_stepIncrement;
+    double m_stepDuration;
+    double m_horizon;
+    double m_forceThreshold;
+    double m_minimumDt;
+    bool m_verbose{false};
+
+public:
+
+    bool initialize(const iDynTree::Vector3 startingReference, const iDynTree::Vector3& stepIncrement,
+                    double stepDuration, double horizon, double minimumDt,
+                    double weightIncreaseX, double weightIncreaseY, double weightIncreaseZ,
+                    double forceThreshold = 40);
+
+    void setVerbose(bool verbose = true);
+
+    bool advance(const DynamicalPlanner::State& currentState, const DynamicalPlanner::State& futureState);
+
+    std::shared_ptr<PositionReferenceGenerator> references();
+
 };
 
 }

@@ -221,5 +221,131 @@ State &TranslatingCoMStateGuess::get(double time, bool &isValid) {
     return m_state;
 }
 
+bool SimpleWalkingStateMachine::initialize(const iDynTree::Vector3 startingReference, const iDynTree::Vector3 &stepIncrement,
+                                           double stepDuration, double horizon, double minimumDt,
+                                           double weightIncreaseX, double weightIncreaseY, double weightIncreaseZ,
+                                           double forceThreshold)
+{
+    if (forceThreshold < 0)
+    {
+        std::cerr << "[ERROR][SimpleWalkingStateMachine::initialize] The force threshold is supposed to be non-negative." << std::endl;
+        return false;
+    }
+
+    if (minimumDt > horizon || minimumDt > stepDuration)
+    {
+        std::cerr << "[ERROR][SimpleWalkingStateMachine::initialize] The minimumDt is supposed to be greater than the horizon and the step duration." << std::endl;
+        return false;
+    }
+
+    m_references = std::make_shared<PositionReferenceGenerator>(2, weightIncreaseX, weightIncreaseY, weightIncreaseZ);
+    iDynTree::toEigen(m_stepIncrement) = iDynTree::toEigen(stepIncrement);
+    m_stepDuration = stepDuration;
+    m_horizon = horizon;
+    m_minimumDt = minimumDt;
+    m_forceThreshold = forceThreshold;
+
+    iDynTree::toEigen(m_references->at(0).desiredPosition) = iDynTree::toEigen(startingReference);
+    m_references->at(0).activeRange.setTimeInterval(0.0, stepDuration);
+    m_references->at(1).desiredPosition = m_references->at(0).desiredPosition;
+    m_references->at(1).activeRange.setTimeInterval(m_horizon + 1.0, m_horizon + 1.0);
+
+    return true;
+}
+
+void SimpleWalkingStateMachine::setVerbose(bool verbose)
+{
+    m_verbose = verbose;
+}
+
+bool SimpleWalkingStateMachine::advance(const State &currentState, const State &futureState)
+{
+    if (!m_references)
+    {
+        std::cerr << "[ERROR][SimpleWalkingStateMachine::advance] The initialize method was either not called or did not return correctly." << std::endl;
+        return false;
+    }
+
+    double futureMeanPositionError = (iDynTree::toEigen(futureState.computeFeetCentroid()) - iDynTree::toEigen(m_references->at(0).desiredPosition)).norm();
+
+    if (m_verbose)
+    {
+        std::cout << "[SimpleWalkingStateMachine::advance] Future mean point error: " << futureMeanPositionError << std::endl;
+    }
+
+    double meanPositionError = (iDynTree::toEigen(currentState.computeFeetCentroid()) - iDynTree::toEigen(m_references->at(0).desiredPosition)).norm();
+    if (m_verbose)
+    {
+        std::cout << "[SimpleWalkingStateMachine::advance] Mean point error: " << meanPositionError << std::endl;
+    }
+
+    double minimumForce = currentState.minimumPointForceOnForwardFoot(m_stepIncrement);
+    if (m_verbose)
+    {
+        std::cout << "[SimpleWalkingStateMachine::advance] Minimum force: " << minimumForce << std::endl;
+    }
+
+    if ((futureMeanPositionError < 5e-3) && (m_references->at(1).activeRange.initTime() > m_horizon) && (m_references->at(0).activeRange.endTime() < (0.6 * m_horizon))) {
+        //You are here if the step is already completed in the future. The end time of the current step has to be early enough to insert the new step at the end of the horizon.
+        m_references->at(1).activeRange.setTimeInterval(m_horizon, m_horizon + m_stepDuration);
+        m_references->at(1).desiredPosition = m_references->at(0).desiredPosition + m_stepIncrement;
+        if (m_verbose)
+        {
+            std::cout << "[SimpleWalkingStateMachine::advance] Setting new position (" << m_references->at(1).desiredPosition.toString() << ") at the end of the horizon." << std::endl;
+        }
+    }
+
+    if (m_references->at(1).activeRange.initTime() <= m_horizon) {
+
+        double stepStart = m_references->at(0).activeRange.initTime() - currentState.time;
+
+        if ((stepStart < 0.3*m_horizon) && (minimumForce < 40)) {
+        // You are here if the second step is about to substitute the first, but the force in the forward foot is still too low
+            m_references->at(0).activeRange.setTimeInterval(stepStart, m_references->at(0).activeRange.endTime());
+            if (m_verbose)
+            {
+                std::cout << "[SimpleWalkingStateMachine::advance] New first step interval: [" << m_references->at(0).activeRange.initTime() << ", " << m_references->at(0).activeRange.endTime() << "]." << std::endl;
+                std::cout << "[SimpleWalkingStateMachine::advance] Second step is kept constant: [" << m_references->at(1).activeRange.initTime() << ", " << m_references->at(1).activeRange.endTime() << "]." << std::endl;
+            }
+
+        } else if ((stepStart +  m_stepDuration) < m_minimumDt) {
+            // You are here when the robot is ready to perform a new step.
+            m_references->at(0).desiredPosition = m_references->at(1).desiredPosition;
+            m_references->at(0).activeRange.setTimeInterval(0.0, m_stepDuration);
+            m_references->at(1).activeRange.setTimeInterval(m_horizon + 1.0, m_horizon + 1.0);
+            if (m_verbose)
+            {
+                std::cout << "[SimpleWalkingStateMachine::advance] Second step is now first step." << std::endl;
+            }
+        } else {
+            // You are here if the force on the forward foot is high enough, but it is too early to perform a new step
+            m_references->at(0).activeRange.setTimeInterval(stepStart, stepStart + m_stepDuration);
+            std::cout << "New first step interval: [" << m_references->at(0).activeRange.initTime() << ", " << m_references->at(0).activeRange.endTime() << "]." << std::endl;
+            stepStart = m_references->at(1).activeRange.initTime() - currentState.time;
+            m_references->at(1).activeRange.setTimeInterval(stepStart, stepStart + m_stepDuration);
+            if (m_verbose)
+            {
+                std::cout << "[SimpleWalkingStateMachine::advance] New second step interval: [" << m_references->at(1).activeRange.initTime() << ", " << m_references->at(1).activeRange.endTime() << "]." << std::endl;
+            }
+        }
+    } else {
+        // You are here if you are performing a step and it is not done yet. Hence the second step is not planned yet
+
+        double stepStart = m_references->at(0).activeRange.initTime() - currentState.time;
+        m_references->at(0).activeRange.setTimeInterval(stepStart, std::max(stepStart + m_stepDuration, 0.3 * m_horizon));
+        if (m_verbose)
+        {
+            std::cout << "[SimpleWalkingStateMachine::advance] New first step interval: [" << m_references->at(0).activeRange.initTime() << ", " << m_references->at(0).activeRange.endTime() << "]." << std::endl;
+        }
+    }
+
+    return true;
+}
+
+std::shared_ptr<PositionReferenceGenerator> SimpleWalkingStateMachine::references()
+{
+    return m_references;
+}
+
 }
 }

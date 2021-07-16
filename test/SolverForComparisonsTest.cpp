@@ -233,14 +233,17 @@ int main() {
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
-    DynamicalPlanner::PositionReferenceGenerator meanPointReferenceGenerator(2, 30.0, 30.0, 1.0);
-    settingsStruct.desiredMeanPointPosition = meanPointReferenceGenerator.timeVaryingReference();
-    settingsStruct.meanPointPositionCostTimeVaryingWeight = meanPointReferenceGenerator.timeVaryingWeight();
-    iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
-    meanPointReferenceGenerator[0].desiredPosition(2) = 0.0;
-    meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, settingsStruct.horizon);
-    meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition;
-    meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon + 1.0, settingsStruct.horizon + 1.0);
+
+    DynamicalPlanner::Utilities::SimpleWalkingStateMachine stateMachine;
+    iDynTree::Position initialReference;
+    iDynTree::toEigen(initialReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
+    initialReference(2) = 0.0;
+    ok = stateMachine.initialize(initialReference, iDynTree::Position(0.1, 0.0, 0.0),
+                                 settingsStruct.horizon, settingsStruct.horizon,
+                                 settingsStruct.minimumDt, 30.0, 30.0, 1.0);
+    ASSERT_IS_TRUE(ok);
+    settingsStruct.desiredMeanPointPosition = stateMachine.references()->timeVaryingReference();
+    settingsStruct.meanPointPositionCostTimeVaryingWeight = stateMachine.references()->timeVaryingWeight();
 
     settingsStruct.constrainTargetCoMPosition = false;
     settingsStruct.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.02);
@@ -412,12 +415,6 @@ int main() {
     std::vector<double> durations;
     mpcStates.push_back(initialState);
 
-    double meanPositionError, minimumForce, futureMeanPositionError;
-
-    double stepStart = -mpcStates.back().time;
-    double stepDuration = settingsStruct.horizon;
-    meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + stepDuration);
-
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
     iDynTree::Position stepIncrement(0.1, 0.00, 0.0);
     double runningMean = 0;
@@ -449,55 +446,8 @@ int main() {
         mpcControls.back().time += initialTime;
         visualizer.visualizeState(mpcStates.back());
 
-        size_t middlePoint = static_cast<size_t>(std::round(optimalStates.size() * 0.3));
-        futureMeanPositionError = (iDynTree::toEigen(optimalStates[middlePoint].computeFeetCentroid()) - iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition)).norm();
-        std::cerr << "Future mean point error: " << futureMeanPositionError << std::endl;
-
-        meanPositionError = (iDynTree::toEigen(optimalStates.front().computeFeetCentroid()) - iDynTree::toEigen(meanPointReferenceGenerator[0].desiredPosition)).norm();
-        std::cerr << "Mean point error: " << meanPositionError << std::endl;
-
-        minimumForce = optimalStates.front().minimumPointForceOnForwardFoot(stepIncrement);
-        std::cerr << "Minimum force: " << minimumForce << std::endl;
-
-        if ((futureMeanPositionError < 5e-3) && (meanPointReferenceGenerator[1].activeRange.initTime() > settingsStruct.horizon) && (meanPointReferenceGenerator[0].activeRange.endTime() < (0.6 * settingsStruct.horizon))) {
-            //You are here if the step is already completed in the future. The end time of the current step has to be early enough to insert the new step at the end of the horizon.
-            meanPointReferenceGenerator[1].activeRange.setTimeInterval(settingsStruct.horizon, settingsStruct.horizon + stepDuration);
-            meanPointReferenceGenerator[1].desiredPosition = meanPointReferenceGenerator[0].desiredPosition + stepIncrement;
-            std::cerr << "Setting new position (" << meanPointReferenceGenerator[1].desiredPosition.toString() << ") at the end of the horizon." << std::endl;
-        }
-
-        if (meanPointReferenceGenerator[1].activeRange.initTime() <= settingsStruct.horizon) {
-
-            stepStart = meanPointReferenceGenerator[0].activeRange.initTime() - optimalStates.front().time;
-
-            if ((stepStart < 0.3*settingsStruct.horizon) && (minimumForce < 40)) {
-            // You are here if the second step is about to substitute the first, but the force in the forward foot is still too low
-                meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, meanPointReferenceGenerator[0].activeRange.endTime());
-                std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
-                std::cerr << "Second step is kept constant: [" << meanPointReferenceGenerator[1].activeRange.initTime() << ", " << meanPointReferenceGenerator[1].activeRange.endTime() << "]." << std::endl;
-
-            } else if ((stepStart +  stepDuration) < settingsStruct.minimumDt) {
-                // You are here when the robot is ready to perform a new step.
-                meanPointReferenceGenerator[0].desiredPosition = meanPointReferenceGenerator[1].desiredPosition;
-                meanPointReferenceGenerator[0].activeRange.setTimeInterval(0.0, stepDuration);
-                meanPointReferenceGenerator[1].activeRange.setTimeInterval(stepDuration + 1.0, stepDuration + 1.0);
-                std::cerr << "Second step is now first step." << std::endl;
-            } else {
-                // You are here if the force on the forward foot is high enough, but it is too early to perform a new step
-                meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, stepStart + stepDuration);
-                std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
-                stepStart = meanPointReferenceGenerator[1].activeRange.initTime() - optimalStates.front().time;
-                meanPointReferenceGenerator[1].activeRange.setTimeInterval(stepStart, stepStart + stepDuration);
-                std::cerr << "New second step interval: [" << meanPointReferenceGenerator[1].activeRange.initTime() << ", " << meanPointReferenceGenerator[1].activeRange.endTime() << "]." << std::endl;
-            }
-        } else {
-            // You are here if you are performing a step and it is not done yet. Hence the second step is not planned yet
-
-            stepStart = meanPointReferenceGenerator[0].activeRange.initTime() - optimalStates.front().time;
-            meanPointReferenceGenerator[0].activeRange.setTimeInterval(stepStart, std::max(stepStart + stepDuration, 0.3 * settingsStruct.horizon));
-            std::cerr << "New first step interval: [" << meanPointReferenceGenerator[0].activeRange.initTime() << ", " << meanPointReferenceGenerator[0].activeRange.endTime() << "]." << std::endl;
-        }
-
+        ok = stateMachine.advance(optimalStates.front(), optimalStates[static_cast<size_t>(std::round(optimalStates.size() * 0.3))]);
+        ASSERT_IS_TRUE(ok);
     }
 
     timeNow = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
