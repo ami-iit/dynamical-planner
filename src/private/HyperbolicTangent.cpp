@@ -19,7 +19,7 @@ HyperbolicTangent::~HyperbolicTangent()
 double HyperbolicTangent::eval(double x) const
 {
     if (m_disabled)
-        return 0.0;
+        return m_disabledValue;
 
     return std::tanh(m_K * x);
 }

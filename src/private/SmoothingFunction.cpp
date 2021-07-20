@@ -27,5 +27,5 @@ void SmoothingFunction::setScaling(double k)
 void SmoothingFunction::disable(double constantValue)
 {
     m_disabled = true;
-    m_disabledValue = 1.0;
+    m_disabledValue = constantValue;
 }
