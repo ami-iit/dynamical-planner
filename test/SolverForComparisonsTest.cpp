@@ -381,11 +381,18 @@ int main() {
     std::vector<DynamicalPlanner::State> optimalStates;
     std::vector<DynamicalPlanner::Control> optimalControls;
 
-    DynamicalPlanner::Visualizer visualizer;
+    DynamicalPlanner::Visualizer visualizer, instanceVisualizer;
     ok = visualizer.setModel(modelLoader.model());
     ASSERT_IS_TRUE(ok);
     visualizer.setCameraPosition(iDynTree::Position(1.5, 0.0, 0.0));
     ok = visualizer.visualizeState(initialState);
+    ASSERT_IS_TRUE(ok);
+
+    ok = instanceVisualizer.setModel(modelLoader.model());
+    ASSERT_IS_TRUE(ok);
+    instanceVisualizer.setCameraPosition(iDynTree::Position(1.5, 0.0, 0.0));
+    ok = instanceVisualizer.visualizeState(initialState);
+    instanceVisualizer.visualizeWorldFrame(false);
     ASSERT_IS_TRUE(ok);
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -412,11 +419,12 @@ int main() {
 
     std::vector<DynamicalPlanner::State> mpcStates;
     std::vector<DynamicalPlanner::Control> mpcControls;
+    std::vector<std::vector<DynamicalPlanner::State>> fullStates;
     std::vector<double> durations;
     mpcStates.push_back(initialState);
+    fullStates.push_back(optimalStates);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
-    iDynTree::Position stepIncrement(0.1, 0.00, 0.0);
     double runningMean = 0;
     double currentDuration;
     for (size_t i = 0; i < 200; ++i) {
@@ -444,6 +452,11 @@ int main() {
         mpcStates.back().time += initialTime;
         mpcControls.push_back(optimalControls.front());
         mpcControls.back().time += initialTime;
+        fullStates.push_back(optimalStates);
+        iDynTree::Position instanceCameraPosition;
+        iDynTree::toEigen(instanceCameraPosition) = iDynTree::toEigen(mpcStates.back().comPosition) + Eigen::Vector3d(1.5, 0.0, -mpcStates.back().comPosition(2));
+        instanceVisualizer.setCameraPosition(instanceCameraPosition);
+        instanceVisualizer.visualizeStates(optimalStates);
         visualizer.visualizeState(mpcStates.back());
 
         ok = stateMachine.advance(optimalStates.front(), optimalStates[static_cast<size_t>(std::round(optimalStates.size() * 0.3))]);
@@ -457,6 +470,18 @@ int main() {
     timeString << "_" << timeStruct.tm_sec;
 
     ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    ASSERT_IS_TRUE(ok);
+
+    auto stateCameraControl = [](const DynamicalPlanner::State&) {return iDynTree::Position(2.0, 0.5, 0.5);};
+    auto instanceCameraControl = [](const DynamicalPlanner::State& inputState) {
+        iDynTree::Position instanceCameraPosition;
+        iDynTree::toEigen(instanceCameraPosition) = iDynTree::toEigen(inputState.comPosition) + Eigen::Vector3d(1.5, 0.0, -inputState.comPosition(2));
+        return instanceCameraPosition;
+    };
+
+
+    ok = visualizer.visualizeMPCStatesAndSaveAnimation(mpcStates, stateCameraControl, fullStates, instanceCameraControl,
+                                                       getAbsDirPath("SavedVideos"), "test-SC-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations);

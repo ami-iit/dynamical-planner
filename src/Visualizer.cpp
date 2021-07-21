@@ -25,6 +25,36 @@ public:
 
     VisualizerImplementation() {}
     ~VisualizerImplementation(){}
+
+    void updateViz(const State &stateToVisualize)
+    {
+        viz.modelViz(0).setPositions(stateToVisualize.worldToBaseTransform, stateToVisualize.jointsConfiguration);
+
+        iDynTree::IVectorsVisualization& forcesViz = viz.vectors();
+
+        size_t vectorIndex = 0;
+        iDynTree::Position posBuf;
+
+        for (const ContactPointState& point : stateToVisualize.leftContactPointsState) {
+            iDynTree::toEigen(posBuf) = iDynTree::toEigen(point.pointPosition);
+            if (vectorIndex < forcesViz.getNrOfVectors()) {
+                forcesViz.updateVector(vectorIndex, posBuf, point.pointForce);
+            } else {
+                forcesViz.addVector(posBuf, point.pointForce);
+            }
+            vectorIndex++;
+        }
+
+        for (const ContactPointState& point : stateToVisualize.rightContactPointsState) {
+            iDynTree::toEigen(posBuf) = iDynTree::toEigen(point.pointPosition);
+            if (vectorIndex < forcesViz.getNrOfVectors()) {
+                forcesViz.updateVector(vectorIndex, posBuf, point.pointForce);
+            } else {
+                forcesViz.addVector(posBuf, point.pointForce);
+            }
+            vectorIndex++;
+        }
+    }
 };
 
 Visualizer::Visualizer()
@@ -70,32 +100,7 @@ bool Visualizer::visualizeState(const State &stateToVisualize)
         return false;
     }
 
-    m_pimpl->viz.modelViz(0).setPositions(stateToVisualize.worldToBaseTransform, stateToVisualize.jointsConfiguration);
-
-    iDynTree::IVectorsVisualization& forcesViz = m_pimpl->viz.vectors();
-
-    size_t vectorIndex = 0;
-    iDynTree::Position posBuf;
-
-    for (const ContactPointState& point : stateToVisualize.leftContactPointsState) {
-        iDynTree::toEigen(posBuf) = iDynTree::toEigen(point.pointPosition);
-        if (vectorIndex < forcesViz.getNrOfVectors()) {
-            forcesViz.updateVector(vectorIndex, posBuf, point.pointForce);
-        } else {
-            forcesViz.addVector(posBuf, point.pointForce);
-        }
-        vectorIndex++;
-    }
-
-    for (const ContactPointState& point : stateToVisualize.rightContactPointsState) {
-        iDynTree::toEigen(posBuf) = iDynTree::toEigen(point.pointPosition);
-        if (vectorIndex < forcesViz.getNrOfVectors()) {
-            forcesViz.updateVector(vectorIndex, posBuf, point.pointForce);
-        } else {
-            forcesViz.addVector(posBuf, point.pointForce);
-        }
-        vectorIndex++;
-    }
+    m_pimpl->updateViz(stateToVisualize);
 
     m_pimpl->viz.draw();
     m_pimpl->viz.run(); //This is to make sure that the window sizes are updated. This is done after the draw in case there are multiple visualizers. In fact, the draw method selects the correct window
@@ -180,7 +185,7 @@ bool Visualizer::visualizeStatesAndSaveAnimation(const std::vector<State> &state
         return false;
     }
 
-    unsigned int digits = static_cast<unsigned int>(std::floor(std::log(states.size()) + 1));
+    unsigned int digits = static_cast<unsigned int>(std::floor(std::log10(states.size()) + 1));
 
     size_t i = 0;
 
@@ -245,7 +250,7 @@ bool Visualizer::setCameraTarget(const iDynTree::Position &cameraTarget)
 
 bool Visualizer::setLightDirection(const iDynTree::Direction &lightDirection)
 {
-    m_pimpl->viz.enviroment().lightViz("sun").setDirection(lightDirection);
+    m_pimpl->viz.environment().lightViz("sun").setDirection(lightDirection);
     m_pimpl->textureForScreenshots->environment().lightViz("sun").setDirection(lightDirection);
 
     return true;
@@ -254,6 +259,99 @@ bool Visualizer::setLightDirection(const iDynTree::Direction &lightDirection)
 
 void Visualizer::visualizeWorldFrame(bool visualizeWorldFrame)
 {
-    m_pimpl->viz.enviroment().setElementVisibility("world_frame", visualizeWorldFrame);
+    m_pimpl->viz.environment().setElementVisibility("world_frame", visualizeWorldFrame);
     m_pimpl->textureForScreenshots->environment().setElementVisibility("world_frame", visualizeWorldFrame);
 }
+
+bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &states, std::function<iDynTree::Position (const State &)> stateCameraControl,
+                                                    const std::vector<std::vector<State> > &fullStates, std::function<iDynTree::Position (const State &)> fullStateCameraControl,
+                                                    const std::string &workingFolder, const std::string &fileName, const std::string &fileExtension, double endTime)
+{
+    if (!(m_pimpl->viz.getNrOfVisualizedModels())) {
+        std::cerr << "[ERROR][Visualizer::visualizeMPCStatesAndSaveAnimation] First you have to load a model." << std::endl;
+        return false;
+    }
+
+    if (states.size() != fullStates.size())
+    {
+        std::cerr << "[ERROR][Visualizer::visualizeMPCStatesAndSaveAnimation] states and fullStates vector need to have the same dimension." << std::endl;
+        return false;
+    }
+
+    if (fullStates.size() == 0)
+    {
+        return true;
+    }
+
+    unsigned int digits = static_cast<unsigned int>(std::floor(std::log10(states.size() * fullStates.front().size()) + 1));
+
+    size_t i = 0;
+    size_t frameIndex = 0;
+
+    while (i < states.size() && (!(endTime < 0) || (states[i].time <= endTime))) {
+
+        for (size_t j = 0; j < fullStates[i].size(); ++j)
+        {
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+            m_pimpl->viz.camera().setPosition(stateCameraControl(states[i]));
+            m_pimpl->updateViz(states[i]);
+            m_pimpl->textureForScreenshots->setSubDrawArea(0, 0,
+                                                           m_pimpl->textureForScreenshots->width()/2, m_pimpl->textureForScreenshots->height());
+            m_pimpl->viz.subDraw(0, 0, m_pimpl->viz.width()/2, m_pimpl->viz.height());
+
+            m_pimpl->viz.camera().setPosition(fullStateCameraControl(states[i]));
+            m_pimpl->updateViz(fullStates[i][j]);
+            m_pimpl->textureForScreenshots->setSubDrawArea(m_pimpl->textureForScreenshots->width()/2, 0,
+                                                           m_pimpl->textureForScreenshots->width()/2, m_pimpl->textureForScreenshots->height());
+            m_pimpl->viz.subDraw(m_pimpl->viz.width()/2, 0, m_pimpl->viz.width()/2, m_pimpl->viz.height());
+
+            m_pimpl->viz.draw();
+            //Using a texture as the dimension should be always the same and not depending on the window size
+            m_pimpl->textureForScreenshots->drawToFile(workingFolder + "/" + fileName + "_img_" + std::string(digits - std::to_string(frameIndex).size(), '0') + std::to_string(frameIndex) + ".png");
+            frameIndex++;
+
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            if ((j + 1) < fullStates[i].size()) {
+                std::chrono::milliseconds durationMs(static_cast<int>(std::round((fullStates[i][j + 1].time - fullStates[i][j].time)*500.0))); //x2 speed
+                std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+
+                if (elapsed < durationMs) {
+                    std::this_thread::sleep_for(durationMs - elapsed);
+                }
+            }
+        }
+        ++i;
+    }
+
+    if (i == 0) {
+        return true;
+    }
+
+    m_pimpl->viz.camera().setPosition(m_pimpl->defaultCameraPosition);
+
+    m_pimpl->viz.camera().setTarget(m_pimpl->defaultCameraTarget);
+
+    std::string fps = std::to_string(static_cast<int>(std::round(i/states[i-1].time)) * 2); //x2 speed
+
+    auto frameArgs          = " -framerate " + fps;
+    auto inputArgs          = " -i " + workingFolder + "/" + fileName + "_img_%0" + std::to_string(digits) + "d" + ".png";
+    auto overwriteArgs      = " -y";
+    auto outputArgs         = " " + workingFolder + "/" + fileName + "." + fileExtension;
+    auto pixFormatArgs      = "";
+
+    // http://superuser.com/questions/533695/how-can-i-convert-a-series-of-png-images-to-a-video-for-youtube#answers-header
+    if (fileExtension == "mp4") {
+        pixFormatArgs = " -pix_fmt yuv420p";
+    }
+
+    auto args = "ffmpeg" + frameArgs + inputArgs + overwriteArgs + pixFormatArgs + outputArgs;
+
+    std::cout << "[INFO][Visualizer::visualizeState] Generating video with the following arguments:\n" << args << std::endl;
+
+    int useless_int = system(args.c_str());
+
+    return true;
+}
+

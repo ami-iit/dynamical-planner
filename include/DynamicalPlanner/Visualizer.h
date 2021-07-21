@@ -12,6 +12,7 @@
 #include <iDynTree/Core/Direction.h>
 #include <iDynTree/Core/Position.h>
 #include <memory>
+#include <functional>
 
 namespace DynamicalPlanner {
     class Visualizer;
@@ -45,6 +46,10 @@ public:
     bool setLightDirection(const iDynTree::Direction& lightDirection);
 
     void visualizeWorldFrame(bool visualizeWorldFrame = true);
+
+    bool visualizeMPCStatesAndSaveAnimation(const std::vector<State>& states, std::function<iDynTree::Position(const State&)> stateCameraControl,
+                                            const std::vector<std::vector<State>>& fullStates, std::function<iDynTree::Position(const State&)> fullStateCameraControl,
+                                            const std::string& workingFolder, const std::string& fileName, const std::string& fileExtension = "gif", double endTime = -1.0);
 
 private:
 
