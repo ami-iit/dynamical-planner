@@ -44,6 +44,8 @@ public:
 
     bool setLightDirection(const iDynTree::Direction& lightDirection);
 
+    void visualizeWorldFrame(bool visualizeWorldFrame = true);
+
 private:
 
     class VisualizerImplementation;

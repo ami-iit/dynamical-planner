@@ -20,6 +20,7 @@ class Visualizer::VisualizerImplementation {
 public:
 
     iDynTree::Visualizer viz;
+    iDynTree::ITexture* textureForScreenshots;
     iDynTree::Position defaultCameraPosition, defaultCameraTarget;
 
     VisualizerImplementation() {}
@@ -36,8 +37,9 @@ Visualizer::Visualizer()
     setCameraPosition(iDynTree::Position(1.0, 0.0, 0.5));
     setCameraTarget(iDynTree::Position(0.4, 0.0, 0.5));
     double sqrt2 = std::sqrt(2.0);
-    setLightDirection(iDynTree::Direction(-0.5/sqrt2, 0, -0.5/sqrt2));
     m_pimpl->viz.vectors().setVectorsAspect(0.01, 0.0, 0.01);
+    m_pimpl->textureForScreenshots = m_pimpl->viz.textures().add("screenshotSaver", options);
+    setLightDirection(iDynTree::Direction(-0.5/sqrt2, 0, -0.5/sqrt2));
 }
 
 Visualizer::~Visualizer()
@@ -96,6 +98,7 @@ bool Visualizer::visualizeState(const State &stateToVisualize)
     }
 
     m_pimpl->viz.draw();
+    m_pimpl->viz.run(); //This is to make sure that the window sizes are updated. This is done after the draw in case there are multiple visualizers. In fact, the draw method selects the correct window
 
     return true;
 }
@@ -185,7 +188,8 @@ bool Visualizer::visualizeStatesAndSaveAnimation(const std::vector<State> &state
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         visualizeState(states[i]);
-        m_pimpl->viz.drawToFile(workingFolder + "/" + fileName + "_img_" + std::string(digits - std::to_string(i).size(), '0') + std::to_string(i) + ".png");
+        //Using a texture as the dimension should be always the same and not depending on the window size
+        m_pimpl->textureForScreenshots->drawToFile(workingFolder + "/" + fileName + "_img_" + std::string(digits - std::to_string(i).size(), '0') + std::to_string(i) + ".png");
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         if ((i + 1) < states.size()) {
             std::chrono::milliseconds durationMs(static_cast<int>(std::round((states[i + 1].time - states[i].time)*1000)));
@@ -242,7 +246,14 @@ bool Visualizer::setCameraTarget(const iDynTree::Position &cameraTarget)
 bool Visualizer::setLightDirection(const iDynTree::Direction &lightDirection)
 {
     m_pimpl->viz.enviroment().lightViz("sun").setDirection(lightDirection);
+    m_pimpl->textureForScreenshots->environment().lightViz("sun").setDirection(lightDirection);
 
     return true;
 
+}
+
+void Visualizer::visualizeWorldFrame(bool visualizeWorldFrame)
+{
+    m_pimpl->viz.enviroment().setElementVisibility("world_frame", visualizeWorldFrame);
+    m_pimpl->textureForScreenshots->environment().setElementVisibility("world_frame", visualizeWorldFrame);
 }
