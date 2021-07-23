@@ -38,6 +38,7 @@ typedef struct {
     std::vector<std::shared_ptr<ContactForceControlConstraints>> leftContactsForceControl, rightContactsForceControl;
     std::vector<std::shared_ptr<DynamicalComplementarityConstraint>> leftDynamicalComplementarity, rightDynamicalComplementarity;
     std::vector<std::shared_ptr<ClassicalComplementarityConstraint>> leftClassicalComplementarity, rightClassicalComplementarity;
+    std::vector<std::shared_ptr<ClassicalPlanarComplementarityConstraint>> leftClassicalPlanarComplementarity, rightClassicalPlanarComplementarity;
     std::vector<std::shared_ptr<ContactFrictionConstraint>> leftContactsFriction, rightContactsFriction;
     std::vector<std::shared_ptr<ContactPositionConsistencyConstraint>> leftContactsPosition, rightContactsPosition;
     std::shared_ptr<FeetLateralDistanceConstraint> feetLateralDistance;
@@ -825,6 +826,7 @@ public:
         constraints.leftClassicalComplementarity.resize(st.leftPointsPosition.size());
         constraints.leftContactsFriction.resize(st.leftPointsPosition.size());
         constraints.leftContactsPosition.resize(st.leftPointsPosition.size());
+        constraints.leftClassicalPlanarComplementarity.resize(st.leftPointsPosition.size());
 
         constraints.rightNormalVelocityControl.resize(st.rightPointsPosition.size());
         constraints.rightPlanarVelocityControl.resize(st.rightPointsPosition.size());
@@ -833,6 +835,7 @@ public:
         constraints.rightClassicalComplementarity.resize(st.rightPointsPosition.size());
         constraints.rightContactsFriction.resize(st.rightPointsPosition.size());
         constraints.rightContactsPosition.resize(st.rightPointsPosition.size());
+        constraints.rightClassicalPlanarComplementarity.resize(st.rightPointsPosition.size());
 
         iDynTree::FrameIndex leftFrame = st.robotModel.getFrameIndex(st.leftFrameName);
         iDynTree::FrameIndex rightFrame = st.robotModel.getFrameIndex(st.rightFrameName);
@@ -885,12 +888,21 @@ public:
 
         for (size_t i = 0; i < st.leftPointsPosition.size(); ++i) {
 
-            if (st.contactVelocityControlConstraintsAsSeparateConstraints) {
+            if (st.planarComplementarity == DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInequality) {
                 constraints.leftPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
                                                                                                               "Left", i,velocityActivationXY,
                                                                                                               st.velocityMaximumDerivative(0),
                                                                                                               st.velocityMaximumDerivative(1));
                 ok = ocp->addConstraint(constraints.leftPlanarVelocityControl[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+
+            if (st.planarComplementarity == PlanarComplementarityType::Classical) {
+                constraints.leftClassicalPlanarComplementarity[i] = std::make_shared<ClassicalPlanarComplementarityConstraint>(stateStructure, controlStructure,
+                                                                                                                               "Left", i, st.classicalPlanarComplementarityTolerance);
+                ok = ocp->addConstraint(constraints.leftClassicalPlanarComplementarity[i]);
                 if (!ok) {
                     return false;
                 }
@@ -961,12 +973,21 @@ public:
 
         for (size_t i = 0; i < st.rightPointsPosition.size(); ++i) {
 
-            if (st.contactVelocityControlConstraintsAsSeparateConstraints) {
+            if (st.planarComplementarity == PlanarComplementarityType::HyperbolicTangentInequality) {
                 constraints.rightPlanarVelocityControl[i] = std::make_shared<PlanarVelocityControlConstraints>(stateStructure, controlStructure,
                                                                                                                "Right", i,velocityActivationXY,
                                                                                                                st.velocityMaximumDerivative(0),
                                                                                                                st.velocityMaximumDerivative(1));
                 ok = ocp->addConstraint(constraints.rightPlanarVelocityControl[i]);
+                if (!ok) {
+                    return false;
+                }
+            }
+
+            if (st.planarComplementarity == PlanarComplementarityType::Classical) {
+                constraints.rightClassicalPlanarComplementarity[i] = std::make_shared<ClassicalPlanarComplementarityConstraint>(stateStructure, controlStructure,
+                                                                                                                                "Right", i, st.classicalPlanarComplementarityTolerance);
+                ok = ocp->addConstraint(constraints.rightClassicalPlanarComplementarity[i]);
                 if (!ok) {
                     return false;
                 }
@@ -1357,7 +1378,7 @@ bool Solver::specifySettings(const Settings &settings)
 
     HyperbolicTangent velocityActivationXY;
     velocityActivationXY.setScaling(st.planarVelocityHyperbolicTangentScaling);
-    if (st.contactVelocityControlConstraintsAsSeparateConstraints) {
+    if (st.planarComplementarity != DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInDynamics) {
         velocityActivationXY.disable();
     }
 

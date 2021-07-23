@@ -39,6 +39,8 @@ typedef struct {
     std::vector<std::shared_ptr<DynamicalComplementarityConstraint>> leftComplementarity, rightComplementarity;
     std::vector<std::shared_ptr<ClassicalComplementarityConstraint>> leftClassicalComplementarity, rightClassicalComplementarity;
     std::shared_ptr<FeetRelativeHeightConstraint> relativeHeight;
+    std::vector<std::shared_ptr<ClassicalPlanarComplementarityConstraint>> leftClassicalPlanarComplementarity, rightClassicalPlanarComplementarity;
+
 } ConstraintSet;
 
 void setFootVariables(VariablesLabeller& stateVariables, VariablesLabeller& controlVariables, const std::string& footName, size_t numberOfPoints) {
@@ -144,6 +146,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     constraints.leftContactsPosition.resize(numberOfPoints);
     constraints.leftComplementarity.resize(numberOfPoints);
     constraints.leftClassicalComplementarity.resize(numberOfPoints);
+    constraints.leftClassicalPlanarComplementarity.resize(numberOfPoints);
 
     constraints.rightNormalVelocityControl.resize(numberOfPoints);
     constraints.rightPlanarVelocityControl.resize(numberOfPoints);
@@ -152,7 +155,7 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
     constraints.rightContactsPosition.resize(numberOfPoints);
     constraints.rightComplementarity.resize(numberOfPoints);
     constraints.rightClassicalComplementarity.resize(numberOfPoints);
-
+    constraints.rightClassicalPlanarComplementarity.resize(numberOfPoints);
 
 
     bool ok = false;
@@ -203,6 +206,12 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         ok = ocProblem.addConstraint(constraints.leftClassicalComplementarity[i]);
         ASSERT_IS_TRUE(ok);
 
+        constraints.leftClassicalPlanarComplementarity[i] = std::make_shared<ClassicalPlanarComplementarityConstraint>(stateVariables, controlVariables,
+                                                                                                                       "Left", i, complementarityTolerance);
+        ok = ocProblem.addConstraint(constraints.leftClassicalPlanarComplementarity[i]);
+        ASSERT_IS_TRUE(ok);
+
+
         constraints.rightNormalVelocityControl[i] = std::make_shared<NormalVelocityControlConstraints>(stateVariables, controlVariables,
                                                                                                       "Right", i, velocityActivationXY,
                                                                                                       velocityMaximumDerivative(2));
@@ -243,6 +252,11 @@ void initializeConstraints(ConstraintSet& constraints, const std::vector<iDynTre
         constraints.rightClassicalComplementarity[i] = std::make_shared<ClassicalComplementarityConstraint>(stateVariables, controlVariables,
                                                                                                            "Right", i, complementarityTolerance);
         ok = ocProblem.addConstraint(constraints.rightClassicalComplementarity[i]);
+        ASSERT_IS_TRUE(ok);
+
+        constraints.rightClassicalPlanarComplementarity[i] = std::make_shared<ClassicalPlanarComplementarityConstraint>(stateVariables, controlVariables,
+                                                                                                                        "Right", i, complementarityTolerance);
+        ok = ocProblem.addConstraint(constraints.rightClassicalPlanarComplementarity[i]);
         ASSERT_IS_TRUE(ok);
     }
 

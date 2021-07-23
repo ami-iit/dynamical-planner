@@ -25,6 +25,12 @@ namespace DynamicalPlanner {
         HyperbolicSecantInDynamics
     };
 
+    enum class PlanarComplementarityType {
+        HyperbolicTangentInDynamics,
+        HyperbolicTangentInequality,
+        Classical
+    };
+
     class Settings;
 
     struct SettingsStruct {
@@ -64,11 +70,15 @@ namespace DynamicalPlanner {
         //ContactFrictionConstraint
         double frictionCoefficient;
 
-        //ContactVelocityControlConstraints
+        //Contact Planar velocity Constraints
+        PlanarComplementarityType planarComplementarity;
+        // - General bound
         iDynTree::Vector3 velocityMaximumDerivative;
+        // - HyperbolicTangentInequality and HyperbolicTangentInDynamics
         double planarVelocityHyperbolicTangentScaling;
-        double normalVelocityHyperbolicSecantScaling;
-        bool contactVelocityControlConstraintsAsSeparateConstraints;
+        double normalVelocityHyperbolicSecantScaling; //Currently not used
+        // - Classical Planar Complementarity Constraint
+        double classicalPlanarComplementarityTolerance;
 
         //Feet lateral distance constraint
         unsigned int indexOfLateralDirection;

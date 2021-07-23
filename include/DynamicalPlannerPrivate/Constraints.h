@@ -19,5 +19,6 @@
 #include <DynamicalPlannerPrivate/Constraints/DynamicalComplementarityConstraint.h>
 #include <DynamicalPlannerPrivate/Constraints/ClassicalComplementarityConstraint.h>
 #include <DynamicalPlannerPrivate/Constraints/FeetRelativeHeightConstraint.h>
+#include <DynamicalPlannerPrivate/Constraints/ClassicalPlanarComplementarityConstraint.h>
 
 #endif // DPLANNER_CONSTRAINTS_H

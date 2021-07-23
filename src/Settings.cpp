@@ -184,6 +184,20 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
                               "The classicalComplementarityTolerance has to be non-negative.");
     }
 
+    if (inputSettings.planarComplementarity == DynamicalPlanner::PlanarComplementarityType::Classical) {
+        errors += checkError(inputSettings.classicalPlanarComplementarityTolerance < 0,
+                              "The classicalPlanarComplementarityTolerance has to be non-negative.");
+    }
+
+    errors += checkError(iDynTree::toEigen(inputSettings.velocityMaximumDerivative).minCoeff() < 0,
+                         "The velocityMaximumDerivative vector has to be non-negative.");
+
+    if ((inputSettings.planarComplementarity == DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInDynamics) ||
+        (inputSettings.planarComplementarity == DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInequality)) {
+        errors += checkError(inputSettings.planarVelocityHyperbolicTangentScaling < 0,
+                              "The planarVelocityHyperbolicTangentScaling has to be non-negative.");
+    }
+
     checkError(errors > 0, "The were errors when importing the settings struct. The settings will not be updated.");
 
     if (errors == 0) {
@@ -256,7 +270,8 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::toEigen(defaults.velocityMaximumDerivative).setConstant(10.0);
     defaults.planarVelocityHyperbolicTangentScaling = 50.0;
     defaults.normalVelocityHyperbolicSecantScaling = 1.0;
-    defaults.contactVelocityControlConstraintsAsSeparateConstraints = false;
+    defaults.classicalPlanarComplementarityTolerance = 0.1;
+    defaults.planarComplementarity = PlanarComplementarityType::HyperbolicTangentInDynamics;
 
     //Feet lateral distance constraint
     defaults.indexOfLateralDirection = 1;
