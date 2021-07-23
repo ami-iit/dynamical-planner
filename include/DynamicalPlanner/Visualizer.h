@@ -49,7 +49,8 @@ public:
 
     bool visualizeMPCStatesAndSaveAnimation(const std::vector<State>& states, std::function<iDynTree::Position(const State&)> stateCameraControl,
                                             const std::vector<std::vector<State>>& fullStates, std::function<iDynTree::Position(const State&)> fullStateCameraControl,
-                                            const std::string& workingFolder, const std::string& fileName, const std::string& fileExtension = "gif", double endTime = -1.0);
+                                            const std::string& workingFolder, const std::string& fileName, const std::string& fileExtension = "gif",
+                                            double speedUp = 1.0, double endTime = -1.0);
 
 private:
 

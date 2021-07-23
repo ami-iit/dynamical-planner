@@ -12,6 +12,8 @@
 #include <chrono>
 #include <thread>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 
 
 using namespace DynamicalPlanner;
@@ -265,7 +267,7 @@ void Visualizer::visualizeWorldFrame(bool visualizeWorldFrame)
 
 bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &states, std::function<iDynTree::Position (const State &)> stateCameraControl,
                                                     const std::vector<std::vector<State> > &fullStates, std::function<iDynTree::Position (const State &)> fullStateCameraControl,
-                                                    const std::string &workingFolder, const std::string &fileName, const std::string &fileExtension, double endTime)
+                                                    const std::string &workingFolder, const std::string &fileName, const std::string &fileExtension, double speedUp, double endTime)
 {
     if (!(m_pimpl->viz.getNrOfVisualizedModels())) {
         std::cerr << "[ERROR][Visualizer::visualizeMPCStatesAndSaveAnimation] First you have to load a model." << std::endl;
@@ -287,6 +289,11 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
 
     size_t i = 0;
     size_t frameIndex = 0;
+    iDynTree::ILabel& speeduplabel = m_pimpl->viz.getLabel("speedup");
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(2) << speedUp << "X";
+    speeduplabel.setText(ss.str());
+    speeduplabel.setPosition(iDynTree::Position(0 , states.front().comPosition[1] + 1.0, states.front().comPosition[2] + 1.0));
 
     while (i < states.size() && (!(endTime < 0) || (states[i].time <= endTime))) {
 
@@ -294,12 +301,14 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
         {
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
+            speeduplabel.setVisible(false);
             m_pimpl->viz.camera().setPosition(stateCameraControl(states[i]));
             m_pimpl->updateViz(states[i]);
             m_pimpl->textureForScreenshots->setSubDrawArea(0, 0,
                                                            m_pimpl->textureForScreenshots->width()/2, m_pimpl->textureForScreenshots->height());
             m_pimpl->viz.subDraw(0, 0, m_pimpl->viz.width()/2, m_pimpl->viz.height());
 
+            speeduplabel.setVisible(true);
             m_pimpl->viz.camera().setPosition(fullStateCameraControl(states[i]));
             m_pimpl->updateViz(fullStates[i][j]);
             m_pimpl->textureForScreenshots->setSubDrawArea(m_pimpl->textureForScreenshots->width()/2, 0,
@@ -314,7 +323,7 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
             if ((j + 1) < fullStates[i].size()) {
-                std::chrono::milliseconds durationMs(static_cast<int>(std::round((fullStates[i][j + 1].time - fullStates[i][j].time)*500.0))); //x2 speed
+                std::chrono::milliseconds durationMs(static_cast<int>(std::round((fullStates[i][j + 1].time - fullStates[i][j].time) * 1000.0 / speedUp)));
                 std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
 
                 if (elapsed < durationMs) {
@@ -329,11 +338,13 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
         return true;
     }
 
+    speeduplabel.setVisible(false);
+
     m_pimpl->viz.camera().setPosition(m_pimpl->defaultCameraPosition);
 
     m_pimpl->viz.camera().setTarget(m_pimpl->defaultCameraTarget);
 
-    std::string fps = std::to_string(static_cast<int>(std::round(i/states[i-1].time)) * 2); //x2 speed
+    std::string fps = std::to_string(static_cast<int>(std::round(i/states[i-1].time * speedUp))); //x2 speed
 
     auto frameArgs          = " -framerate " + fps;
     auto inputArgs          = " -i " + workingFolder + "/" + fileName + "_img_%0" + std::to_string(digits) + "d" + ".png";

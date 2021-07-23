@@ -481,7 +481,7 @@ int main() {
 
 
     ok = visualizer.visualizeMPCStatesAndSaveAnimation(mpcStates, stateCameraControl, fullStates, instanceCameraControl,
-                                                       getAbsDirPath("SavedVideos"), "test-SC-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+                                                       getAbsDirPath("SavedVideos"), "test-SC-" + timeString.str(), "mp4", 2.0, settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations);
