@@ -179,7 +179,7 @@ int main() {
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
-    settingsStruct.forceMeanCostOverallWeight = 1e-1;
+    settingsStruct.forceMeanCostOverallWeight = 1e-1; //5e-3 for exploiting more partial contacts
     settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
     settingsStruct.pointAccelerationCostOverallWeight = 5.0;
     settingsStruct.pointAccelerationWeights(0) = 1.0;
@@ -272,6 +272,15 @@ int main() {
     settingsStruct.velocityMaximumDerivative(1) = 2.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
+    settingsStruct.classicalPlanarComplementarityTolerance = 0;
+    settingsStruct.planarComplementarity = DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInDynamics;
+
+    if (settingsStruct.planarComplementarity == DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInequality)
+    {
+        settingsStruct.velocityMaximumDerivative(0) = 4.0;
+        settingsStruct.velocityMaximumDerivative(1) = 4.0;
+        settingsStruct.planarVelocityHyperbolicTangentScaling = 5.0; //scales the position along z
+    }
 
     settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
     settingsStruct.normalForceDissipationRatio = 250.0;
