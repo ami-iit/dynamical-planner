@@ -239,7 +239,8 @@ int main() {
     iDynTree::Position initialReference;
     iDynTree::toEigen(initialReference) = iDynTree::toEigen(initialState.comPosition) + iDynTree::toEigen(iDynTree::Position(0.1, 0.0, 0.0));
     initialReference(2) = 0.0;
-    ok = stateMachine.initialize(initialReference, iDynTree::Position(0.1, 0.0, 0.0),
+    iDynTree::Position stepIncrement(0.1, 0.0, 0.0);
+    ok = stateMachine.initialize(initialReference, stepIncrement,
                                  settingsStruct.horizon, settingsStruct.horizon,
                                  settingsStruct.minimumDt, 30.0, 30.0, 1.0);
     ASSERT_IS_TRUE(ok);
@@ -419,7 +420,29 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    std::string outputFolder = getAbsDirPath("SavedVideos") + "/" + timeString.str();
+    std::string complementarityString;
+    switch (settingsStruct.complementarity)
+    {
+    case DynamicalPlanner::ComplementarityType::Classical:
+        complementarityString = "Classical";
+        break;
+    case DynamicalPlanner::ComplementarityType::Dynamical:
+        complementarityString = "Dynamical";
+        break;
+    case DynamicalPlanner::ComplementarityType::HyperbolicSecantInDynamics:
+        complementarityString = "HyperbolicSecantInDynamics";
+        break;
+    case DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality:
+        complementarityString = "HyperbolicSecantInequality";
+        break;
+    }
+
+    std::ostringstream velocityString;
+    velocityString.precision(3);
+    velocityString << "incr-"  << std::fixed << iDynTree::toEigen(stepIncrement).norm()
+                   << "_speed-" << std::fixed << iDynTree::toEigen(comVelocityReference).norm();
+
+    std::string outputFolder = getAbsDirPath("SavedVideos") + "/" + timeString.str() + "_" + complementarityString + "_" + velocityString.str();
     std::filesystem::create_directories(outputFolder);
     ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, outputFolder, "test-1stIteration-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
