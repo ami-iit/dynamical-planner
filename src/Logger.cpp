@@ -8,11 +8,12 @@
 #include <DynamicalPlanner/Logger.h>
 #include <iDynTree/Core/EigenHelpers.h>
 #include <matioCpp/matioCpp.h>
+#include <cassert>
 
 using namespace DynamicalPlanner;
 
 template <typename Vector>
-void addToLogger(std::unordered_map<std::string, matioCpp::MultiDimensionalArray<double>>& loggedVariables, const std::string& variableName, const Vector& value, size_t column) {
+inline void addToLogger(std::unordered_map<std::string, matioCpp::MultiDimensionalArray<double>>& loggedVariables, const std::string& variableName, const Vector& value, size_t column) {
 
     matioCpp::MultiDimensionalArray<double>& var = loggedVariables[variableName];
 
@@ -25,20 +26,57 @@ void addToLogger(std::unordered_map<std::string, matioCpp::MultiDimensionalArray
     loggedVariables[variableName]({0, column}) = value;
 }
 
+template <typename Type>
+inline void setMatioStructField(matioCpp::Struct& structToFill, const std::string& name, const Type& scalarValue)
+{
+    structToFill.setField(matioCpp::Element<Type>(name, scalarValue));
+}
+
+template <>
+inline void setMatioStructField<bool>(matioCpp::Struct& structToFill, const std::string& name, const bool& scalarValue)
+{
+    structToFill.setField(matioCpp::Element<matioCpp::Logical>(name, scalarValue));
+}
+
+template <>
+inline void setMatioStructField<std::string>(matioCpp::Struct& structToFill, const std::string& name, const std::string& scalarValue)
+{
+    structToFill.setField(matioCpp::String(name, scalarValue));
+}
+
+template <>
+inline void setMatioStructField<iDynTree::Vector3>(matioCpp::Struct& structToFill, const std::string& name, const iDynTree::Vector3& scalarValue)
+{
+    structToFill.setField(matioCpp::Vector<double>(name, scalarValue));
+}
+
+template <>
+inline void setMatioStructField<iDynTree::VectorDynSize>(matioCpp::Struct& structToFill, const std::string& name, const iDynTree::VectorDynSize& scalarValue)
+{
+    structToFill.setField(matioCpp::Vector<double>(name, scalarValue));
+}
+
+template <>
+inline void setMatioStructField<std::vector<double>>(matioCpp::Struct& structToFill, const std::string& name, const std::vector<double>& scalarValue)
+{
+    structToFill.setField(matioCpp::Vector<double>(name, scalarValue));
+}
+
+#define SET_MATIO_STRUCT_FIELD(structToFill, inputStruct, field) setMatioStructField(structToFill, #field, inputStruct.field)
+
 matioCpp::Struct populateSettingsStruct(const SettingsStruct& settings)
 {
     matioCpp::Struct settingsVar("settings");
 
-    settingsVar.setField(matioCpp::Element<double>("minimumDt", settings.minimumDt));
-    settingsVar.setField(matioCpp::Element<double>("maximumDt", settings.maximumDt));
-    settingsVar.setField(matioCpp::Element<double>("controlPeriod", settings.controlPeriod));
-    settingsVar.setField(matioCpp::Element<double>("horizon", settings.horizon));
-    settingsVar.setField(matioCpp::Element<double>("activeControlPercentage", settings.activeControlPercentage));
-
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, minimumDt);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, maximumDt);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, controlPeriod);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, horizon);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, activeControlPercentage);
     settingsVar.setField(matioCpp::String("robotModel", settings.robotModel.toString()));
-    settingsVar.setField(matioCpp::Vector<double>("gravity", settings.gravity));
-    settingsVar.setField(matioCpp::Element<double>("updateTolerance", settings.updateTolerance));
-    settingsVar.setField(matioCpp::String("floatingBaseName", settings.floatingBaseName));
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, gravity);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, updateTolerance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, floatingBaseName);
 
     std::vector<matioCpp::Variable> pointsPosition;
     for (auto& pos : settings.leftPointsPosition)
@@ -53,8 +91,9 @@ matioCpp::Struct populateSettingsStruct(const SettingsStruct& settings)
         pointsPosition.push_back(matioCpp::Vector<double>("contactPoint", pos));
     }
     settingsVar.setField(matioCpp::CellArray("rightPointsPosition", {settings.rightPointsPosition.size(), 1}, pointsPosition));
-    settingsVar.setField(matioCpp::String("leftFrameName", settings.leftFrameName));
-    settingsVar.setField(matioCpp::String("rightFrameName", settings.rightFrameName));
+
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, leftFrameName);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, rightFrameName);
 
     switch (settings.complementarity)
     {
@@ -73,13 +112,123 @@ matioCpp::Struct populateSettingsStruct(const SettingsStruct& settings)
         break;
     }
 
-    settingsVar.setField(matioCpp::Vector<double>("forceMaximumDerivative", settings.forceMaximumDerivative));
-    settingsVar.setField(matioCpp::Element<double>("normalForceDissipationRatio", settings.normalForceDissipationRatio));
-    settingsVar.setField(matioCpp::Element<double>("normalForceHyperbolicSecantScaling", settings.normalForceHyperbolicSecantScaling));
-    settingsVar.setField(matioCpp::Element<double>("complementarityDissipation", settings.complementarityDissipation));
-    settingsVar.setField(matioCpp::Element<double>("dynamicComplementarityUpperBound", settings.dynamicComplementarityUpperBound));
-    settingsVar.setField(matioCpp::Element<double>("classicalComplementarityTolerance", settings.classicalComplementarityTolerance));
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceMaximumDerivative);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, normalForceDissipationRatio);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, normalForceHyperbolicSecantScaling);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, complementarityDissipation);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, dynamicComplementarityUpperBound);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, classicalComplementarityTolerance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, frictionCoefficient);
 
+    switch (settings.planarComplementarity)
+    {
+    case PlanarComplementarityType::Classical:
+        settingsVar.setField(matioCpp::String("planarComplementarity", "Classical"));
+        break;
+    case PlanarComplementarityType::HyperbolicTangentInDynamics:
+        settingsVar.setField(matioCpp::String("planarComplementarity", "HyperbolicTangentInDynamics"));
+        break;
+    case PlanarComplementarityType::HyperbolicTangentInequality:
+        settingsVar.setField(matioCpp::String("planarComplementarity", "HyperbolicTangentInequality"));
+        break;
+    }
+
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, velocityMaximumDerivative);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, planarVelocityHyperbolicTangentScaling);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, normalVelocityHyperbolicSecantScaling);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, classicalPlanarComplementarityTolerance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, indexOfLateralDirection);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, minimumFeetDistance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, referenceFrameNameForFeetDistance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, otherFrameNameForFeetDistance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, feetMaximumRelativeHeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, comPositionConstraintTolerance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, centroidalMomentumConstraintTolerance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, quaternionModulusConstraintTolerance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, pointPositionConstraintTolerance);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, minimumCoMHeight);
+
+    std::vector<matioCpp::Variable> bounds;
+    for (auto& bound : settings.jointsLimits)
+    {
+        matioCpp::Struct boundStruct("bound");
+        boundStruct.setField(matioCpp::Element<double>("min", bound.first));
+        boundStruct.setField(matioCpp::Element<double>("max", bound.second));
+        bounds.push_back(boundStruct);
+    }
+    settingsVar.setField(matioCpp::CellArray("jointsLimits", {bounds.size(), 1}, bounds));
+
+    bounds.clear();
+    for (auto& bound : settings.jointsVelocityLimits)
+    {
+        matioCpp::Struct boundStruct("bound");
+        boundStruct.setField(matioCpp::Element<double>("min", bound.first));
+        boundStruct.setField(matioCpp::Element<double>("max", bound.second));
+        bounds.push_back(boundStruct);
+    }
+    settingsVar.setField(matioCpp::CellArray("jointsVelocityLimits", {bounds.size(), 1}, bounds));
+
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, constrainTargetCoMPosition);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, comCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, comCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, comWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, comVelocityCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, comVelocityCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, comVelocityWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, frameCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, frameCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, frameForOrientationCost);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceMeanCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceMeanCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceRatioCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceRatioCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, desiredLeftRatios);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, desiredRightRatios);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsRegularizationCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsRegularizationCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsRegularizationWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsVelocityCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsVelocityCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsVelocityCostWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, staticTorquesCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, staticTorquesCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, staticTorquesCostWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceDerivativeCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceDerivativesCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, forceDerivativeWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, pointAccelerationCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, pointAccelerationCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, pointAccelerationWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, swingCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, swingCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, desiredSwingHeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, swingCostWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, phantomForcesCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, phantomForcesCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, meanPointPositionCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, meanPointPositionCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, leftFootYawCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, leftFootYawCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, rightFootYawCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, rightFootYawCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, feetDistanceCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, feetDistanceCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsVelocityForPosturalCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, jointsVelocityForPosturalCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, complementarityCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, complementarityCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, basePositionCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, basePositionCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, basePositionCostWeights);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, baseQuaternionCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, baseQuaternionCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, frameAngularVelocityCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, frameAngularVelocityCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, rotationalPIDgain);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, useConstraintsHessianRegularization);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, constraintsHessianRegularization);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, useCostsHessianRegularization);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, costsHessianRegularization);
 
     return settingsVar;
 }

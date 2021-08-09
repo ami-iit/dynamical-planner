@@ -22,6 +22,7 @@
 #include <chrono>
 #include <ctime>
 #include <sstream>
+#include <filesystem>
 #include <iDynTree/Core/Utils.h>
 
 double maximumComplementarity(const DynamicalPlanner::State &state) {
@@ -418,7 +419,9 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, getAbsDirPath("SavedVideos"), "test-1stIteration-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    std::string outputFolder = getAbsDirPath("SavedVideos") + "/" + timeString.str();
+    std::filesystem::create_directories(outputFolder);
+    ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, outputFolder, "test-1stIteration-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     //-----------------------
@@ -478,7 +481,7 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, getAbsDirPath("SavedVideos"), "test-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
+    ok = visualizer.visualizeStatesAndSaveAnimation(mpcStates, outputFolder, "test-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
     auto stateCameraControl = [](const DynamicalPlanner::State&) {return iDynTree::Position(2.0, 0.5, 0.5);};
@@ -490,10 +493,10 @@ int main() {
 
 
     ok = visualizer.visualizeMPCStatesAndSaveAnimation(mpcStates, stateCameraControl, fullStates, instanceCameraControl,
-                                                       getAbsDirPath("SavedVideos"), "test-SC-" + timeString.str(), "mp4", 2.0, settingsStruct.horizon * settingsStruct.activeControlPercentage);
+                                                       outputFolder, "test-SC-" + timeString.str(), "mp4", 2.0, settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
-    DynamicalPlanner::Logger::saveSolutionVectorsToFile(getAbsDirPath("SavedVideos") + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations);
+    DynamicalPlanner::Logger::saveSolutionVectorsToFile(outputFolder + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations);
 
     return EXIT_SUCCESS;
 }

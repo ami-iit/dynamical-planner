@@ -39,6 +39,7 @@ macro(add_dp_test classname)
     target_include_directories(${testbinary} PRIVATE {EIGEN3_INCLUDE_DIR})
     target_link_libraries(${testbinary} PRIVATE DynamicalPlanner)
     target_link_libraries(${testbinary} PRIVATE DynamicalPlannerPrivate)
+    target_compile_features(${testbinary} PRIVATE cxx_std_17) #For filesystem
     add_test(NAME ${testname} COMMAND ${testbinary})
 
     if(RUN_VALGRIND_TESTS)

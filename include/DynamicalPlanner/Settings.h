@@ -140,7 +140,7 @@ namespace DynamicalPlanner {
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredJointsTrajectory;
         iDynTree::VectorDynSize jointsRegularizationWeights;
 
-        //Joint regularization
+        //Joint velocty regularization
         bool jointsVelocityCostActive;
         double jointsVelocityCostOverallWeight;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredJointsVelocityTrajectory;
@@ -190,7 +190,7 @@ namespace DynamicalPlanner {
         double rightFootYawCostOverallWeight;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> desiredRightFootYaw;
 
-        //Right foot yaw cost
+        //Feet distance cost
         bool feetDistanceCostActive;
         double feetDistanceCostOverallWeight;
 
