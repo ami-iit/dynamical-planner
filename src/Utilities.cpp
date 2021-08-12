@@ -207,12 +207,10 @@ State &TranslatingCoMStateGuess::get(double time, bool &isValid) {
 
     for (size_t i = 0; i < m_state.leftContactPointsState.size(); ++i) {
         iDynTree::toEigen(m_state.leftContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.leftContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-        m_state.leftContactPointsState[i].pointPosition(2) = 0;
     }
 
     for (size_t i = 0; i < m_state.rightContactPointsState.size(); ++i) {
         iDynTree::toEigen(m_state.rightContactPointsState[i].pointPosition) = iDynTree::toEigen(m_initialState.rightContactPointsState[i].pointPosition) + iDynTree::toEigen(comDifference);
-        m_state.rightContactPointsState[i].pointPosition(2) = 0;
     }
 
     isValid = true;
@@ -299,7 +297,7 @@ bool SimpleWalkingStateMachine::advance(const State &currentState, const State &
 
         double stepStart = m_references->at(0).activeRange.initTime() - currentState.time;
 
-        if ((stepStart < 0.3*m_horizon) && (minimumForce < 40)) {
+        if ((stepStart < 0.3*m_horizon) && (minimumForce < m_forceThreshold)) {
         // You are here if the second step is about to substitute the first, but the force in the forward foot is still too low
             m_references->at(0).activeRange.setTimeInterval(stepStart, m_references->at(0).activeRange.endTime());
             if (m_verbose)

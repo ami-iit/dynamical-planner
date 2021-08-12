@@ -410,10 +410,20 @@ int main() {
     ok = solver.setInitialState(initialState);
     ASSERT_IS_TRUE(ok);
 
-    auto stateGuesses = std::make_shared<DynamicalPlanner::Utilities::TranslatingCoMStateGuess>(comReference, initialState);
+    DynamicalPlanner::State initialStateForGuess(initialState);
+    for (auto& point : initialStateForGuess.leftContactPointsState)
+    {
+        point.pointPosition(2) = 0; //The initial point height might not be exactly zero
+    }
+    for (auto& point : initialStateForGuess.rightContactPointsState)
+    {
+        point.pointPosition(2) = 0; //The initial point height might not be exactly zero
+    }
+    auto stateGuesses = std::make_shared<DynamicalPlanner::Utilities::TranslatingCoMStateGuess>(comReference, initialStateForGuess);
     auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(DynamicalPlanner::Control(vectorList.size(), settingsStruct.leftPointsPosition.size()));
 
     ok = solver.setGuesses(stateGuesses, controlGuesses);
+    ASSERT_IS_TRUE(ok);
 
     std::vector<DynamicalPlanner::State> optimalStates;
     std::vector<DynamicalPlanner::Control> optimalControls;
