@@ -52,6 +52,8 @@ public:
 
     levi::Variable baseQuaternionVelocity();
 
+    levi::Expression baseQuaternionVelocityRegularized();
+
     levi::Expression baseTwist();
 
     levi::Variable jointsPosition();

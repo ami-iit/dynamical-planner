@@ -33,7 +33,7 @@ public:
     iDynTree::VectorDynSize constraintValueBuffer;
     iDynTree::Position basePosition;
     iDynTree::Position comPosition;
-    iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized, baseQuaternionVelocity;
+    iDynTree::Vector4 baseQuaternion, baseQuaternionNormalized, baseQuaternionVelocity, baseQuaternionVelocityRegularized;
     iDynTree::Rotation baseRotation;
     iDynTree::Transform comTransform;
     iDynTree::Vector6 momentum;
@@ -107,6 +107,7 @@ public:
         assert(QuaternionBoundsRespected(baseQuaternionNormalized));
         baseRotation.fromQuaternion(baseQuaternionNormalized);
         iDynTree::toEigen(baseQuaternionVelocity) = iDynTree::toEigen(controlVariables(baseQuaternionDerivativeRange));
+        baseQuaternionVelocityRegularized = RegularizeQuaternionVelocity(baseQuaternionNormalized, baseQuaternionVelocity);
 
         robotState.base_quaternion = baseQuaternion;
         robotState.base_position = basePosition;
@@ -114,7 +115,6 @@ public:
         robotState.s = stateVariables(jointsPositionRange);
 
         robotState.s_dot = controlVariables(jointsVelocityRange);
-
 
         robotState.base_linearVelocity = controlVariables(baseLinearVelocityRange);
         robotState.base_quaternionVelocity = baseQuaternionVelocity;
@@ -191,9 +191,10 @@ public:
 
         normalizedQuaternion = expressionsServer->normalizedBaseQuaternion().asIndependentVariable();
         comPositionVariable = expressionsServer->comInBase().asIndependentVariable();
+        levi::Expression baseQuaternionVelocityRegularized = expressionsServer->baseQuaternionVelocity() - (normalizedQuaternion.transpose() * expressionsServer->baseQuaternionVelocity()) * normalizedQuaternion;
 
         levi::Expression baseTwist = BodyTwistFromQuaternionVelocity(expressionsServer->baseLinearVelocity(),
-                                                                     expressionsServer->baseQuaternionVelocity(),
+                                                                     baseQuaternionVelocityRegularized.asVariable(),
                                                                      normalizedQuaternion, "baseTwistCMM");
 
         levi::Expression worldToBaseRotation = RotationExpression(normalizedQuaternion);
@@ -403,10 +404,21 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTState(double time, const
          ok = m_pimpl->sharedKinDyn->getLinearAngularMomentumJacobian(m_pimpl->robotState, m_pimpl->cmmMatrixInBaseBuffer, iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION);
         assert(ok);
 
-        jacobianMap.block<6,4>(0, m_pimpl->baseQuaternionRange.offset) += iDynTree::toEigen(G_T_B.asAdjointTransformWrench()) *
-                (iDynTree::toEigen(m_pimpl->cmmMatrixInBaseBuffer).block<6,3>(0,3) * iDynTree::toEigen(
-                     QuaternionLeftTrivializedDerivativeInverseTimesQuaternionDerivativeJacobian(m_pimpl->baseQuaternionVelocity)) *
-                 iDynTree::toEigen(normalizedQuaternionDerivative));
+        iDynTree::toEigen(m_pimpl->cmmMatrixInCoMBuffer) = iDynTree::toEigen(G_T_B.asAdjointTransformWrench()) * iDynTree::toEigen(m_pimpl->cmmMatrixInBaseBuffer);
+
+        iDynTree::MatrixFixSize<4, 4> regularizedQuatVelDerivative;
+        iDynTree::toEigen(regularizedQuatVelDerivative).setIdentity();
+        iDynTree::toEigen(regularizedQuatVelDerivative) *= iDynTree::toEigen(m_pimpl->baseQuaternionNormalized).transpose() * iDynTree::toEigen(m_pimpl->baseQuaternionVelocity);
+        iDynTree::toEigen(regularizedQuatVelDerivative) += iDynTree::toEigen(m_pimpl->baseQuaternionNormalized) * iDynTree::toEigen(m_pimpl->baseQuaternionVelocity).transpose();
+
+        iDynTree::MatrixFixSize<3, 4> baseAngVelQuatDerivative;
+        iDynTree::toEigen(baseAngVelQuatDerivative) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverseTimesQuaternionDerivativeJacobian(m_pimpl->baseQuaternionVelocityRegularized));
+
+        iDynTree::toEigen(baseAngVelQuatDerivative) -= iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized)) * iDynTree::toEigen(regularizedQuatVelDerivative);
+
+        iDynTree::toEigen(baseAngVelQuatDerivative) *= iDynTree::toEigen(normalizedQuaternionDerivative);
+
+        jacobianMap.block<6,4>(0, m_pimpl->baseQuaternionRange.offset) += iDynTree::toEigen(m_pimpl->cmmMatrixInCoMBuffer).block<6,3>(0,3) * iDynTree::toEigen(baseAngVelQuatDerivative);
 
 
 //        m_pimpl->expressionsServer->updateRobotState(time);
@@ -443,8 +455,14 @@ bool CentroidalMomentumConstraint::constraintJacobianWRTControl(double time, con
 
         jacobianMap.block<6,3>(0, m_pimpl->baseLinearVelocityRange.offset) = iDynTree::toEigen(m_pimpl->cmmMatrixInCoMBuffer).leftCols<3>();
 
+        iDynTree::Matrix4x4 baseQuatVelRegularizedDerivative;
+        iDynTree::toEigen(baseQuatVelRegularizedDerivative).setIdentity();
+        iDynTree::toEigen(baseQuatVelRegularizedDerivative) -= iDynTree::toEigen(m_pimpl->baseQuaternionNormalized) * iDynTree::toEigen(m_pimpl->baseQuaternionNormalized).transpose();
+
         jacobianMap.block<6,4>(0, m_pimpl->baseQuaternionDerivativeRange.offset) = iDynTree::toEigen(m_pimpl->cmmMatrixInCoMBuffer).block<6,3>(0, 3) *
                 iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_pimpl->baseQuaternionNormalized));
+
+        jacobianMap.block<6,4>(0, m_pimpl->baseQuaternionDerivativeRange.offset) *= iDynTree::toEigen(baseQuatVelRegularizedDerivative);
 
         jacobianMap.block(0, m_pimpl->jointsVelocityRange.offset, 6, m_pimpl->jointsVelocityRange.size) = iDynTree::toEigen(m_pimpl->cmmMatrixInCoMBuffer).rightCols(m_pimpl->jointsVelocityRange.size);
     }
