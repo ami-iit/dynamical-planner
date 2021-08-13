@@ -154,6 +154,10 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.desiredBaseQuaternionTrajectory, "The desiredBasePositionTrajectory is empty.");
     }
 
+    if (inputSettings.baseQuaternionVelocityCostActive) {
+        errors += checkError(!inputSettings.desiredBaseQuaternionVelocityTrajectory, "The desiredBaseQuaternionVelocityTrajectory is empty.");
+    }
+
     if (inputSettings.forceRatioCostActive) {
         errors += checkError(inputSettings.leftPointsPosition.size() != inputSettings.desiredLeftRatios.size(),
                              "The number of desired ratios for the left foot should be equal to the number of points.");
@@ -470,6 +474,12 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     iDynTree::VectorDynSize baseQuaternion(4);
     baseQuaternion = iDynTree::Rotation::Identity().asQuaternion();
     defaults.desiredBaseQuaternionTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(baseQuaternion);
+
+    //Base quaternion velocity task
+    defaults.baseQuaternionVelocityCostActive = true;
+    defaults.baseQuaternionVelocityCostOverallWeight = 1.0;
+    iDynTree::VectorDynSize desiredBaseQuaternionVelocity(4);
+    defaults.desiredBaseQuaternionVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredBaseQuaternionVelocity);
 
     return defaults;
 }
