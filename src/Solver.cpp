@@ -1134,8 +1134,8 @@ public:
 
         segment(stateLowerBound, ranges.comPosition)(2) = st.minimumCoMHeight;
 
-        iDynTree::toEigen(segment(stateLowerBound, ranges.momentum)).bottomRows<3>().setConstant(-10);
-        iDynTree::toEigen(segment(stateUpperBound, ranges.momentum)).bottomRows<3>().setConstant(10);
+        iDynTree::toEigen(segment(stateLowerBound, ranges.momentum)).bottomRows<3>().setConstant(-st.maximumAngularMomentum);
+        iDynTree::toEigen(segment(stateUpperBound, ranges.momentum)).bottomRows<3>().setConstant(st.maximumAngularMomentum);
 
 //        iDynTree::toEigen(segment(stateLowerBound, ranges.baseQuaternion)).setConstant(-1.0);
 //        segment(stateLowerBound, ranges.baseQuaternion)(0) = 0.0;

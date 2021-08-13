@@ -102,6 +102,7 @@ namespace DynamicalPlanner {
         bool constrainTargetCoMPosition;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> targetCoMPositionTolerance;
         iDynTree::optimalcontrol::TimeRange constrainTargetCoMPositionRange;
+        double maximumAngularMomentum;
 
         //Costs
         //CoM cost

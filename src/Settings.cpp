@@ -87,6 +87,8 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
                              "The lower velocity limit of joint " + std::to_string(j) + " is bigger than its upper limit.");
     }
 
+    errors += checkError(inputSettings.maximumAngularMomentum < 0, "The maximumAngularMomentum has to be non-negative.");
+
     errors += checkError(inputSettings.feetMaximumRelativeHeight < 0, "The feetMaximumRelativeHeight has to be non-negative.");
 
     if (inputSettings.constrainTargetCoMPosition) {
@@ -315,6 +317,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
 
     std::pair<double, double> defaultJointsVelocityLimits(-1E19, 1E19);
     defaults.jointsVelocityLimits.resize(newModel.getNrOfDOFs(), defaultJointsVelocityLimits);
+    defaults.maximumAngularMomentum = 10;
 
     defaults.constrainTargetCoMPosition = true;
     defaults.targetCoMPositionTolerance = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(0.01);

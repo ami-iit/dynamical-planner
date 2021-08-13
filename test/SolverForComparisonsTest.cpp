@@ -269,6 +269,8 @@ int main() {
     settingsStruct.feetMaximumRelativeHeight = 0.04;
     settingsStruct.desiredSwingHeight = 0.02;
 
+    settingsStruct.maximumAngularMomentum = 10;
+
 
     //ContactVelocityControlConstraints
     iDynTree::toEigen(settingsStruct.velocityMaximumDerivative).setConstant(5.0);

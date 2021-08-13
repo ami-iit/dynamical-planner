@@ -147,6 +147,7 @@ matioCpp::Struct populateSettingsStruct(const SettingsStruct& settings)
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, quaternionModulusConstraintTolerance);
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, pointPositionConstraintTolerance);
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, minimumCoMHeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, maximumAngularMomentum);
 
     std::vector<matioCpp::Variable> bounds;
     for (auto& bound : settings.jointsLimits)
