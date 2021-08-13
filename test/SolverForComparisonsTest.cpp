@@ -171,7 +171,7 @@ int main() {
     settingsStruct.jointsVelocityForPosturalCostActive = true;
     settingsStruct.complementarityCostActive = false;
     settingsStruct.basePositionCostActive = false;
-    settingsStruct.frameAngularVelocityCostActive = true;
+    settingsStruct.frameAngularVelocityCostActive = false;
     settingsStruct.baseQuaternionCostActive = true;
     settingsStruct.forceRatioCostActive = true;
     settingsStruct.baseQuaternionVelocityCostActive = true;

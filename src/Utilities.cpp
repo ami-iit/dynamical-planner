@@ -149,12 +149,21 @@ bool SetMinContactPointToZero_impl(iDynTree::KinDynComputations& kinDyn, const D
         }
     }
 
-    if (!iDynTree::checkDoublesAreEqual(minZ, 0.0, 1e-6)) {
+    if (minZ < 0.0 || minZ > 1e-8) {
+        std::cerr << "Minz " << minZ << std::endl;
         iDynTree::Position initialPosition = initialState.worldToBaseTransform.getPosition();
-        initialPosition(2) -= minZ;
+        initialPosition(2) -= 0.99 * minZ;
+        if (minZ < 0)
+        {
+            initialPosition(2) += 1e-8;
+        }
+
         initialState.worldToBaseTransform.setPosition(initialPosition);
         return SetMinContactPointToZero_impl(kinDyn, settings, initialState);
     }
+    iDynTree::Position initialPosition = initialState.worldToBaseTransform.getPosition();
+    initialPosition(2) -=2e-8;
+    initialState.worldToBaseTransform.setPosition(initialPosition);
 
     return true;
 }
