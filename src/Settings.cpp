@@ -156,6 +156,11 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!inputSettings.desiredBaseQuaternionTrajectory, "The desiredBasePositionTrajectory is empty.");
     }
 
+    if (inputSettings.baseLinearVelocityCostActive) {
+        errors += checkError(!inputSettings.desiredBaseLinearVelocityTrajectory, "The desiredBaseLinearVelocityTrajectory is empty.");
+        errors += checkError(inputSettings.baseLinearVelocityCostWeights.size() != 3, "The baseLinearVelocityCostWeights vector is expected to be three dimensional.");
+    }
+
     if (inputSettings.baseQuaternionVelocityCostActive) {
         errors += checkError(!inputSettings.desiredBaseQuaternionVelocityTrajectory, "The desiredBaseQuaternionVelocityTrajectory is empty.");
     }
@@ -478,10 +483,20 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     baseQuaternion = iDynTree::Rotation::Identity().asQuaternion();
     defaults.desiredBaseQuaternionTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(baseQuaternion);
 
+    //Base linear velocity task
+    defaults.baseLinearVelocityCostActive = true;
+    defaults.baseLinearVelocityCostOverallWeight = 1.0;
+    defaults.baseLinearVelocityCostWeights.resize(3);
+    iDynTree::toEigen(defaults.baseLinearVelocityCostWeights).setConstant(1.0);
+    iDynTree::VectorDynSize desiredBaseLinearVelocity(3);
+    desiredBaseLinearVelocity.zero();
+    defaults.desiredBaseLinearVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredBaseLinearVelocity);
+
     //Base quaternion velocity task
     defaults.baseQuaternionVelocityCostActive = true;
     defaults.baseQuaternionVelocityCostOverallWeight = 1.0;
     iDynTree::VectorDynSize desiredBaseQuaternionVelocity(4);
+    desiredBaseQuaternionVelocity.zero();
     defaults.desiredBaseQuaternionVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredBaseQuaternionVelocity);
 
     return defaults;

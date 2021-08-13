@@ -174,6 +174,7 @@ int main() {
     settingsStruct.frameAngularVelocityCostActive = false;
     settingsStruct.baseQuaternionCostActive = true;
     settingsStruct.forceRatioCostActive = true;
+    settingsStruct.baseLinearVelocityCostActive = false;
     settingsStruct.baseQuaternionVelocityCostActive = true;
 
 
@@ -211,6 +212,10 @@ int main() {
     settingsStruct.rotationalPIDgain = 0.0;//10.0;
     settingsStruct.baseQuaternionCostOverallWeight = 50.0;
     settingsStruct.forceRatioCostOverallWeight = 1e-1;
+    settingsStruct.baseLinearVelocityCostOverallWeight = 1.0;
+    settingsStruct.baseLinearVelocityCostWeights(0) = 10.0;
+    settingsStruct.baseLinearVelocityCostWeights(1) = 0.1;
+    settingsStruct.baseLinearVelocityCostWeights(2) = 1.0;
     settingsStruct.baseQuaternionVelocityCostOverallWeight = 1e-3;
 
 //    settingsStruct.minimumDt = 0.01;
@@ -234,6 +239,11 @@ int main() {
     iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.05, 0.0, 0.0));
     auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
+
+    iDynTree::VectorDynSize baseVelocityReference(3);
+    iDynTree::toEigen(baseVelocityReference) = iDynTree::toEigen(iDynTree::Position(-0.05, 0.0, 0.0));//The velocity is expressed in base coordinates. The iCub root link has the x axis pointing backward
+    auto baseVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(baseVelocityReference);
+    settingsStruct.desiredBaseLinearVelocityTrajectory = baseVelocityTrajectory;
 
     settingsStruct.meanPointPositionCostActiveRange.setTimeInterval(settingsStruct.horizon * 0, settingsStruct.horizon);
 

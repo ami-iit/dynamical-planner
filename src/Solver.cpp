@@ -67,6 +67,7 @@ typedef struct {
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> basePosition;
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> baseQuaternion;
     std::shared_ptr<FrameAngularVelocityCost> frameAngularVelocity;
+    std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> baseLinearVelocity;
     std::shared_ptr<iDynTree::optimalcontrol::L2NormCost> baseQuaternionVelocity;
 } CostsSet;
 
@@ -808,6 +809,31 @@ public:
             if (!ok) {
                 return false;
             }
+        }
+
+        if (st.baseLinearVelocityCostActive) {
+
+            costs.baseLinearVelocity = std::make_shared<iDynTree::optimalcontrol::L2NormCost>("BaseLinearVelocityCost",
+                                                                                              iDynTree::IndexRange::InvalidRange(),
+                                                                                              stateStructure.size(),
+                                                                                              controlStructure.getIndexRange("BaseLinearVelocity"),
+                                                                                              controlStructure.size());
+
+            ok = costs.baseLinearVelocity->setControlWeight(st.baseLinearVelocityCostWeights);
+            if (!ok) {
+                return false;
+            }
+
+            ok = costs.baseLinearVelocity->setControlDesiredTrajectory(st.desiredBaseLinearVelocityTrajectory);
+            if (!ok) {
+                return false;
+            }
+
+            ok = ocp->addLagrangeTerm(st.baseLinearVelocityCostOverallWeight, costs.baseLinearVelocity);
+            if (!ok) {
+                return false;
+            }
+
         }
 
         if (st.baseQuaternionVelocityCostActive) {

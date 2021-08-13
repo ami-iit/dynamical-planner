@@ -221,6 +221,12 @@ namespace DynamicalPlanner {
         double frameAngularVelocityCostOverallWeight;
         double rotationalPIDgain;
 
+        //Base linear velocity
+        bool baseLinearVelocityCostActive;
+        double baseLinearVelocityCostOverallWeight;
+        iDynTree::VectorDynSize baseLinearVelocityCostWeights;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredBaseLinearVelocityTrajectory;
+
         //Base quaternion velocity
         bool baseQuaternionVelocityCostActive;
         double baseQuaternionVelocityCostOverallWeight;

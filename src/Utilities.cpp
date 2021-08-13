@@ -150,7 +150,6 @@ bool SetMinContactPointToZero_impl(iDynTree::KinDynComputations& kinDyn, const D
     }
 
     if (minZ < 0.0 || minZ > 1e-8) {
-        std::cerr << "Minz " << minZ << std::endl;
         iDynTree::Position initialPosition = initialState.worldToBaseTransform.getPosition();
         initialPosition(2) -= 0.99 * minZ;
         if (minZ < 0)
