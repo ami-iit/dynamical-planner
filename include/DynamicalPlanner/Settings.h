@@ -232,6 +232,10 @@ namespace DynamicalPlanner {
         double baseQuaternionVelocityCostOverallWeight;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingVector> desiredBaseQuaternionVelocityTrajectory;
 
+        //Angular momentum
+        bool angularMomentumCostActive;
+        double angularMomentumCostOverallWeight;
+
         //Regularizations
         bool useConstraintsHessianRegularization;
         double constraintsHessianRegularization;

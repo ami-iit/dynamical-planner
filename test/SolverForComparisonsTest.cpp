@@ -176,6 +176,7 @@ int main() {
     settingsStruct.forceRatioCostActive = true;
     settingsStruct.baseLinearVelocityCostActive = false;
     settingsStruct.baseQuaternionVelocityCostActive = true;
+    settingsStruct.angularMomentumCostActive = false;
 
 
     settingsStruct.frameCostOverallWeight = 90.0;
@@ -217,6 +218,7 @@ int main() {
     settingsStruct.baseLinearVelocityCostWeights(1) = 0.1;
     settingsStruct.baseLinearVelocityCostWeights(2) = 1.0;
     settingsStruct.baseQuaternionVelocityCostOverallWeight = 1e-3;
+    settingsStruct.angularMomentumCostOverallWeight = 1e-3;
 
 //    settingsStruct.minimumDt = 0.01;
 //    settingsStruct.controlPeriod = 0.1;

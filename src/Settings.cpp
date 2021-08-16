@@ -499,5 +499,9 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     desiredBaseQuaternionVelocity.zero();
     defaults.desiredBaseQuaternionVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredBaseQuaternionVelocity);
 
+    //Angular momentum
+    defaults.angularMomentumCostActive = true;
+    defaults.angularMomentumCostOverallWeight = 1.0;
+
     return defaults;
 }

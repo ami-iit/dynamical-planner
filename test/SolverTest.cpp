@@ -181,6 +181,7 @@ int main() {
     settingsStruct.forceRatioCostActive = true;
     settingsStruct.baseLinearVelocityCostActive = false;
     settingsStruct.baseQuaternionVelocityCostActive = true;
+    settingsStruct.angularMomentumCostActive = false;
 
     settingsStruct.frameCostOverallWeight = 90.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;

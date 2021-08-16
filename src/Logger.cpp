@@ -231,6 +231,8 @@ matioCpp::Struct populateSettingsStruct(const SettingsStruct& settings)
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, baseLinearVelocityCostOverallWeight);
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, baseQuaternionVelocityCostActive);
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, baseQuaternionVelocityCostOverallWeight);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, angularMomentumCostActive);
+    SET_MATIO_STRUCT_FIELD(settingsVar, settings, angularMomentumCostOverallWeight);
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, useConstraintsHessianRegularization);
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, constraintsHessianRegularization);
     SET_MATIO_STRUCT_FIELD(settingsVar, settings, useCostsHessianRegularization);
