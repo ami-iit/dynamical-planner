@@ -44,6 +44,7 @@ class SimpleWalkingStateMachine
     double m_stepDuration;
     double m_horizon;
     double m_forceThreshold;
+    double m_positionThreshold;
     double m_minimumDt;
     bool m_verbose{false};
 
@@ -52,7 +53,7 @@ public:
     bool initialize(const iDynTree::Vector3 startingReference, const iDynTree::Vector3& stepIncrement,
                     double stepDuration, double horizon, double minimumDt,
                     double weightIncreaseX, double weightIncreaseY, double weightIncreaseZ,
-                    double forceThreshold = 40);
+                    double forceThreshold = 40, double positionErrorThreshold = 5e-3);
 
     void setVerbose(bool verbose = true);
 

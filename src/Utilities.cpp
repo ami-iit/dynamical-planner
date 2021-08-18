@@ -230,7 +230,7 @@ State &TranslatingCoMStateGuess::get(double time, bool &isValid) {
 bool SimpleWalkingStateMachine::initialize(const iDynTree::Vector3 startingReference, const iDynTree::Vector3 &stepIncrement,
                                            double stepDuration, double horizon, double minimumDt,
                                            double weightIncreaseX, double weightIncreaseY, double weightIncreaseZ,
-                                           double forceThreshold)
+                                           double forceThreshold, double positionErrorThreshold)
 {
     if (forceThreshold < 0)
     {
@@ -250,6 +250,7 @@ bool SimpleWalkingStateMachine::initialize(const iDynTree::Vector3 startingRefer
     m_horizon = horizon;
     m_minimumDt = minimumDt;
     m_forceThreshold = forceThreshold;
+    m_positionThreshold = positionErrorThreshold;
 
     iDynTree::toEigen(m_references->at(0).desiredPosition) = iDynTree::toEigen(startingReference);
     m_references->at(0).activeRange.setTimeInterval(0.0, stepDuration);
@@ -292,12 +293,16 @@ bool SimpleWalkingStateMachine::advance(const State &currentState, const State &
     }
 
     if ((m_references->at(1).activeRange.initTime() > m_horizon) && (m_references->at(0).activeRange.endTime() <= (0.6 * m_horizon)) &&
-        ((futureMeanPositionError < 5e-3) || (m_references->at(0).activeRange.endTime() - m_references->at(0).activeRange.initTime() > 2.0 * m_stepDuration))) {
+        ((futureMeanPositionError < m_positionThreshold) || (m_references->at(0).activeRange.endTime() - m_references->at(0).activeRange.initTime() > 2.0 * m_stepDuration))) {
         //You are here if the step is already completed in the future (or if we waited for too long). The end time of the current step has to be early enough to insert the new step at the end of the horizon.
         m_references->at(1).activeRange.setTimeInterval(m_horizon, m_horizon + m_stepDuration);
         m_references->at(1).desiredPosition = m_references->at(0).desiredPosition + m_stepIncrement;
         if (m_verbose)
         {
+            if (m_references->at(0).activeRange.endTime() - m_references->at(0).activeRange.initTime() > 2.0 * m_stepDuration)
+            {
+                std::cout << "[SimpleWalkingStateMachine::advance] We waited for too long. Planning a new step even if the future mean position error is greater than " << m_positionThreshold << std::endl;
+            }
             std::cout << "[SimpleWalkingStateMachine::advance] Setting new position (" << m_references->at(1).desiredPosition.toString() << ") at the end of the horizon." << std::endl;
         }
     }
@@ -311,6 +316,8 @@ bool SimpleWalkingStateMachine::advance(const State &currentState, const State &
             m_references->at(0).activeRange.setTimeInterval(stepStart, m_references->at(0).activeRange.endTime());
             if (m_verbose)
             {
+                std::cout << "[SimpleWalkingStateMachine::advance] The second step is about to substitute the first, but the minimum force on the forward foot is lower than " << m_forceThreshold
+                          << ". Keeping the end of the first step constant." << std::endl;
                 std::cout << "[SimpleWalkingStateMachine::advance] New first step interval: [" << m_references->at(0).activeRange.initTime() << ", " << m_references->at(0).activeRange.endTime() << "]." << std::endl;
                 std::cout << "[SimpleWalkingStateMachine::advance] Second step is kept constant: [" << m_references->at(1).activeRange.initTime() << ", " << m_references->at(1).activeRange.endTime() << "]." << std::endl;
             }
@@ -326,6 +333,7 @@ bool SimpleWalkingStateMachine::advance(const State &currentState, const State &
             }
         } else {
             // You are here if the force on the forward foot is high enough, but it is too early to perform a new step
+            std::cout << "[SimpleWalkingStateMachine::advance] We are ready to switch to the second step, but it is too early." << std::endl;
             m_references->at(0).activeRange.setTimeInterval(stepStart, stepStart + m_stepDuration);
             std::cout << "New first step interval: [" << m_references->at(0).activeRange.initTime() << ", " << m_references->at(0).activeRange.endTime() << "]." << std::endl;
             stepStart = m_references->at(1).activeRange.initTime() - currentState.time;
@@ -337,11 +345,18 @@ bool SimpleWalkingStateMachine::advance(const State &currentState, const State &
         }
     } else {
         // You are here if you are performing a step and it is not done yet. Hence the second step is not planned yet
-
+        if (m_verbose)
+        {
+            if (m_references->at(0).activeRange.endTime() <= (0.6 * m_horizon))
+            {
+                std::cout << "[SimpleWalkingStateMachine::advance] The future mean position error is still too high to plan for a new step." << std::endl;
+            }
+        }
         double stepStart = m_references->at(0).activeRange.initTime() - currentState.time;
         m_references->at(0).activeRange.setTimeInterval(stepStart, std::max(stepStart + m_stepDuration, 0.6 * m_horizon));
         if (m_verbose)
         {
+            std::cout << "[SimpleWalkingStateMachine::advance] Waiting to finish the step." << std::endl;
             std::cout << "[SimpleWalkingStateMachine::advance] New first step interval: [" << m_references->at(0).activeRange.initTime() << ", " << m_references->at(0).activeRange.endTime() << "]." << std::endl;
         }
     }
