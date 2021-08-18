@@ -291,8 +291,9 @@ bool SimpleWalkingStateMachine::advance(const State &currentState, const State &
         std::cout << "[SimpleWalkingStateMachine::advance] Minimum force: " << minimumForce << std::endl;
     }
 
-    if ((futureMeanPositionError < 5e-3) && (m_references->at(1).activeRange.initTime() > m_horizon) && (m_references->at(0).activeRange.endTime() < (0.6 * m_horizon))) {
-        //You are here if the step is already completed in the future. The end time of the current step has to be early enough to insert the new step at the end of the horizon.
+    if ((m_references->at(1).activeRange.initTime() > m_horizon) && (m_references->at(0).activeRange.endTime() <= (0.6 * m_horizon)) &&
+        ((futureMeanPositionError < 5e-3) || (m_references->at(0).activeRange.endTime() - m_references->at(0).activeRange.initTime() > 2.0 * m_stepDuration))) {
+        //You are here if the step is already completed in the future (or if we waited for too long). The end time of the current step has to be early enough to insert the new step at the end of the horizon.
         m_references->at(1).activeRange.setTimeInterval(m_horizon, m_horizon + m_stepDuration);
         m_references->at(1).desiredPosition = m_references->at(0).desiredPosition + m_stepIncrement;
         if (m_verbose)
@@ -338,7 +339,7 @@ bool SimpleWalkingStateMachine::advance(const State &currentState, const State &
         // You are here if you are performing a step and it is not done yet. Hence the second step is not planned yet
 
         double stepStart = m_references->at(0).activeRange.initTime() - currentState.time;
-        m_references->at(0).activeRange.setTimeInterval(stepStart, std::max(stepStart + m_stepDuration, 0.3 * m_horizon));
+        m_references->at(0).activeRange.setTimeInterval(stepStart, std::max(stepStart + m_stepDuration, 0.6 * m_horizon));
         if (m_verbose)
         {
             std::cout << "[SimpleWalkingStateMachine::advance] New first step interval: [" << m_references->at(0).activeRange.initTime() << ", " << m_references->at(0).activeRange.endTime() << "]." << std::endl;
