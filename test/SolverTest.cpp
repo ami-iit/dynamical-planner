@@ -123,8 +123,8 @@ int main() {
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     for (auto& joint : settingsStruct.jointsVelocityLimits) {
-        joint.first = -1;
-        joint.second = 1;
+        joint.first = -0.5;
+        joint.second = 0.5;
     }
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).topRows<3>().setConstant(0.1);
@@ -205,7 +205,7 @@ int main() {
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
     settingsStruct.comVelocityCostOverallWeight = 1.0;
-    settingsStruct.comVelocityWeights(0) = 10.0;
+    settingsStruct.comVelocityWeights(0) = 20.0;
     settingsStruct.comVelocityWeights(1) = 0.1;
     settingsStruct.comVelocityWeights(2) = 1.0;
     settingsStruct.leftFootYawCostOverallWeight = 1000.0;
@@ -251,7 +251,7 @@ int main() {
     initialReference(2) = 0.0;
     ok = stateMachine.initialize(initialReference, iDynTree::Position(0.06, 0.0, 0.0),
                                  settingsStruct.horizon, settingsStruct.horizon,
-                                 settingsStruct.minimumDt, 60.0, 60.0, 1.0);
+                                 settingsStruct.minimumDt, 60.0, 60.0, 1.0, 30.0);
     ASSERT_IS_TRUE(ok);
 
     settingsStruct.desiredMeanPointPosition = stateMachine.references()->timeVaryingReference();
