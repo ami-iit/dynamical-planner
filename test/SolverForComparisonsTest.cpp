@@ -484,7 +484,6 @@ int main() {
     std::vector<std::vector<DynamicalPlanner::State>> fullStates;
     std::vector<double> durations;
     mpcStates.push_back(initialState);
-    fullStates.push_back(optimalStates);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
     double runningMean = 0;
@@ -545,7 +544,7 @@ int main() {
         return instanceCameraPosition;
     };
 
-
+    visualizer.visualizeWorldFrame(false);
     ok = visualizer.visualizeMPCStatesAndSaveAnimation(mpcStates, stateCameraControl, fullStates, instanceCameraControl,
                                                        outputFolder, "test-SC-" + timeString.str(), "mp4", 2.0, settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);

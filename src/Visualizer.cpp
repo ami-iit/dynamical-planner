@@ -274,20 +274,24 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
         return false;
     }
 
-    if (states.size() != fullStates.size())
-    {
-        std::cerr << "[ERROR][Visualizer::visualizeMPCStatesAndSaveAnimation] states and fullStates vector need to have the same dimension." << std::endl;
-        return false;
-    }
-
-    if (fullStates.size() == 0)
+    if (states.size() == 0 || fullStates.size() == 0)
     {
         return true;
     }
 
-    unsigned int digits = static_cast<unsigned int>(std::floor(std::log10(states.size() * fullStates.front().size()) + 1));
+    if (states.size() < fullStates.size())
+    {
+        std::cerr << "[ERROR][Visualizer::visualizeMPCStatesAndSaveAnimation] states must be equal or bigger than fullStates." << std::endl;
+        return false;
+    }
 
-    size_t i = 0;
+    unsigned int statesIncrement = (states.size() - 1) / fullStates.size(); //The first state is the initial one
+    unsigned int numberOfFrames = fullStates.size() * (fullStates.front().size() + (statesIncrement - 1));
+
+    unsigned int digits = static_cast<unsigned int>(std::floor(std::log10(numberOfFrames) + 1));
+
+    size_t fullStateIndex = 0;
+    size_t stateIndex = 1; //The first state is the initial one
     size_t frameIndex = 0;
     iDynTree::ILabel& speeduplabel = m_pimpl->viz.getLabel("speedup");
     std::stringstream ss;
@@ -295,22 +299,43 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
     speeduplabel.setText(ss.str());
     speeduplabel.setPosition(iDynTree::Position(0 , states.front().comPosition[1] + 1.0, states.front().comPosition[2] + 1.0));
 
-    while (i < states.size() && (!(endTime < 0) || (states[i].time <= endTime))) {
+    DynamicalPlanner::State initialState = states.front();
 
-        for (size_t j = 0; j < fullStates[i].size(); ++j)
+    while (stateIndex < states.size() && fullStateIndex < fullStates.size() && (!(endTime < 0) || (states[stateIndex].time <= endTime))) {
+        for (size_t i = 0; i < fullStates[fullStateIndex].size(); ++i)
         {
-            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
             speeduplabel.setVisible(false);
-            m_pimpl->viz.camera().setPosition(stateCameraControl(states[i]));
-            m_pimpl->updateViz(states[i]);
+            m_pimpl->viz.camera().setPosition(stateCameraControl(initialState));
+            m_pimpl->updateViz(initialState);
             m_pimpl->textureForScreenshots->setSubDrawArea(0, 0,
                                                            m_pimpl->textureForScreenshots->width()/2, m_pimpl->textureForScreenshots->height());
             m_pimpl->viz.subDraw(0, 0, m_pimpl->viz.width()/2, m_pimpl->viz.height());
 
             speeduplabel.setVisible(true);
-            m_pimpl->viz.camera().setPosition(fullStateCameraControl(states[i]));
-            m_pimpl->updateViz(fullStates[i][j]);
+            m_pimpl->viz.camera().setPosition(fullStateCameraControl(initialState));
+            m_pimpl->updateViz(fullStates[fullStateIndex][i]);
+            m_pimpl->textureForScreenshots->setSubDrawArea(m_pimpl->textureForScreenshots->width()/2, 0,
+                                                           m_pimpl->textureForScreenshots->width()/2, m_pimpl->textureForScreenshots->height());
+            m_pimpl->viz.subDraw(m_pimpl->viz.width()/2, 0, m_pimpl->viz.width()/2, m_pimpl->viz.height());
+
+            m_pimpl->viz.draw();
+            //Using a texture as the dimension should be always the same and not depending on the window size
+            m_pimpl->textureForScreenshots->drawToFile(workingFolder + "/" + fileName + "_img_" + std::string(digits - std::to_string(frameIndex).size(), '0') + std::to_string(frameIndex) + ".png");
+            frameIndex++;
+        }
+
+        for (size_t i = 0; i < statesIncrement; i++)
+        {
+            speeduplabel.setVisible(false);
+            m_pimpl->viz.camera().setPosition(stateCameraControl(initialState));
+            m_pimpl->updateViz(states[stateIndex]);
+            m_pimpl->textureForScreenshots->setSubDrawArea(0, 0,
+                                                           m_pimpl->textureForScreenshots->width()/2, m_pimpl->textureForScreenshots->height());
+            m_pimpl->viz.subDraw(0, 0, m_pimpl->viz.width()/2, m_pimpl->viz.height());
+
+            speeduplabel.setVisible(true);
+            m_pimpl->viz.camera().setPosition(fullStateCameraControl(initialState));
+            m_pimpl->updateViz(fullStates[fullStateIndex].back());
             m_pimpl->textureForScreenshots->setSubDrawArea(m_pimpl->textureForScreenshots->width()/2, 0,
                                                            m_pimpl->textureForScreenshots->width()/2, m_pimpl->textureForScreenshots->height());
             m_pimpl->viz.subDraw(m_pimpl->viz.width()/2, 0, m_pimpl->viz.width()/2, m_pimpl->viz.height());
@@ -320,22 +345,13 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
             m_pimpl->textureForScreenshots->drawToFile(workingFolder + "/" + fileName + "_img_" + std::string(digits - std::to_string(frameIndex).size(), '0') + std::to_string(frameIndex) + ".png");
             frameIndex++;
 
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-            if ((j + 1) < fullStates[i].size()) {
-                std::chrono::milliseconds durationMs(static_cast<int>(std::round((fullStates[i][j + 1].time - fullStates[i][j].time) * 1000.0 / speedUp)));
-                std::chrono::milliseconds elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-
-                if (elapsed < durationMs) {
-                    std::this_thread::sleep_for(durationMs - elapsed);
-                }
-            }
+            initialState = states[stateIndex];
+            stateIndex++;
         }
-        ++i;
-    }
+        fullStateIndex++;
 
-    if (i == 0) {
-        return true;
+        std::cout << "[INFO][Visualizer::visualizeState] Visualizing state " << stateIndex << "/" << states.size()
+                  << ", iteration " << fullStateIndex << "/" << fullStates.size() << "." << std::endl;
     }
 
     speeduplabel.setVisible(false);
@@ -344,7 +360,7 @@ bool Visualizer::visualizeMPCStatesAndSaveAnimation(const std::vector<State> &st
 
     m_pimpl->viz.camera().setTarget(m_pimpl->defaultCameraTarget);
 
-    std::string fps = std::to_string(static_cast<int>(std::round(i/states[i-1].time * speedUp))); //x2 speed
+    std::string fps = std::to_string(static_cast<int>(std::round(stateIndex/states[stateIndex-1].time * speedUp))); //x2 speed
 
     auto frameArgs          = " -framerate " + fps;
     auto inputArgs          = " -i " + workingFolder + "/" + fileName + "_img_%0" + std::to_string(digits) + "d" + ".png";
