@@ -258,6 +258,7 @@ int main() {
                                  settingsStruct.horizon, settingsStruct.horizon,
                                  settingsStruct.minimumDt, 30.0, 30.0, 1.0, 40.0);
     ASSERT_IS_TRUE(ok);
+    stateMachine.setVerbose(true);
     settingsStruct.desiredMeanPointPosition = stateMachine.references()->timeVaryingReference();
     settingsStruct.meanPointPositionCostTimeVaryingWeight = stateMachine.references()->timeVaryingWeight();
 
@@ -290,7 +291,7 @@ int main() {
     settingsStruct.velocityMaximumDerivative(1) = 2.0;
     settingsStruct.planarVelocityHyperbolicTangentScaling = 10.0; //scales the position along z
     settingsStruct.normalVelocityHyperbolicSecantScaling = 5.0; //scales the force along z
-    settingsStruct.classicalPlanarComplementarityTolerance = 0;
+    settingsStruct.classicalPlanarComplementarityTolerance = 0.02;
     settingsStruct.planarComplementarity = DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInDynamics;
 
     if (settingsStruct.planarComplementarity == DynamicalPlanner::PlanarComplementarityType::HyperbolicTangentInequality)
@@ -488,7 +489,7 @@ int main() {
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
     double runningMean = 0;
     double currentDuration;
-    for (size_t i = 0; i < 200; ++i) {
+    for (size_t i = 0; i < 100; ++i) {
         double initialTime;
         initialState = mpcStates.back();
         initialTime = initialState.time;
@@ -511,7 +512,11 @@ int main() {
         durations.push_back(currentDuration);
         mpcStates.push_back(optimalStates.front());
         mpcStates.back().time += initialTime;
+        mpcStates.push_back(optimalStates[1]);
+        mpcStates.back().time += initialTime;
         mpcControls.push_back(optimalControls.front());
+        mpcControls.back().time += initialTime;
+        mpcControls.push_back(optimalControls[1]);
         mpcControls.back().time += initialTime;
         fullStates.push_back(optimalStates);
         iDynTree::Position instanceCameraPosition;
