@@ -35,7 +35,6 @@ public:
     levi::Variable quaternion = levi::Variable(4, "baseQuaternion");
     levi::Expression quaternionNormalized;
     levi::Expression baseRotation;
-    levi::Expression baseQuaternionVelocityRegularized;
     levi::Variable basePositionExpr = levi::Variable(3, "aPb");
     levi::Variable baseLinearVelocity = levi::Variable(3, "baseLinVel");
     levi::Variable baseQuaternionVelocity = levi::Variable(4, "baseQuatVel");
@@ -76,14 +75,12 @@ ExpressionsServer::ExpressionsServer(std::shared_ptr<TimelySharedKinDynComputati
     levi::Expression twoSkewQuaternion = 2.0 * skewQuaternion;
     m_pimpl->baseRotation = levi::Identity(3,3) + quaternionReal * twoSkewQuaternion + twoSkewQuaternion * skewQuaternion;
 
-    m_pimpl->baseQuaternionVelocityRegularized = m_pimpl->baseQuaternionVelocity - (m_pimpl->quaternionNormalized.transpose() * m_pimpl->baseQuaternionVelocity) * m_pimpl->quaternionNormalized;
-
     m_pimpl->time = 0.0;
     m_pimpl->s = levi::Variable(timelySharedKinDyn->model().getNrOfDOFs(), "s");
     m_pimpl->s_dot = levi::Variable(timelySharedKinDyn->model().getNrOfDOFs(), "s_dot");
 
     levi::Expression minusQuaternion = -quaternionImaginary;
-    levi::Expression angularVelocity = 2.0 * (minusQuaternion * m_pimpl->baseQuaternionVelocityRegularized(0,0) + (quaternionReal(0,0) * levi::Identity(3,3) - minusQuaternion.skew()) * m_pimpl->baseQuaternionVelocityRegularized.block(1,0,3,1));
+    levi::Expression angularVelocity = 2.0 * (minusQuaternion * m_pimpl->baseQuaternionVelocity(0,0) + (quaternionReal(0,0) * levi::Identity(3,3) - minusQuaternion.skew()) * m_pimpl->baseQuaternionVelocity.block(1,0,3,1));
 
     m_pimpl->baseTwist = levi::Expression::Vertcat(m_pimpl->baseLinearVelocity, angularVelocity, "baseTwist");
 
@@ -221,11 +218,6 @@ levi::Variable ExpressionsServer::baseLinearVelocity()
 levi::Variable ExpressionsServer::baseQuaternionVelocity()
 {
     return (m_pimpl->baseQuaternionVelocity);
-}
-
-levi::Expression ExpressionsServer::baseQuaternionVelocityRegularized()
-{
-    return m_pimpl->baseQuaternionVelocityRegularized;
 }
 
 levi::Expression ExpressionsServer::baseTwist()

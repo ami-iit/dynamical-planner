@@ -37,6 +37,7 @@ public:
     iDynTree::Transform baseTransform;
     iDynTree::Rotation baseRotation;
     iDynTree::Position basePosition;
+    iDynTree::Vector4 quaternionNormalized;
 
     bool updateNecessary;
     double tol;
@@ -60,22 +61,17 @@ bool SharedKinDynComputations::updateRobotStatePrivate(const RobotState &current
 {
     if (!sameStatePrivate(currentState)) {
 
-        iDynTree::Vector4 quaternionNormalized;
-        iDynTree::Vector4 quaternionVelocityRegularized;
+        iDynTree::toEigen(m_data->quaternionNormalized) = iDynTree::toEigen(currentState.base_quaternion).normalized();
 
-
-        iDynTree::toEigen(quaternionNormalized) = iDynTree::toEigen(currentState.base_quaternion).normalized();
-        quaternionVelocityRegularized = DynamicalPlanner::Private::RegularizeQuaternionVelocity(quaternionNormalized, currentState.base_quaternionVelocity);
-
-        m_data->baseRotation.fromQuaternion(quaternionNormalized);
+        m_data->baseRotation.fromQuaternion(m_data->quaternionNormalized);
         iDynTree::toEigen(m_data->basePosition) = iDynTree::toEigen(currentState.base_position);
         m_data->baseTransform.setRotation(m_data->baseRotation);
         m_data->baseTransform.setPosition(m_data->basePosition);
 
         iDynTree::LinVelocity baseLinVelocity, baseAngVelocity;
         baseLinVelocity = currentState.base_linearVelocity;
-        iDynTree::toEigen(baseAngVelocity) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(quaternionNormalized)) *
-            iDynTree::toEigen(quaternionVelocityRegularized);
+        iDynTree::toEigen(baseAngVelocity) = iDynTree::toEigen(QuaternionLeftTrivializedDerivativeInverse(m_data->quaternionNormalized)) *
+            iDynTree::toEigen(currentState.base_quaternionVelocity);
 
         m_data->kinDyn.setFrameVelocityRepresentation(iDynTree::FrameVelocityRepresentation::BODY_FIXED_REPRESENTATION); //The base_velocity saved in the robot state is supposed to be in body frame
         bool ok = m_data->kinDyn.setRobotState(m_data->baseTransform, currentState.s, iDynTree::Twist(baseLinVelocity, baseAngVelocity),

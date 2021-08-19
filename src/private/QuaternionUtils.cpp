@@ -166,14 +166,3 @@ iDynTree::MatrixFixSize<3, 4> DynamicalPlanner::Private::QuaternionLeftTrivializ
 
     return jacobian;
 }
-
-iDynTree::Vector4 DynamicalPlanner::Private::RegularizeQuaternionVelocity(const iDynTree::Vector4 &quaternion, const iDynTree::Vector4 &inputQuaternionVelocity)
-{
-    iDynTree::Vector4 regularizedVelocity;
-
-    double dotProduct = iDynTree::toEigen(quaternion).dot(iDynTree::toEigen(inputQuaternionVelocity));
-
-    iDynTree::toEigen(regularizedVelocity) = iDynTree::toEigen(inputQuaternionVelocity) - dotProduct * iDynTree::toEigen(quaternion); //We make the quaternion velocity perpendicular to the quaternion, since it should not change its modulus.
-
-    return regularizedVelocity;
-}

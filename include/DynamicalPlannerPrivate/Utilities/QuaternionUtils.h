@@ -26,8 +26,6 @@ namespace DynamicalPlanner {
 
         iDynTree::Vector4 NormalizedQuaternion(const iDynTree::Vector4& quaternion);
 
-        iDynTree::Vector4 RegularizeQuaternionVelocity(const iDynTree::Vector4& quaternion, const iDynTree::Vector4& inputQuaternionVelocity);
-
         double QuaternionNorm(const iDynTree::Vector4 &quaternion);
 
         double QuaternionSquaredNorm(const iDynTree::Vector4& quaternion);
