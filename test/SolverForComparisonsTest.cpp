@@ -81,7 +81,7 @@ int main() {
     double d = 0.09;
     double l = 0.19;
 
-    iDynTree::Position topLeftPositionOfLeft(0.1265,  0.049, -0.015);
+    iDynTree::Position topLeftPositionOfLeft(0.1265,  0.041, -0.015);
     ok = leftFoot.setFoot(l, d, topLeftPositionOfLeft);
     ASSERT_IS_TRUE(ok);
 
@@ -142,7 +142,7 @@ int main() {
     settingsStruct.jointsVelocityLimits[2].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[2].second = torsoVelocityLimit;
 
-    double armsVelocityLimit = 1.0;
+    double armsVelocityLimit = 0.5;
     for (size_t i = 3; i < 11; ++i) {
         settingsStruct.jointsVelocityLimits[i].first = -armsVelocityLimit;
         settingsStruct.jointsVelocityLimits[i].second = armsVelocityLimit;
@@ -158,7 +158,7 @@ int main() {
     settingsStruct.forceMeanCostActive = true;
     settingsStruct.comCostActive = false;
     settingsStruct.comVelocityCostActive = true;
-    settingsStruct.forceDerivativeCostActive = false;
+    settingsStruct.forceDerivativeCostActive = true;
     settingsStruct.pointAccelerationCostActive = true;
     settingsStruct.jointsRegularizationCostActive = false;
     settingsStruct.jointsVelocityCostActive = false;
@@ -185,7 +185,7 @@ int main() {
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
     settingsStruct.forceMeanCostOverallWeight = 1e-1; //5e-3 for exploiting more partial contacts
-    settingsStruct.forceDerivativesCostOverallWeight = 1e-10;
+    settingsStruct.forceDerivativesCostOverallWeight = 1e-4;
     settingsStruct.pointAccelerationCostOverallWeight = 5.0;
     settingsStruct.pointAccelerationWeights(0) = 1.0;
     settingsStruct.pointAccelerationWeights(1) = 1.0;
@@ -303,11 +303,11 @@ int main() {
     }
 
     settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
-    settingsStruct.normalForceDissipationRatio = 250.0;
-    settingsStruct.normalForceHyperbolicSecantScaling = 300.0;
+    settingsStruct.normalForceDissipationRatio = 300.0;
+    settingsStruct.normalForceHyperbolicSecantScaling = 500.0;
     settingsStruct.complementarityDissipation = 20.0;
-    settingsStruct.dynamicComplementarityUpperBound = 0.2;
-    settingsStruct.classicalComplementarityTolerance = 0.015;
+    settingsStruct.dynamicComplementarityUpperBound = 0.05;
+    settingsStruct.classicalComplementarityTolerance = 0.004;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 
@@ -402,17 +402,19 @@ int main() {
     ASSERT_IS_TRUE(ok);
 
     DynamicalPlanner::State initialStateForGuess(initialState);
+
     for (auto& point : initialStateForGuess.leftContactPointsState)
     {
-        point.pointPosition(2) = 0; //The initial point height might not be exactly zero
+        iDynTree::toEigen(point.pointPosition) += 2 * iDynTree::toEigen(stepIncrement);
+        point.pointForce.zero();
+
     }
-    for (auto& point : initialStateForGuess.rightContactPointsState)
-    {
-        point.pointPosition(2) = 0; //The initial point height might not be exactly zero
-        point.pointForce.zero(); //Reset the force on the right foot to zero to ease the finding of a step
-    }
-    auto stateGuesses = std::make_shared<DynamicalPlanner::Utilities::TranslatingCoMStateGuess>(comReference, initialStateForGuess);
-    auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(DynamicalPlanner::Control(vectorList.size(), settingsStruct.leftPointsPosition.size()));
+    iDynTree::toEigen(initialStateForGuess.comPosition) += iDynTree::toEigen(stepIncrement);
+    auto stateGuesses = std::make_shared<DynamicalPlanner::TimeInvariantState>(initialStateForGuess);
+
+    DynamicalPlanner::Control initialControl(vectorList.size(), settingsStruct.leftPointsPosition.size());
+
+    auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(initialControl);
 
     ok = solver.setGuesses(stateGuesses, controlGuesses);
     ASSERT_IS_TRUE(ok);
