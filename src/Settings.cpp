@@ -111,6 +111,7 @@ bool Settings::setFromStruct(const SettingsStruct &inputSettings)
         errors += checkError(!(inputSettings.robotModel.isFrameNameUsed(inputSettings.frameForOrientationCost)),
                              "The frameForOrientationCost does not appear in the model.");
         errors += checkError(!inputSettings.desiredRotationTrajectory, "The desiredRotationTrajectory is empty.");
+        errors += checkError(!inputSettings.frameCostTimeVaryingWeight, "The frameCostTimeVaryingWeight is empty.");
     }
 
     if (inputSettings.jointsRegularizationCostActive) {
@@ -356,6 +357,7 @@ SettingsStruct Settings::Defaults(const iDynTree::Model &newModel)
     defaults.frameForOrientationCost = "neck_2";
     iDynTree::Rotation desiredRotation(0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
     defaults.desiredRotationTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantRotation>(desiredRotation);
+    defaults.frameCostTimeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(1.0);
 
     //Force mean (each contact point has a different cost with same settings)
     defaults.forceMeanCostActive = true;

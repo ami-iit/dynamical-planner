@@ -41,6 +41,8 @@ public:
 
     bool setDesiredRotationTrajectory(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredRotationTrajectory);
 
+    void setTimeVaryingWeight(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight);
+
     virtual bool costEvaluation(double time,
                                 const iDynTree::VectorDynSize& state,
                                 const iDynTree::VectorDynSize& control,

@@ -63,6 +63,22 @@ public:
 
 };
 
+class ExponentialWeight : public iDynTree::optimalcontrol::TimeVaryingDouble
+{
+    double m_premultiplier;
+    double m_timeMultiplier;
+    double m_offset;
+    double m_timeOffset;
+    double m_output;
+
+public:
+    ExponentialWeight(double premultiplier /*a*/, double timeMultiplier /*b*/, double offset /*c*/, double timeOffset /*d*/); // a*exp(b*(t-d)) + c
+
+    virtual ~ExponentialWeight() override;
+
+    virtual const double& get(double time, bool &isValid) override;
+};
+
 }
 }
 

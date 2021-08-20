@@ -432,6 +432,8 @@ public:
                 return false;
             }
 
+            costs.frameOrientation->setTimeVaryingWeight(st.frameCostTimeVaryingWeight);
+
             ok = ocp->addLagrangeTerm(st.frameCostOverallWeight, costs.frameOrientation);
             if (!ok) {
                 return false;

@@ -171,6 +171,8 @@ void configureCosts(const VariablesLabeller& stateVariables, const VariablesLabe
     ok = ocProblem.addLagrangeTerm(0.5, comCost);
     ASSERT_IS_TRUE(ok);
     std::shared_ptr<FrameOrientationCost> orientationCost = std::make_shared<FrameOrientationCost>(stateVariables, controlVariables, timelySharedKinDyn, expressionsServer, 22);
+    auto frameWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(5.0);
+    orientationCost->setTimeVaryingWeight(frameWeight);
     ok = ocProblem.addLagrangeTerm(0.5, orientationCost);
     ASSERT_IS_TRUE(ok);
 

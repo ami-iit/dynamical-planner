@@ -37,9 +37,10 @@ public:
     levi::Expression quaternionErrorExpression,
         asExpression, quaternionDerivative, jointsDerivative,
         quaternionHessian, jointsHessian, quaternionJointsHessian;
-    levi::Variable desiredQuaternion;
+    levi::Variable desiredQuaternion, timeWeightVariable;
 
     std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredTrajectory;
+    std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight;
 
     bool updateDoneOnceCost = false;
     bool updateDoneOnceStateJacobian = false;
@@ -119,20 +120,22 @@ FrameOrientationCost::FrameOrientationCost(const VariablesLabeller &stateVariabl
     m_pimpl->reducedGradientBuffer.zero();
 
     m_pimpl->desiredTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantRotation>(iDynTree::Rotation::Identity());
+    m_pimpl->timeVaryingWeight = std::make_shared<iDynTree::optimalcontrol::TimeInvariantDouble>(1.0);
     m_pimpl->identityQuaternion = iDynTree::Rotation::Identity().asQuaternion();
 
     m_pimpl->expressionsServer = expressionsServer;
 
     std::string desiredFrameName = timelySharedKinDyn->model().getFrameName(desiredFrame);
     m_pimpl->desiredQuaternion = levi::Variable(4, "quat_desired");
+    m_pimpl->timeWeightVariable = levi::Variable(1, "timeVaryingWeight");
     m_pimpl->quaternionErrorExpression = expressionsServer->quaternionError(desiredFrameName, m_pimpl->desiredQuaternion);
     levi::Constant identityQuat_expr(iDynTree::toEigen(m_pimpl->identityQuaternion),"quaternionIdentity");
 
     levi::Expression quaternionDifference = m_pimpl->quaternionErrorExpression - identityQuat_expr;
-    m_pimpl->asExpression = 0.5 * quaternionDifference.transpose() * quaternionDifference;
+    m_pimpl->asExpression = 0.5 * m_pimpl->timeWeightVariable *  quaternionDifference.transpose() * quaternionDifference;
 
-    m_pimpl->quaternionDerivative = (quaternionDifference.transpose() * quaternionDifference.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion())).transpose();
-    m_pimpl->jointsDerivative = (quaternionDifference.transpose() * quaternionDifference.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition())).transpose();
+    m_pimpl->quaternionDerivative = m_pimpl->timeWeightVariable * (quaternionDifference.transpose() * quaternionDifference.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion())).transpose();
+    m_pimpl->jointsDerivative = m_pimpl->timeWeightVariable * (quaternionDifference.transpose() * quaternionDifference.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition())).transpose();
 
     m_pimpl->quaternionHessian = m_pimpl->quaternionDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->baseQuaternion());
     m_pimpl->jointsHessian = m_pimpl->jointsDerivative.getColumnDerivative(0, m_pimpl->expressionsServer->jointsPosition());
@@ -170,6 +173,12 @@ bool FrameOrientationCost::setDesiredRotationTrajectory(std::shared_ptr<iDynTree
     return true;
 }
 
+void FrameOrientationCost::setTimeVaryingWeight(std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> timeVaryingWeight)
+{
+    assert(timeVaryingWeight);
+    m_pimpl->timeVaryingWeight = timeVaryingWeight;
+}
+
 bool FrameOrientationCost::costEvaluation(double time, const iDynTree::VectorDynSize &state,
                                           const iDynTree::VectorDynSize &control, double &costValue)
 {
@@ -192,13 +201,21 @@ bool FrameOrientationCost::costEvaluation(double time, const iDynTree::VectorDyn
             return false;
         }
 
+        const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+
+        if (!isValid) {
+            std::cerr << "[ERROR][FrameOrientationCost::costEvaluation] Unable to retrieve a valid timeVaryingWeight at time " << time
+                      << "." << std::endl;
+            return false;
+        }
+
         m_pimpl->frameTransform = m_pimpl->sharedKinDyn->getWorldTransform(m_pimpl->robotState, m_pimpl->desiredFrame);
 
         m_pimpl->quaternionError = ErrorQuaternion(m_pimpl->frameTransform.getRotation(), desiredRotation);
 
         iDynTree::toEigen(m_pimpl->quaternionDifference) = iDynTree::toEigen(m_pimpl->quaternionError) -
                 iDynTree::toEigen(m_pimpl->identityQuaternion);
-        m_pimpl->costBuffer = 0.5 * QuaternionSquaredNorm(m_pimpl->quaternionDifference);
+        m_pimpl->costBuffer = 0.5 * timeWeight * QuaternionSquaredNorm(m_pimpl->quaternionDifference);
     }
 
     costValue = m_pimpl->costBuffer;
@@ -224,6 +241,14 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
 
         if (!isValid) {
             std::cerr << "[ERROR][FrameOrientationCost::costFirstPartialDerivativeWRTState] Unable to retrieve a valid rotation at time " << time
+                      << "." << std::endl;
+            return false;
+        }
+
+        const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+
+        if (!isValid) {
+            std::cerr << "[ERROR][FrameOrientationCost::costFirstPartialDerivativeWRTState] Unable to retrieve a valid timeVaryingWeight at time " << time
                       << "." << std::endl;
             return false;
         }
@@ -258,7 +283,7 @@ bool FrameOrientationCost::costFirstPartialDerivativeWRTState(double time, const
 
         iDynTree::iDynTreeEigenVector reducedGradientMap = iDynTree::toEigen(m_pimpl->reducedGradientBuffer);
 
-        reducedGradientMap = iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative).transpose() * iDynTree::toEigen(m_pimpl->quaternionDifference);
+        reducedGradientMap = timeWeight * iDynTree::toEigen(m_pimpl->quaternionErrorPartialDerivative).transpose() * iDynTree::toEigen(m_pimpl->quaternionDifference);
 
         iDynTree::iDynTreeEigenVector gradientMap = iDynTree::toEigen(m_pimpl->stateGradientBuffer);
 
@@ -301,7 +326,16 @@ bool FrameOrientationCost::costSecondPartialDerivativeWRTState(double time, cons
         return false;
     }
 
+    const double& timeWeight = m_pimpl->timeVaryingWeight->get(time, isValid);
+
+    if (!isValid) {
+        std::cerr << "[ERROR][FrameOrientationCost::costSecondPartialDerivativeWRTState] Unable to retrieve a valid timeVaryingWeight at time " << time
+                  << "." << std::endl;
+        return false;
+    }
+
     m_pimpl->desiredQuaternion = iDynTree::toEigen(desiredRotation.asQuaternion());
+    m_pimpl->timeWeightVariable = timeWeight;
 
     iDynTree::iDynTreeEigenMatrixMap hessianMap = iDynTree::toEigen(partialDerivative);
 

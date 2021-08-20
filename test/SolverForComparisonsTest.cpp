@@ -180,6 +180,7 @@ int main() {
 
 
     settingsStruct.frameCostOverallWeight = 90.0;
+    settingsStruct.frameCostTimeVaryingWeight = std::make_shared<DynamicalPlanner::Utilities::ExponentialWeight>(100.0, -10.0, 1.0, 0.0);
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;

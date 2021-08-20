@@ -369,5 +369,27 @@ std::shared_ptr<PositionReferenceGenerator> SimpleWalkingStateMachine::reference
     return m_references;
 }
 
+ExponentialWeight::ExponentialWeight(double premultiplier, double timeMultiplier, double offset, double timeOffset)
+    : m_premultiplier(premultiplier)
+    , m_timeMultiplier(timeMultiplier)
+    , m_offset(offset)
+    , m_timeOffset(timeOffset)
+    , m_output(1.0)
+{
+
+}
+
+ExponentialWeight::~ExponentialWeight()
+{ }
+
+const double &ExponentialWeight::get(double time, bool &isValid)
+{
+    isValid = true;
+
+    m_output = m_premultiplier * std::exp(m_timeMultiplier * (time - m_timeOffset)) + m_offset;
+
+    return m_output;
+}
+
 }
 }

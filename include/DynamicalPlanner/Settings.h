@@ -124,6 +124,7 @@ namespace DynamicalPlanner {
         double frameCostOverallWeight;
         std::string frameForOrientationCost;
         std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingRotation> desiredRotationTrajectory;
+        std::shared_ptr<iDynTree::optimalcontrol::TimeVaryingDouble> frameCostTimeVaryingWeight;
 
         //Force mean (each contact point has a different cost with same settings)
         bool forceMeanCostActive;
