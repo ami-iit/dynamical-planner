@@ -484,10 +484,12 @@ int main() {
     std::vector<DynamicalPlanner::Control> mpcControls;
     std::vector<std::vector<DynamicalPlanner::State>> fullStates;
     std::vector<double> durations;
+    std::vector<double> costs;
     mpcStates.push_back(initialState);
 
     visualizer.setCameraPosition(iDynTree::Position(2.0, 0.5, 0.5));
     double runningMean = 0;
+    double runningCostMean = 0;
     double currentDuration;
     for (size_t i = 0; i < 100; ++i) {
         double initialTime;
@@ -508,8 +510,13 @@ int main() {
         std::cout << "Elapsed time (" << i << "): " << currentDuration <<std::endl;
         std::cout << "Complementarity: " << maximumComplementarity(optimalStates.front()) << std::endl;
         std::cout << "Mean Time: " << runningMean << std::endl;
+        double optimalCost(-1.0);
+        ipoptSolver->getOptimalCost(optimalCost);
+        runningCostMean = (runningCostMean * i + optimalCost) / (i+1);
+        std::cout << "Cost Value: " << optimalCost << " (Mean: " << runningCostMean << ")" << std::endl;
 
         durations.push_back(currentDuration);
+        costs.push_back(optimalCost);
         mpcStates.push_back(optimalStates.front());
         mpcStates.back().time += initialTime;
         mpcStates.push_back(optimalStates[1]);
@@ -550,7 +557,7 @@ int main() {
                                                        outputFolder, "test-SC-" + timeString.str(), "mp4", 2.0, settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
 
-    DynamicalPlanner::Logger::saveSolutionVectorsToFile(outputFolder + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations);
+    DynamicalPlanner::Logger::saveSolutionVectorsToFile(outputFolder + "/log-" + timeString.str() + ".mat" , settingsStruct, mpcStates, mpcControls, durations, costs);
 
     return EXIT_SUCCESS;
 }

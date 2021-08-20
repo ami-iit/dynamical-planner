@@ -241,7 +241,8 @@ matioCpp::Struct populateSettingsStruct(const SettingsStruct& settings)
     return settingsVar;
 }
 
-void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const SettingsStruct& settings, const std::vector<State> &states, const std::vector<Control> &controls, const std::vector<double> &computationalTime)
+void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const SettingsStruct& settings, const std::vector<State> &states, const std::vector<Control> &controls,
+                                       const std::vector<double> &computationalTime, const std::vector<double>& costValues)
 {
     std::unordered_map<std::string, matioCpp::MultiDimensionalArray<double>> loggedVariables;
 
@@ -295,6 +296,11 @@ void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const Set
         loggedVariables["computationalTime"] = matioCpp::MultiDimensionalArray<double>("computationalTime", {1, computationalTime.size()});
     }
 
+    if (costValues.size())
+    {
+        loggedVariables["costValue"] = matioCpp::MultiDimensionalArray<double>("costValue", {1, costValues.size()});
+    }
+
     for (size_t i = 0; i < states.size(); ++i) {
         for (size_t point = 0; point < states.front().leftContactPointsState.size(); ++point) {
             addToLogger(loggedVariables, "leftPoint" + std::to_string(point) + "Force", states[i].leftContactPointsState[point].pointForce, i);
@@ -338,6 +344,11 @@ void Logger::saveSolutionVectorsToFile(const std::string &matFileName, const Set
     for (size_t i = 0; i < computationalTime.size(); ++i)
     {
         addToLogger(loggedVariables, "computationalTime", computationalTime[i], i);
+    }
+
+    for (size_t i = 0; i < costValues.size(); ++i)
+    {
+        addToLogger(loggedVariables, "costValue", costValues[i], i);
     }
 
     matioCpp::File file = matioCpp::File::Create(matFileName);

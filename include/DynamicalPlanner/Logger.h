@@ -25,7 +25,8 @@ public:
                                           const SettingsStruct &settings,
                                           const std::vector<DynamicalPlanner::State>& states = {},
                                           const std::vector<DynamicalPlanner::Control>& controls = {},
-                                          const std::vector<double>& computationalTime = {});
+                                          const std::vector<double>& computationalTime = {},
+                                          const std::vector<double>& costValues = {});
 };
 
 #endif // DPLANNERLOGGER_H
