@@ -80,7 +80,7 @@ int main() {
     double d = 0.09;
     double l = 0.19;
 
-    iDynTree::Position topLeftPositionOfLeft(0.1265,  0.049, -0.015);
+    iDynTree::Position topLeftPositionOfLeft(0.1265,  0.041, -0.015);
     ok = leftFoot.setFoot(l, d, topLeftPositionOfLeft);
     ASSERT_IS_TRUE(ok);
 
@@ -116,15 +116,15 @@ int main() {
     ok = DynamicalPlanner::Utilities::SetMinContactPointToZero(settingsStruct, initialState);
     ASSERT_IS_TRUE(ok);
 
-    leftFoot.getNormalRatiosFromCoP(0.005, -0.01, settingsStruct.desiredLeftRatios);
-    rightFoot.getNormalRatiosFromCoP(0.005, 0.01, settingsStruct.desiredRightRatios);
+    leftFoot.getNormalRatiosFromCoP(0.005,   0.01, settingsStruct.desiredLeftRatios);
+    rightFoot.getNormalRatiosFromCoP(0.005, -0.008, settingsStruct.desiredRightRatios);
 
 
     settingsStruct.desiredJointsTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(desiredInitialJoints);
 
     for (auto& joint : settingsStruct.jointsVelocityLimits) {
-        joint.first = -0.5;
-        joint.second = 0.5;
+        joint.first = -0.2;
+        joint.second = 0.2;
     }
 
     iDynTree::toEigen(settingsStruct.jointsRegularizationWeights).topRows<3>().setConstant(0.1);
@@ -133,7 +133,7 @@ int main() {
 
 //    iDynTree::toEigen(settingsStruct.jointsVelocityCostWeights).topRows<3>().setConstant(100.0);
 
-    double torsoVelocityLimit = 0.3;
+    double torsoVelocityLimit = 0.2;
     settingsStruct.jointsVelocityLimits[0].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[0].second = torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[1].first = -torsoVelocityLimit;
@@ -141,7 +141,7 @@ int main() {
     settingsStruct.jointsVelocityLimits[2].first = -torsoVelocityLimit;
     settingsStruct.jointsVelocityLimits[2].second = torsoVelocityLimit;
 
-    double armsVelocityLimit = 0.5;
+    double armsVelocityLimit = 0.2;
     for (size_t i = 3; i < 11; ++i) {
         settingsStruct.jointsVelocityLimits[i].first = -armsVelocityLimit;
         settingsStruct.jointsVelocityLimits[i].second = armsVelocityLimit;
@@ -151,8 +151,8 @@ int main() {
     settingsStruct.jointsLimits[8].first = iDynTree::deg2rad(+10.0); // r_shoulder_roll
     settingsStruct.jointsLimits[11].first = iDynTree::deg2rad(-25.0); //l_hip_pitch
     settingsStruct.jointsLimits[17].first = iDynTree::deg2rad(-25.0); // r_hip_pitch
-    settingsStruct.jointsLimits[1].first = iDynTree::deg2rad(-12.0); //torso_roll
-    settingsStruct.jointsLimits[1].second = iDynTree::deg2rad(12.0); //torso_roll
+    settingsStruct.jointsLimits[1].first = iDynTree::deg2rad(-15.0); //torso_roll
+    settingsStruct.jointsLimits[1].second = iDynTree::deg2rad(15.0); //torso_roll
     settingsStruct.jointsLimits[14].second = iDynTree::deg2rad(-8.0); //l_knee
     settingsStruct.jointsLimits[20].second = iDynTree::deg2rad(-8.0); //r_knee
 
@@ -176,14 +176,14 @@ int main() {
     settingsStruct.jointsVelocityForPosturalCostActive = true;
     settingsStruct.complementarityCostActive = false;
     settingsStruct.basePositionCostActive = false;
-    settingsStruct.frameAngularVelocityCostActive = true;
+    settingsStruct.frameAngularVelocityCostActive = false;
     settingsStruct.baseQuaternionCostActive = true;
     settingsStruct.forceRatioCostActive = true;
     settingsStruct.baseLinearVelocityCostActive = false;
     settingsStruct.baseQuaternionVelocityCostActive = true;
     settingsStruct.angularMomentumCostActive = false;
 
-    settingsStruct.frameCostOverallWeight = 90.0;
+    settingsStruct.frameCostOverallWeight = 200.0;
     settingsStruct.jointsVelocityCostOverallWeight = 1e-1;
     settingsStruct.staticTorquesCostOverallWeight = 1e-5;
     settingsStruct.jointsRegularizationCostOverallWeight = 1e-1;
@@ -205,7 +205,7 @@ int main() {
     settingsStruct.comWeights(1) = 1.0;
     settingsStruct.comWeights(2) = 1.0;
     settingsStruct.comVelocityCostOverallWeight = 1.0;
-    settingsStruct.comVelocityWeights(0) = 20.0;
+    settingsStruct.comVelocityWeights(0) = 50.0;
     settingsStruct.comVelocityWeights(1) = 0.1;
     settingsStruct.comVelocityWeights(2) = 1.0;
     settingsStruct.leftFootYawCostOverallWeight = 1000.0;
@@ -238,7 +238,7 @@ int main() {
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     iDynTree::VectorDynSize comVelocityReference(3);
-    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.03, 0.0, 0.0));
+    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.02, 0.0, 0.0));
     auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
@@ -422,6 +422,7 @@ int main() {
     for (auto& point : initialStateForGuess.rightContactPointsState)
     {
         point.pointPosition(2) = 0; //The initial point height might not be exactly zero
+        point.pointForce.zero(); //Reset the force on the right foot to zero to ease the finding of a step
     }
     auto stateGuesses = std::make_shared<DynamicalPlanner::Utilities::TranslatingCoMStateGuess>(comReference, initialStateForGuess);
     auto controlGuesses = std::make_shared<DynamicalPlanner::TimeInvariantControl>(DynamicalPlanner::Control(vectorList.size(), settingsStruct.leftPointsPosition.size()));
