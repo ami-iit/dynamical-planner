@@ -303,7 +303,7 @@ int main() {
     }
 
     settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
-    settingsStruct.normalForceDissipationRatio = 300.0;
+    settingsStruct.normalForceDissipationRatio = 250.0;
     settingsStruct.normalForceHyperbolicSecantScaling = 500.0;
     settingsStruct.complementarityDissipation = 20.0;
     settingsStruct.dynamicComplementarityUpperBound = 0.05;
@@ -409,7 +409,9 @@ int main() {
         point.pointForce.zero();
 
     }
-    iDynTree::toEigen(initialStateForGuess.comPosition) += iDynTree::toEigen(stepIncrement);
+    iDynTree::toEigen(initialStateForGuess.comPosition) += 0.1 * iDynTree::toEigen(stepIncrement);
+//    initialStateForGuess.comPosition(1) -= std::abs(initialState.rightContactPointsState.begin()->pointPosition(1) - initialState.leftContactPointsState.begin()->pointPosition(1))/2.0;
+
     auto stateGuesses = std::make_shared<DynamicalPlanner::TimeInvariantState>(initialStateForGuess);
 
     DynamicalPlanner::Control initialControl(vectorList.size(), settingsStruct.leftPointsPosition.size());
