@@ -452,20 +452,28 @@ int main() {
     timeString << timeStruct.tm_mday << "_" << timeStruct.tm_hour << "_" << timeStruct.tm_min;
     timeString << "_" << timeStruct.tm_sec;
 
-    std::string complementarityString;
+    std::ostringstream complementarityString;
     switch (settingsStruct.complementarity)
     {
     case DynamicalPlanner::ComplementarityType::Classical:
-        complementarityString = "Classical";
+        complementarityString.precision(3);
+        complementarityString << "Classical_" << std::fixed << settingsStruct.classicalComplementarityTolerance;
         break;
     case DynamicalPlanner::ComplementarityType::Dynamical:
-        complementarityString = "Dynamical";
+        complementarityString.precision(2);
+        complementarityString << "Dynamical_ub" << std::fixed << settingsStruct.dynamicComplementarityUpperBound;
+        complementarityString.precision(1);
+        complementarityString << "_K" << std::fixed << settingsStruct.complementarityDissipation;
         break;
     case DynamicalPlanner::ComplementarityType::HyperbolicSecantInDynamics:
-        complementarityString = "HyperbolicSecantInDynamics";
+        complementarityString.precision(1);
+        complementarityString << "HyperbolicSecantInDynamics_sec" << std::fixed << settingsStruct.normalForceHyperbolicSecantScaling
+                              << "_K" << std::fixed << settingsStruct.normalForceDissipationRatio;
         break;
     case DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality:
-        complementarityString = "HyperbolicSecantInequality";
+        complementarityString.precision(1);
+        complementarityString << "HyperbolicSecantInequality_sec" << std::fixed << settingsStruct.normalForceHyperbolicSecantScaling
+                              << "_K" << std::fixed << settingsStruct.normalForceDissipationRatio;
         break;
     }
 
@@ -474,7 +482,7 @@ int main() {
     velocityString << "incr-"  << std::fixed << iDynTree::toEigen(stepIncrement).norm()
                    << "_speed-" << std::fixed << iDynTree::toEigen(comVelocityReference).norm();
 
-    std::string outputFolder = getAbsDirPath("SavedVideos") + "/" + timeString.str() + "_" + complementarityString + "_" + velocityString.str();
+    std::string outputFolder = getAbsDirPath("SavedVideos") + "/" + timeString.str() + "_" + complementarityString.str() + "_" + velocityString.str();
     std::filesystem::create_directories(outputFolder);
     ok = visualizer.visualizeStatesAndSaveAnimation(optimalStates, outputFolder, "test-1stIteration-" + timeString.str(), "mp4", settingsStruct.horizon * settingsStruct.activeControlPercentage);
     ASSERT_IS_TRUE(ok);
