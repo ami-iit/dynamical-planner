@@ -98,8 +98,11 @@ opti.subject_to(Xo(2,N+1) >= 0); %force positive
 opti.subject_to(-M_fdot <= Uo(2, N+1)); %max force derivative
 opti.subject_to(Uo(2, N+1) <= M_fdot); %max force derivative
 opti.subject_to(complementarity(Xo(:,N+1),Uo(:,N+1)) <= 0) %complementarity
+%opti.subject_to(Xo(2,N+1) == -m*g); %The force is equal to the weight at the end
+%opti.subject_to(Uo(1,N) == 0); %No propeller at the end
 
-%opti.set_initial(Xo, [freeFalling; expectedForce; free_falling_velocity]);
+
+opti.set_initial(Xo, [freeFalling; expectedForce; free_falling_velocity]);
 
 cost = cost_multiplier*sumsqr(Uo(1,:));
 

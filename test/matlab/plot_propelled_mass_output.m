@@ -17,12 +17,12 @@ title("f")
 
 subplot(2,2,3)
 plot(t, position .* force)
-title("complementarity")
+title(['complementarity (', num2str(mean(position .* force)), ')'])
 
 subplot(2,2,4)
 plot(t, propeller)
 title(['p (', num2str(costValue), ')'])
 
-sgtitle([inputStruct.complementairity, ' Complementarity, ( ', num2str(elapsedTime), 's)'], 'Interpreter', 'none')
+sgtitle([inputStruct.complementairity, ' Complementarity, ( ', num2str(elapsedTime), 's, mass ', num2str(inputStruct.m), 'kg)'], 'Interpreter', 'none')
 
 end
