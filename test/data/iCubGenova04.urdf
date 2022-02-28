@@ -10,9 +10,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_root_link_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="green">
-        <color rgba="0 1 0 1"/>
-      </material>
+      <material name="green"/>
     </visual>
     <collision>
       <origin xyz="-0.0364 0 0.032" rpy="1.57079632679 0 -1.57079632679"/>
@@ -32,9 +30,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_r_hip_1_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="black">
-        <color rgba="0 0 0 1"/>
-      </material>
+      <material name="black"/>
     </visual>
     <collision>
       <origin xyz="0.0428515000001 0.026 0.151913" rpy="1.57079632679 0 1.57079632679"/>
@@ -62,9 +58,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_r_hip_2_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="red">
-        <color rgba="1 0 0 1"/>
-      </material>
+      <material name="red"/>
     </visual>
     <collision>
       <origin xyz="0.0428514998094 0.0701 0.151913" rpy="1.57079632679 0 1.57079632679"/>
@@ -92,9 +86,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_r_upper_thigh_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="blue">
-        <color rgba="0 0 1 1"/>
-      </material>
+      <material name="blue"/>
     </visual>
     <collision>
       <origin xyz="0.0437089998094 -0.0701 -0.226213" rpy="-1.57079632679 0 -1.57079632679"/>
@@ -120,9 +112,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_r_thigh_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="yellow">
-        <color rgba="1 1 0 1"/>
-      </material>
+      <material name="yellow"/>
     </visual>
     <collision>
       <origin xyz="0.0437089998094 0.0701 0.240813" rpy="1.57079632679 0 1.57079632679"/>
@@ -164,9 +154,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_r_shank_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="pink">
-        <color rgba="1 0 1 1"/>
-      </material>
+      <material name="pink"/>
     </visual>
     <collision>
       <origin xyz="0.0437089998094 0.0701000001907 0.386638" rpy="1.57079632679 0 1.57079632679"/>
@@ -460,9 +448,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_r_ankle_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="cyan">
-        <color rgba="0 1 1 1"/>
-      </material>
+      <material name="cyan"/>
     </visual>
     <collision>
       <origin xyz="0.0437089998094 0.0701000001907 0.587138" rpy="1.57079632679 0 1.57079632679"/>
@@ -518,9 +504,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_r_sole_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="white">
-        <color rgba="1 1 1 1"/>
-      </material>
+      <material name="white"/>
     </visual>
     <collision>
       <origin xyz="0.0472089996186 -0.0701000001907 -0.647438000286" rpy="-1.57079632679 0 -1.57079632679"/>
@@ -553,9 +537,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_l_hip_1_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="dblue">
-        <color rgba="0 0 0.8 1"/>
-      </material>
+      <material name="dblue"/>
     </visual>
     <collision>
       <origin xyz="0.0428515000001 -0.026 0.151913" rpy="1.57079632679 0 1.57079632679"/>
@@ -583,9 +565,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_l_hip_2_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="dgreen">
-        <color rgba="0.1 0.8 0.1 1"/>
-      </material>
+      <material name="dgreen"/>
     </visual>
     <collision>
       <origin xyz="0.0428514998093 -0.0701 0.151913" rpy="1.57079632679 0 1.57079632679"/>
@@ -613,9 +593,7 @@
       <geometry>
         <mesh filename="meshes/sim_sea_2-5_l_upper_thigh_prt-binary.dae" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="gray">
-        <color rgba="0.5 0.5 0.5 1"/>
-      </material>
+      <material name="gray"/>
     </visual>
     <collision>
       <origin xyz="0.043709 0.0701 -0.226213" rpy="-1.57079632679 0 -1.57079632679"/>
@@ -2893,4 +2871,38 @@
   <gazebo>
     <pose>0.0 0.0 0.63 0.0 0.0 3.14</pose>
   </gazebo>
+
+  <material name="green">
+    <color rgba="0 1 0 1"/>
+  </material>
+  <material name="black">
+    <color rgba="0 0 0 1"/>
+  </material>
+  <material name="red">
+    <color rgba="1 0 0 1"/>
+  </material>
+  <material name="blue">
+    <color rgba="0 0 1 1"/>
+  </material>
+  <material name="yellow">
+    <color rgba="1 1 0 1"/>
+  </material>
+  <material name="pink">
+    <color rgba="1 0 1 1"/>
+  </material>
+  <material name="cyan">
+    <color rgba="0 1 1 1"/>
+  </material>
+  <material name="white">
+    <color rgba="1 1 1 1"/>
+  </material>
+  <material name="dblue">
+    <color rgba="0 0 0.8 1"/>
+  </material>
+  <material name="dgreen">
+    <color rgba="0.1 0.8 0.1 1"/>
+  </material>
+  <material name="gray">
+    <color rgba="0.5 0.5 0.5 1"/>
+  </material>
 </robot>
