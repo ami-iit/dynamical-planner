@@ -47,9 +47,10 @@ endif()
 
 find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(levi 0.0.101 REQUIRED)
 find_package(matioCpp REQUIRED)
 find_package(FFmpeg REQUIRED)
+
+add_subdirectory(extern)
 
 set(CONSTRAINTS_HEADERS_DIR include/DynamicalPlannerPrivate/Constraints)
 
@@ -194,7 +195,9 @@ target_link_libraries(DynamicalPlanner PRIVATE DynamicalPlannerPrivate)
 target_link_libraries(DynamicalPlanner PRIVATE matioCpp::matioCpp)
 target_link_libraries(DynamicalPlanner PUBLIC ${iDynTree_LIBRARIES})
 
-include(AddUninstallTarget)
+if (NOT TARGET uninstall)
+    include(AddUninstallTarget)
+endif()
 
 option(BUILD_TESTING "Create tests using CMake" OFF)
 

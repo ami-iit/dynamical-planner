@@ -1,0 +1,9 @@
+set(LEVI_VERSION @LEVI_VERSION@)
+
+include(CMakeFindDependencyMacro)
+find_dependency(Eigen3 REQUIRED)
+find_dependency(shlibpp REQUIRED)
+
+if(NOT TARGET levi)
+  include("${CMAKE_CURRENT_LIST_DIR}/levi.cmake")
+endif()

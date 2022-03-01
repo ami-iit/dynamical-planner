@@ -5,7 +5,6 @@
 ### Dependencies
 - [``iDynTree``](https://github.com/robotology/idyntree) (Version >= 0.11.103) It needs the  options ``IDYNTREE_COMPILES_OPTIMALCONTROL`` and ``IDYNTREE_USES_IRRLICHT`` set to ``ON``. The latter is useful for the visualization.
 - [``Eigen3``](https://eigen.tuxfamily.org/index.php?title=Main_Page)
-- [``levi``](https://github.com/S-Dafarra/levi)
 - [``matioCpp``](https://github.com/ami-iit/matio-cpp)
 - [``FFmpeg``](https://ffmpeg.org/)
 - [``IPOPT``](https://coin-or.github.io/Ipopt/) It is suggested to install it from source, including the HSL solvers (please check https://coin-or.github.io/Ipopt/INSTALL.html)
