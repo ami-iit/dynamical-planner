@@ -6,7 +6,7 @@
 - [``iDynTree``](https://github.com/robotology/idyntree) (Version >= 0.11.103) It needs the  options ``IDYNTREE_COMPILES_OPTIMALCONTROL`` and ``IDYNTREE_USES_IRRLICHT`` set to ``ON``. The latter is useful for the visualization.
 - [``Eigen3``](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 - [``levi``](https://github.com/S-Dafarra/levi)
-- [``matioCpp``](https://github.com/dic-iit/matio-cpp)
+- [``matioCpp``](https://github.com/ami-iit/matio-cpp)
 - [``FFmpeg``](https://ffmpeg.org/)
 - [``IPOPT``](https://coin-or.github.io/Ipopt/) It is suggested to install it from source, including the HSL solvers (please check https://coin-or.github.io/Ipopt/INSTALL.html)
 
@@ -15,7 +15,7 @@
 The planner is compatible with Linux/macOS and Windows, but it has been mainly tested on Ubuntu 20.04.
 
 ```bash
-git clone https://github.com/dic-iit/dynamical-planner
+git clone https://github.com/ami-iit/dynamical-planner
 cd dynamical-planner
 mkdir build && cd build
 cmake ../
@@ -24,7 +24,7 @@ make
 ```
 
 ### Run the tests
-The data for the papers has been obtained by running the [``SolverUnitTest``](https://github.com/dic-iit/dynamical-planner/blob/main/test/SolverTest.cpp) and [``SolverForComparisonUnitTest``](https://github.com/dic-iit/dynamical-planner/blob/main/test/SolverForComparisonsTest.cpp) executables. They are available after setting the ``CMake`` variable ``BUILD_TESTING`` to ``ON``.
+The data for the papers has been obtained by running the [``SolverUnitTest``](https://github.com/ami-iit/dynamical-planner/blob/main/test/SolverTest.cpp) and [``SolverForComparisonUnitTest``](https://github.com/ami-iit/dynamical-planner/blob/main/test/SolverForComparisonsTest.cpp) executables. They are available after setting the ``CMake`` variable ``BUILD_TESTING`` to ``ON``.
 
 
 ### Cite this work
