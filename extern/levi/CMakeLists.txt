@@ -54,7 +54,7 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 find_package(Eigen3 REQUIRED)
-find_package(shlibpp REQUIRED)
+find_package(shlibpp QUIET)
 
 set(LIBRARY_TARGET_NAME ${PROJECT_NAME})
 
