@@ -319,7 +319,7 @@ int main() {
 
     ASSERT_IS_TRUE(ipoptSolver->isAvailable());
 
-    ok = ipoptSolver->setIpoptOption("linear_solver", "ma57");
+    ok = ipoptSolver->setIpoptOption("linear_solver", "mumps");
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("ma57_pivtol", 1e-6);
     ASSERT_IS_TRUE(ok);
