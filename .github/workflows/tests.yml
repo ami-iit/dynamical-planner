@@ -38,13 +38,13 @@ jobs:
         sudo apt update
         
         # IPOPT dependencies
-        sudo apt install make git wget tar patch dos2unix pkg-config gfortran
+        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libmetis-dev
         
         # iDyntree dependencies
         sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
         
         #matioCpp dependencies
-        sudo apt install libmetis-dev
+        sudo apt install libmatio-dev
         
         #Other dependencies
         sudo apt install ffmpeg
