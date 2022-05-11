@@ -47,7 +47,7 @@ jobs:
         sudo apt install libmatio-dev
         
         #Other dependencies
-        sudo apt install ffmpeg
+        sudo apt install ffmpeg libavcodec-dev
    
     - name: Coinbrew installation
       shell: bash -l {0}
