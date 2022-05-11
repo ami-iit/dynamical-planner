@@ -17,6 +17,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
+    
+    - uses: actions/download-artifact@v3
+      with:
+        name: SavedVideos
+        path: build/SavedVideos
 
 
     - name: Display environment variables
@@ -38,7 +43,7 @@ jobs:
         sudo apt update
 
         # IPOPT dependencies
-        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libmetis-dev
+        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libblas-dev libmetis-dev
 
         # iDyntree dependencies
         sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
