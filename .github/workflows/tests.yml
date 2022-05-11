@@ -3,7 +3,7 @@ name: Run comparison tests
 on:
   push:
   workflow_dispatch:
-  
+
 env:
   iDynTree_TAG: 4aabb8525e95af161e916a8dfb85fbf994bb7aeb
   coinbrew_TAG: 1cd6e53a9c6f3b235939da3ebf6cabaa14da44bd
@@ -36,19 +36,22 @@ jobs:
     - name: System dependencies
       run: |
         sudo apt update
-        
+
         # IPOPT dependencies
         sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libmetis-dev
-        
+
         # iDyntree dependencies
         sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
-        
+
         #matioCpp dependencies
         sudo apt install libmatio-dev
-        
+
         #FFMPEG dependencies
         sudo apt install ffmpeg libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libpostproc-dev
-   
+
+        #Xvfb, just to have a dummy screen
+        sudo apt install xvfb
+
     - name: Coinbrew installation
       shell: bash -l {0}
       run: |
@@ -59,7 +62,7 @@ jobs:
         cd coinbrew
         git checkout ${coinbrew_TAG}
         chmod u+x coinbrew
-        
+
     - name: IPOPT installation
       shell: bash -l {0}
       run: |
@@ -71,19 +74,19 @@ jobs:
     - name: matioCpp installation
       shell: bash -l {0}
       run: |
-        
+
         cd ${GITHUB_WORKSPACE}
         git clone https://github.com/ami-iit/matio-cpp --depth 1
-        cd matio-cpp 
+        cd matio-cpp
         git checkout ${matiocpp_TAG}
         mkdir -p build && cd build
         cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release ..
         make install
-    
+
     - name: iDynTree installation
       shell: bash -l {0}
       run: |
-        
+
         export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
@@ -95,7 +98,7 @@ jobs:
         mkdir -p build && cd build
         cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ..
         make install
-        
+
 
     # ===================
     # CMAKE-BASED PROJECT
@@ -104,11 +107,11 @@ jobs:
     - name: Configure
       shell: bash -l {0}
       run: |
-      
+
         export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
-      
+
         mkdir -p build
         cd build
         cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release \
@@ -120,5 +123,9 @@ jobs:
         cd build
         make
 
-             
+    - name: Test
+      shell: bash
+      run: |
+        cd build/bin
+        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
 
