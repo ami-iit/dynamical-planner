@@ -44,7 +44,7 @@ jobs:
         sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
         
         #matioCpp dependencies
-        
+        sudo apt install libmetis-dev
         
         #Other dependencies
         sudo apt install ffmpeg
@@ -58,7 +58,7 @@ jobs:
         git clone https://github.com/coin-or/coinbrew
         cd coinbrew
         git checkout ${coinbrew_TAG}
-        chmod u+x coinbrew/coinbrew
+        chmod u+x coinbrew
         
     - name: IPOPT installation
       shell: bash -l {0}
