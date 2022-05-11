@@ -46,8 +46,8 @@ jobs:
         #matioCpp dependencies
         sudo apt install libmatio-dev
         
-        #Other dependencies
-        sudo apt install ffmpeg libavcodec-dev
+        #FFMPEG dependencies
+        sudo apt install ffmpeg libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libpostproc-dev
    
     - name: Coinbrew installation
       shell: bash -l {0}
