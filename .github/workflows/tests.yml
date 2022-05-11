@@ -1,0 +1,118 @@
+name: Run comparison tests
+
+on:
+  push:
+  workflow_dispatch:
+  
+env:
+  iDynTree_TAG: 4aabb8525e95af161e916a8dfb85fbf994bb7aeb
+  coinbrew_TAG: 1cd6e53a9c6f3b235939da3ebf6cabaa14da44bd
+  ipopt_TAG: 641f2202f5594018ab0ebee6d1b7c6853ef83343
+  matiocpp_TAG: ed9b196360b8083c3eccd3348afa7969d3a4f1fa
+
+jobs:
+  build:
+    name: 'Test'
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@master
+
+
+    - name: Display environment variables
+      shell: bash
+      run: env
+
+    # Remove apt repos that are known to break from time to time
+    # See https://github.com/actions/virtual-environments/issues/323
+    - name: Remove broken apt repos
+      run: |
+        for apt_file in `grep -lr microsoft /etc/apt/sources.list.d/`; do sudo rm $apt_file; done
+
+    # ============
+    # DEPENDENCIES
+    # ============
+
+    - name: System dependencies
+      run: |
+        sudo apt update
+        
+        # IPOPT dependencies
+        sudo apt install make git wget tar patch dos2unix pkg-config gfortran
+        
+        # iDyntree dependencies
+        sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
+        
+        #matioCpp dependencies
+        
+        
+        #Other dependencies
+        sudo apt install ffmpeg
+   
+    - name: Coinbrew installation
+      shell: bash -l {0}
+      run: |
+        cd ${GITHUB_WORKSPACE}
+        mkdir coin-or
+        cd coin-or
+        git clone https://github.com/coin-or/coinbrew --branch ${coinbrew_TAG}
+        chmod u+x coinbrew/coinbrew
+        
+    - name: IPOPT installation
+      shell: bash -l {0}
+      run: |
+        cd ${GITHUB_WORKSPACE}/coin-or
+        coinbrew/coinbrew fetch Ipopt@${ipopt_TAG} --no-prompt
+        coinbrew/coinbrew build Ipopt --prefix=install/ --test --no-prompt --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
+        coinbrew/coinbrew install Ipopt --no-prompt
+
+    - name: matioCpp installation
+      shell: bash -l {0}
+      run: |
+        
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/ami-iit/matio-cpp --depth 1 --branch ${matiocpp_TAG}
+        cd matio-cpp && mkdir -p build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release ..
+        make install
+    
+    - name: iDynTree installation
+      shell: bash -l {0}
+      run: |
+        
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
+        export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
+
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/robotology/idyntree --depth 1 --branch ${iDynTree_TAG}
+        cd idyntree && mkdir -p build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ..
+        make install
+        
+
+    # ===================
+    # CMAKE-BASED PROJECT
+    # ===================
+
+    - name: Configure
+      shell: bash -l {0}
+      run: |
+      
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
+        export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
+      
+        mkdir -p build
+        cd build
+        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DBUILD_TESTING:BOOL=ON ..
+
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        cd build
+        make
+
+             
+
