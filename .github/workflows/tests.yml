@@ -55,7 +55,9 @@ jobs:
         cd ${GITHUB_WORKSPACE}
         mkdir coin-or
         cd coin-or
-        git clone https://github.com/coin-or/coinbrew --branch ${coinbrew_TAG}
+        git clone https://github.com/coin-or/coinbrew
+        cd coinbrew
+        git checkout ${coinbrew_TAG}
         chmod u+x coinbrew/coinbrew
         
     - name: IPOPT installation
@@ -71,8 +73,10 @@ jobs:
       run: |
         
         cd ${GITHUB_WORKSPACE}
-        git clone https://github.com/ami-iit/matio-cpp --depth 1 --branch ${matiocpp_TAG}
-        cd matio-cpp && mkdir -p build && cd build
+        git clone https://github.com/ami-iit/matio-cpp --depth 1
+        cd matio-cpp 
+        git checkout ${matiocpp_TAG}
+        mkdir -p build && cd build
         cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release ..
         make install
     
@@ -85,8 +89,10 @@ jobs:
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
 
         cd ${GITHUB_WORKSPACE}
-        git clone https://github.com/robotology/idyntree --depth 1 --branch ${iDynTree_TAG}
-        cd idyntree && mkdir -p build && cd build
+        git clone https://github.com/robotology/idyntree --depth 1
+        cd idyntree
+        git checkout ${iDynTree_TAG}
+        mkdir -p build && cd build
         cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ..
         make install
         
