@@ -18,12 +18,6 @@ jobs:
     steps:
     - uses: actions/checkout@master
     
-    - uses: actions/download-artifact@v3
-      with:
-        name: SavedVideos
-        path: build/SavedVideos
-
-
     - name: Display environment variables
       shell: bash
       run: env
@@ -133,4 +127,9 @@ jobs:
       run: |
         cd build/bin
         OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
+        
+    - uses: actions/download-artifact@v3
+      with:
+        name: SavedVideos
+        path: build/SavedVideos
 
