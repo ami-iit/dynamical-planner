@@ -17,7 +17,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
-    
+
     - name: Display environment variables
       shell: bash
       run: env
@@ -37,7 +37,7 @@ jobs:
         sudo apt update
 
         # IPOPT dependencies
-        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libblas-dev libmetis-dev
+        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libblas-dev libopenblas-dev libmetis-dev
 
         # iDyntree dependencies
         sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
@@ -50,6 +50,9 @@ jobs:
 
         #Xvfb, just to have a dummy screen
         sudo apt install xvfb
+
+        #To zip the SavedVideos folder
+        sudo apt install zip unzip
 
     - name: Coinbrew installation
       shell: bash -l {0}
@@ -127,9 +130,15 @@ jobs:
       run: |
         cd build/bin
         OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
-        
-    - uses: actions/download-artifact@v3
+
+    - name: Zip SavedVideos
+      shell: bash
+      run: |
+        cd build
+        zip -r SavedVideos.zip SavedVideos
+
+    - uses: actions/upload-artifact@v3
       with:
         name: SavedVideos
-        path: build/SavedVideos
+        path: build/SavedVideos.zip
 
