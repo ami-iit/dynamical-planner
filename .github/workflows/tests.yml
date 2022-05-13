@@ -15,7 +15,7 @@ env:
 
 jobs:
   build:
-    name: 'Test'
+    name: 'Build'
     runs-on: ubuntu-20.04
 
     steps:
@@ -56,6 +56,12 @@ jobs:
 
         #To zip the SavedVideos folder
         sudo apt install zip unzip
+
+    - name: Create common build and install folder
+      shell: bash -l {0}
+      run: |
+        cd ${GITHUB_WORKSPACE}
+        mkdir -p build/install
 
     - name: Coinbrew and Ipopt fetching
       shell: bash -l {0}
@@ -108,7 +114,7 @@ jobs:
       run: |
         cd ${GITHUB_WORKSPACE}/coin-or
         coinbrew/coinbrew fetch Ipopt --no-prompt --skip-update
-        coinbrew/coinbrew build Ipopt --prefix=install/ --no-prompt --tests none --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
+        coinbrew/coinbrew build Ipopt -b ${GITHUB_WORKSPACE}/build/ipopt --prefix=${GITHUB_WORKSPACE}/build/install/ --no-prompt --tests none --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
         coinbrew/coinbrew install Ipopt --no-prompt
 
     - name: matioCpp installation
@@ -119,15 +125,16 @@ jobs:
         git clone https://github.com/ami-iit/matio-cpp --depth 1
         cd matio-cpp
         git checkout ${matiocpp_TAG}
-        mkdir -p build && cd build
-        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release ..
+        cd ${GITHUB_WORKSPACE}/build
+        mkdir matio-cpp && cd matio-cpp
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DCMAKE_BUILD_TYPE=Release ${GITHUB_WORKSPACE}/matio-cpp
         make install
 
     - name: iDynTree installation
       shell: bash -l {0}
       run: |
 
-        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/build/install
         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
 
@@ -135,8 +142,9 @@ jobs:
         git clone https://github.com/robotology/idyntree --depth 1
         cd idyntree
         git checkout ${iDynTree_TAG}
-        mkdir -p build && cd build
-        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ..
+        cd ${GITHUB_WORKSPACE}/build
+        mkdir idyntree && cd idyntree
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ${GITHUB_WORKSPACE}/idyntree
         make install
 
 
@@ -148,35 +156,48 @@ jobs:
       shell: bash -l {0}
       run: |
 
-        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/build/install
         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
 
-        mkdir -p build
-        cd build
+        cd ${GITHUB_WORKSPACE}/build
+        mkdir dynamical-planner && cd dynamical-planner
         cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DBUILD_TESTING:BOOL=ON ..
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DBUILD_TESTING:BOOL=ON cd ${GITHUB_WORKSPACE}/
 
     - name: Build
       shell: bash -l {0}
       run: |
-        cd build
+        cd ${GITHUB_WORKSPACE}/build/dynamical-planner
         make
 
-    - name: Test
+    - name: Zip build folder
       shell: bash
       run: |
-        cd build/bin
-        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
-
-    - name: Zip SavedVideos
-      shell: bash
-      run: |
-        cd build
-        zip -r SavedVideos.zip SavedVideos
+        zip -r build.zip ${GITHUB_WORKSPACE}/build
 
     - uses: actions/upload-artifact@v3
       with:
-        name: SavedVideos
-        path: build/SavedVideos.zip
+        name: Build
+        path: build.zip
+
+#  test-different-velocity:
+#
+#
+#    - name: Test
+#      shell: bash
+#      run: |
+#        cd build/bin
+#        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
+#
+#    - name: Zip SavedVideos
+#      shell: bash
+#      run: |
+#        cd build
+#        zip -r SavedVideos.zip SavedVideos
+#
+#    - uses: actions/upload-artifact@v3
+#      with:
+#        name: SavedVideos
+#        path: build/SavedVideos.zip
 
