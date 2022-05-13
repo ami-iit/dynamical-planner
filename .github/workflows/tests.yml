@@ -115,7 +115,6 @@ jobs:
         cd ${GITHUB_WORKSPACE}/coin-or
         coinbrew/coinbrew fetch Ipopt --no-prompt --skip-update
         coinbrew/coinbrew build Ipopt -b ${GITHUB_WORKSPACE}/build/ipopt --prefix=${GITHUB_WORKSPACE}/build/install/ --no-prompt --tests none --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
-        coinbrew/coinbrew install Ipopt --no-prompt
 
     - name: matioCpp installation
       shell: bash -l {0}
