@@ -6,8 +6,11 @@ on:
 
 env:
   iDynTree_TAG: 4aabb8525e95af161e916a8dfb85fbf994bb7aeb
-  coinbrew_TAG: 1cd6e53a9c6f3b235939da3ebf6cabaa14da44bd
+  coinbrew_TAG: cc905f64c39ebe430dd80d28b3d17207e04bf01d
   ipopt_TAG: 641f2202f5594018ab0ebee6d1b7c6853ef83343
+  MUMPS_TAG: 2fc1a186fa118eccfeb76657424d43063b67b393
+  ASL_TAG: d9e058561ec67b1440761f64fa94e28a6078fe95
+  HSL_TAG: 972b202b6d01c39221fe6fbe90f42779edf70e49
   matiocpp_TAG: ed9b196360b8083c3eccd3348afa7969d3a4f1fa
 
 jobs:
@@ -54,23 +57,58 @@ jobs:
         #To zip the SavedVideos folder
         sudo apt install zip unzip
 
-    - name: Coinbrew installation
+    - name: Coinbrew and Ipopt fetching
       shell: bash -l {0}
       run: |
         cd ${GITHUB_WORKSPACE}
         mkdir coin-or
         cd coin-or
+        #coinbrew
         git clone https://github.com/coin-or/coinbrew
-        cd coinbrew
-        git checkout ${coinbrew_TAG}
+        cd coinbrew/
+        git reset ${coinbrew_TAG} --hard
         chmod u+x coinbrew
+
+        #Manually fetching IPOPT and ThirdParty deps
+        cd ../
+        git clone https://github.com/coin-or/Ipopt
+        cd Ipopt/
+        git checkout -b master
+        git reset ${ipopt_TAG} --hard
+        cd ../
+
+        mkdir ThirdParty
+        cd ThirdParty/
+
+        #Mumps
+        git clone https://github.com/coin-or-tools/ThirdParty-Mumps Mumps
+        cd Mumps/
+        git checkout -b stable/2.1
+        git reset ${MUMPS_TAG} --hard
+        ./get.Mumps
+        touch .build #Otherwise coinbrew will skip its installations
+        cd ../
+
+        #ASL
+        git clone https://github.com/coin-or-tools/ThirdParty-ASL ASL
+        cd ASL/
+        git checkout -b stable/2.0
+        git reset ${ASL_TAG} --hard
+        ./get.ASL
+        cd ../
+
+        #HSL
+        git clone https://github.com/coin-or-tools/ThirdParty-HSL HSL
+        cd HSL/
+        git checkout -b stable/2.1
+        git reset ${HSL_TAG} --hard
 
     - name: IPOPT installation
       shell: bash -l {0}
       run: |
         cd ${GITHUB_WORKSPACE}/coin-or
-        coinbrew/coinbrew fetch Ipopt@${ipopt_TAG} --no-prompt
-        coinbrew/coinbrew build Ipopt --prefix=install/ --test --no-prompt --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
+        coinbrew/coinbrew fetch Ipopt --no-prompt --skip-update
+        coinbrew/coinbrew build Ipopt --prefix=install/ --no-prompt --tests none --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
         coinbrew/coinbrew install Ipopt --no-prompt
 
     - name: matioCpp installation
