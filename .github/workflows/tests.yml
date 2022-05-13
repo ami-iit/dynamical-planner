@@ -57,16 +57,6 @@ jobs:
         #To zip the SavedVideos folder
         sudo apt install zip unzip
 
-        #To change CPU governor
-        sudo apt install linux-tools-generic-hwe-20.04
-
-    - name: Change CPU governor
-      shell: bash -l {0}
-      run: |
-        cpupower frequency-info
-        sudo cpupower frequency-set -g performance
-        cpupower frequency-info
-
     - name: Coinbrew and Ipopt fetching
       shell: bash -l {0}
       run: |
