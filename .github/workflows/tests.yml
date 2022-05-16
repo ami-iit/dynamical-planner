@@ -173,7 +173,7 @@ jobs:
     - name: Zip build folder
       shell: bash
       run: |
-        zip -r build.zip ${GITHUB_WORKSPACE}/build
+        zip -r build.zip build/
 
     - uses: actions/upload-artifact@v3
       with:
