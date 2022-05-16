@@ -190,6 +190,7 @@ jobs:
         complementarity: [dynamical, classical, hyperbolic]
         velocity: [0.05, 0.06, 0.07]
     steps:
+    - uses: actions/checkout@master
 
     # Remove apt repos that are known to break from time to time
     # See https://github.com/actions/virtual-environments/issues/323
