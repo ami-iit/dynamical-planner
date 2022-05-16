@@ -452,7 +452,7 @@ int main(int argc, char** argv) {
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("ma57_pivtol", 1e-6);
     ASSERT_IS_TRUE(ok);
-    ok = ipoptSolver->setIpoptOption("mumps_pivtol", 1e-8);
+    ok = ipoptSolver->setIpoptOption("mumps_pivtol", 0.0);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("print_level", 5);
     ASSERT_IS_TRUE(ok);

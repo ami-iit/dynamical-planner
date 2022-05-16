@@ -246,5 +246,5 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}
-        path: build/SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}.zip
+        path: build/dynamical-planner/SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}.zip
 
