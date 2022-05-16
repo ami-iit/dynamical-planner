@@ -161,8 +161,8 @@ jobs:
 
         cd ${GITHUB_WORKSPACE}/build
         mkdir dynamical-planner && cd dynamical-planner
-        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DBUILD_TESTING:BOOL=ON cd ${GITHUB_WORKSPACE}/
+        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/build/install -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DBUILD_TESTING:BOOL=ON cd ${GITHUB_WORKSPACE}/
 
     - name: Build
       shell: bash -l {0}
@@ -180,23 +180,41 @@ jobs:
         name: Build
         path: build.zip
 
-#  test-different-velocity:
-#
-#
-#    - name: Test
-#      shell: bash
-#      run: |
-#        cd build/bin
-#        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
-#
-#    - name: Zip SavedVideos
-#      shell: bash
-#      run: |
-#        cd build
-#        zip -r SavedVideos.zip SavedVideos
-#
-#    - uses: actions/upload-artifact@v3
-#      with:
-#        name: SavedVideos
-#        path: build/SavedVideos.zip
+  test-different-velocity:
+    name: 'Test with different velocity'
+    needs: build
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        complementarity: [dynamical, classical, hyperbolic]
+        velocity: [0.05, 0.06, 0.07]
+    steps:
+
+    - name: Download build folder
+      uses: actions/download-artifact@v3
+      with:
+        name: Build
+
+    - name: Unzip build
+      shell: bash
+      run: |
+        unzip build.zip
+
+    - name: Test
+      shell: bash
+      run: |
+        cd build/bin
+        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest --complementarity ${{ matrix.complementarity }} --velocity ${{ matrix.velocity }}
+
+    - name: Zip SavedVideos
+      shell: bash
+      run: |
+        cd build
+        zip -r SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}.zip SavedVideos
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}
+        path: build/SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}.zip
 
