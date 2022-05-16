@@ -162,7 +162,7 @@ jobs:
         cd ${GITHUB_WORKSPACE}/build
         mkdir dynamical-planner && cd dynamical-planner
         cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/build/install -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DBUILD_TESTING:BOOL=ON cd ${GITHUB_WORKSPACE}/
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DBUILD_TESTING:BOOL=ON ${GITHUB_WORKSPACE}/
 
     - name: Build
       shell: bash -l {0}
@@ -204,7 +204,7 @@ jobs:
     - name: Test
       shell: bash
       run: |
-        cd build/bin
+        cd build/dynamical-planner/bin
         OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest --complementarity ${{ matrix.complementarity }} --velocity ${{ matrix.velocity }}
 
     - name: Zip SavedVideos
