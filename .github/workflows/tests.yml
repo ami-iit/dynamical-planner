@@ -240,7 +240,7 @@ jobs:
     - name: Zip SavedVideos
       shell: bash
       run: |
-        cd build
+        cd build/dynamical-planner
         zip -r SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}.zip SavedVideos
 
     - uses: actions/upload-artifact@v3
