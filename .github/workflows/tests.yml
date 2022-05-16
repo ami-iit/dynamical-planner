@@ -191,6 +191,35 @@ jobs:
         velocity: [0.05, 0.06, 0.07]
     steps:
 
+    # Remove apt repos that are known to break from time to time
+    # See https://github.com/actions/virtual-environments/issues/323
+    - name: Remove broken apt repos
+      run: |
+        for apt_file in `grep -lr microsoft /etc/apt/sources.list.d/`; do sudo rm $apt_file; done
+
+    # Even if we download the build folder, we still have to install the system dependencies
+    - name: System dependencies
+      run: |
+        sudo apt update
+
+        # IPOPT dependencies
+        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libblas-dev libopenblas-dev libmetis-dev
+
+        # iDyntree dependencies
+        sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
+
+        #matioCpp dependencies
+        sudo apt install libmatio-dev
+
+        #FFMPEG dependencies
+        sudo apt install ffmpeg libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libpostproc-dev
+
+        #Xvfb, just to have a dummy screen
+        sudo apt install xvfb
+
+        #To zip the SavedVideos folder
+        sudo apt install zip unzip
+
     - name: Download build folder
       uses: actions/download-artifact@v3
       with:
