@@ -60,7 +60,7 @@ public:
 
     double normalForceDissipationRatio = 250.0;
 
-    double normalForceHyperbolicSecantScaling = 5000.0;
+    double normalForceHyperbolicSecantScaling = 500.0;
 
     double complementarityDissipation = 20.0;
 
@@ -70,6 +70,8 @@ public:
 
     ExternalOptions(const cmdline::parser &cmd)
     {
+        m_valid = true;
+
         solver = cmd.get<std::string>("solver");
         std::string complementarity_string = cmd.get<std::string>("complementarity");
 
@@ -87,10 +89,9 @@ public:
         }
         else
         {
-            std::cout << "CONFIGURATION ERROR: THe only available options for complementarity are dynamical, classical and hyperbolic." <<std::endl;
+            std::cout << "CONFIGURATION ERROR: The only available options for complementarity are dynamical, classical and hyperbolic." <<std::endl;
             m_valid = false;
         }
-
 
         velocity = cmd.get<double>("velocity");
         normalForceDissipationRatio = cmd.get<double>("normalForceDissipationRatio");
@@ -98,7 +99,6 @@ public:
         complementarityDissipation = cmd.get<double>("complementarityDissipation");
         dynamicComplementarityUpperBound = cmd.get<double>("dynamicComplementarityUpperBound");
         classicalComplementarityTolerance = cmd.get<double>("classicalComplementarityTolerance");
-        m_valid = true;
     }
 
     bool isValid() const{
@@ -134,7 +134,7 @@ void addOptions(cmdline::parser &cmd)
     cmd.add<double>("normalForceHyperbolicSecantScaling", 0,
                     "Normal Force Hyperbolic Secant Scaling (one of the two parameters of the hyperbolic complementarity method).",
                     false,
-                    5000.0);
+                    500.0);
 
     cmd.add<double>("complementarityDissipation", 0,
                     "The rate of dissipation for the complementarity (one of the two parameters of the dynamical complementarity method).",
@@ -451,6 +451,8 @@ int main(int argc, char** argv) {
     ok = ipoptSolver->setIpoptOption("linear_solver", externalOptions.solver);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("ma57_pivtol", 1e-6);
+    ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("mumps_pivtol", 1e-8);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("print_level", 5);
     ASSERT_IS_TRUE(ok);
