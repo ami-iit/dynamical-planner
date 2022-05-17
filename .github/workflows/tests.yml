@@ -189,6 +189,32 @@ jobs:
       matrix:
         complementarity: [dynamical, classical, hyperbolic]
         velocity: [0.05, 0.06, 0.07]
+        normalForceDissipationRatio: [250.0]
+        normalForceHyperbolicSecantScaling: [500.0]
+        complementarityDissipation: [20.0]
+        dynamicComplementarityUpperBound: [0.05]
+        classicalComplementarityTolerance: [0.004]
+        include:
+          - complementarity: dynamical
+            velocity: 0.05
+            complementarityDissipation: 10.0
+            dynamicComplementarityUpperBound: [0.05, 0.1]
+          - complementarity: dynamical
+            velocity: 0.05
+            complementarityDissipation: 20.0
+            dynamicComplementarityUpperBound: 0.1
+          - complementarity: classical
+            velocity: 0.05
+            classicalComplementarityTolerance: [0.008, 0.012, 0.016]
+          - complementarity: hyperbolic
+            velocity: 0.05
+            normalForceDissipationRatio: 125.0
+            normalForceHyperbolicSecantScaling: [400.0, 500.0]
+          - complementarity: hyperbolic
+            velocity: 0.05
+            normalForceDissipationRatio: 250.0
+            normalForceHyperbolicSecantScaling: 400.0
+
     steps:
     - uses: actions/checkout@master
 
@@ -235,16 +261,35 @@ jobs:
       shell: bash
       run: |
         cd build/dynamical-planner/bin
-        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest --complementarity ${{ matrix.complementarity }} --velocity ${{ matrix.velocity }}
+        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest --complementarity ${{ matrix.complementarity }} \
+                                                                  --velocity ${{ matrix.velocity }} \
+                                                                  --normalForceDissipationRatio ${{ matrix.normalForceDissipationRatio }} \
+                                                                  --normalForceHyperbolicSecantScaling ${{ matrix.normalForceHyperbolicSecantScaling }} \
+                                                                  --complementarityDissipation ${{ matrix.complementarityDissipation }} \
+                                                                  --dynamicComplementarityUpperBound ${{ matrix.dynamicComplementarityUpperBound }} \
+                                                                  --classicalComplementarityTolerance ${{ matrix.classicalComplementarityTolerance }}
 
     - name: Zip SavedVideos
       shell: bash
       run: |
         cd build/dynamical-planner
-        zip -r SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}.zip SavedVideos
+        zip -r SavedVideos.zip SavedVideos
 
     - uses: actions/upload-artifact@v3
+      if: matrix.complementarity == 'dynamical'
       with:
-        name: SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}
-        path: build/dynamical-planner/SavedVideos-${{ matrix.complementarity }}-${{ matrix.velocity }}.zip
+        name: SavedVideos-${{ matrix.complementarity }}_v${{ matrix.velocity }}_ub${{ matrix.dynamicComplementarityUpperBound }}_K${{ matrix.complementarityDissipation }}
+        path: build/dynamical-planner/SavedVideos.zip
+
+    - uses: actions/upload-artifact@v3
+      if: matrix.complementarity == 'classical'
+      with:
+        name: SavedVideos-${{ matrix.complementarity }}_v${{ matrix.velocity }}_K${{ matrix.classicalComplementarityTolerance }}
+        path: build/dynamical-planner/SavedVideos.zip
+
+    - uses: actions/upload-artifact@v3
+      if: matrix.complementarity == 'hyperbolic'
+      with:
+        name: SavedVideos-${{ matrix.complementarity }}_v${{ matrix.velocity }}_sec${{ matrix.normalForceHyperbolicSecantScaling }}_K${{ matrix.normalForceDissipationRatio }}
+        path: build/dynamical-planner/SavedVideos.zip
 
