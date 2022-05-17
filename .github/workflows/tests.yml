@@ -180,8 +180,8 @@ jobs:
         name: Build
         path: build.zip
 
-  test-different-velocity:
-    name: 'Test with different velocity'
+  test-different-parameter:
+    name: 'Test with different parameters'
     needs: build
     runs-on: ubuntu-20.04
     strategy:
@@ -197,23 +197,75 @@ jobs:
         include:
           - complementarity: dynamical
             velocity: 0.05
+            normalForceDissipationRatio: 250.0
+            normalForceHyperbolicSecantScaling: 500.0
             complementarityDissipation: 10.0
-            dynamicComplementarityUpperBound: [0.05, 0.1]
+            dynamicComplementarityUpperBound: 0.05
+            classicalComplementarityTolerance: 0.004
+
           - complementarity: dynamical
             velocity: 0.05
+            normalForceDissipationRatio: 250.0
+            normalForceHyperbolicSecantScaling: 500.0
+            complementarityDissipation: 10.0
+            dynamicComplementarityUpperBound: 0.1
+            classicalComplementarityTolerance: 0.004
+
+          - complementarity: dynamical
+            velocity: 0.05
+            normalForceDissipationRatio: 250.0
+            normalForceHyperbolicSecantScaling: 500.0
             complementarityDissipation: 20.0
             dynamicComplementarityUpperBound: 0.1
+            classicalComplementarityTolerance: 0.004
+
           - complementarity: classical
             velocity: 0.05
-            classicalComplementarityTolerance: [0.008, 0.012, 0.016]
+            normalForceDissipationRatio: 250.0
+            normalForceHyperbolicSecantScaling: 500.0
+            complementarityDissipation: 20.0
+            dynamicComplementarityUpperBound: 0.05
+            classicalComplementarityTolerance: 0.008
+
+          - complementarity: classical
+            velocity: 0.05
+            normalForceDissipationRatio: 250.0
+            normalForceHyperbolicSecantScaling: 500.0
+            complementarityDissipation: 20.0
+            dynamicComplementarityUpperBound: 0.05
+            classicalComplementarityTolerance: 0.012
+
+          - complementarity: classical
+            velocity: 0.05
+            normalForceDissipationRatio: 250.0
+            normalForceHyperbolicSecantScaling: 500.0
+            complementarityDissipation: 20.0
+            dynamicComplementarityUpperBound: 0.05
+            classicalComplementarityTolerance: 0.016
+
           - complementarity: hyperbolic
             velocity: 0.05
             normalForceDissipationRatio: 125.0
-            normalForceHyperbolicSecantScaling: [400.0, 500.0]
+            normalForceHyperbolicSecantScaling: 400.0
+            complementarityDissipation: 20.0
+            dynamicComplementarityUpperBound: 0.05
+            classicalComplementarityTolerance: 0.004
+
+          - complementarity: hyperbolic
+            velocity: 0.05
+            normalForceDissipationRatio: 125.0
+            normalForceHyperbolicSecantScaling: 500.0
+            complementarityDissipation: 20.0
+            dynamicComplementarityUpperBound: 0.05
+            classicalComplementarityTolerance: 0.004
+
           - complementarity: hyperbolic
             velocity: 0.05
             normalForceDissipationRatio: 250.0
             normalForceHyperbolicSecantScaling: 400.0
+            complementarityDissipation: 20.0
+            dynamicComplementarityUpperBound: 0.05
+            classicalComplementarityTolerance: 0.004
 
     steps:
     - uses: actions/checkout@master
