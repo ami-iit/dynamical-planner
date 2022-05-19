@@ -1,21 +1,16 @@
-name: Run comparison tests
+name: CI test
 
 on:
   push:
-  workflow_dispatch:
 
 env:
-  iDynTree_TAG: 4aabb8525e95af161e916a8dfb85fbf994bb7aeb
-  coinbrew_TAG: cc905f64c39ebe430dd80d28b3d17207e04bf01d
-  ipopt_TAG: 641f2202f5594018ab0ebee6d1b7c6853ef83343
-  MUMPS_TAG: 2fc1a186fa118eccfeb76657424d43063b67b393
-  ASL_TAG: d9e058561ec67b1440761f64fa94e28a6078fe95
-  HSL_TAG: 972b202b6d01c39221fe6fbe90f42779edf70e49
+  iDynTree_TAG: ce1334ca4a3ef139f6fab72f767292b19c601e07
+  coinbrew_TAG: 3fc0806a430331615413701c11b3377ca2db0928
   matiocpp_TAG: ed9b196360b8083c3eccd3348afa7969d3a4f1fa
 
 jobs:
   build:
-    name: 'Build'
+    name: 'Build and testing'
     runs-on: ubuntu-20.04
 
     steps:
@@ -57,12 +52,6 @@ jobs:
         #To zip the SavedVideos folder
         sudo apt install zip unzip
 
-    - name: Create common build and install folder
-      shell: bash -l {0}
-      run: |
-        cd ${GITHUB_WORKSPACE}
-        mkdir -p build/install
-
     - name: Coinbrew and Ipopt fetching
       shell: bash -l {0}
       run: |
@@ -72,49 +61,14 @@ jobs:
         #coinbrew
         git clone https://github.com/coin-or/coinbrew
         cd coinbrew/
-        git reset ${coinbrew_TAG} --hard
         chmod u+x coinbrew
-
-        #Manually fetching IPOPT and ThirdParty deps
-        cd ../
-        git clone https://github.com/coin-or/Ipopt
-        cd Ipopt/
-        git checkout -b master
-        git reset ${ipopt_TAG} --hard
-        cd ../
-
-        mkdir ThirdParty
-        cd ThirdParty/
-
-        #Mumps
-        git clone https://github.com/coin-or-tools/ThirdParty-Mumps Mumps
-        cd Mumps/
-        git checkout -b stable/2.1
-        git reset ${MUMPS_TAG} --hard
-        ./get.Mumps
-        touch .build #Otherwise coinbrew will skip its installations
-        cd ../
-
-        #ASL
-        git clone https://github.com/coin-or-tools/ThirdParty-ASL ASL
-        cd ASL/
-        git checkout -b stable/2.0
-        git reset ${ASL_TAG} --hard
-        ./get.ASL
-        cd ../
-
-        #HSL
-        git clone https://github.com/coin-or-tools/ThirdParty-HSL HSL
-        cd HSL/
-        git checkout -b stable/2.1
-        git reset ${HSL_TAG} --hard
 
     - name: IPOPT installation
       shell: bash -l {0}
       run: |
         cd ${GITHUB_WORKSPACE}/coin-or
-        coinbrew/coinbrew fetch Ipopt --no-prompt --skip-update
-        coinbrew/coinbrew build Ipopt -b ${GITHUB_WORKSPACE}/build/ipopt --prefix=${GITHUB_WORKSPACE}/build/install/ --no-prompt --tests none --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
+        coinbrew/coinbrew fetch Ipopt --no-prompt
+        coinbrew/coinbrew build Ipopt --prefix=install/ --no-prompt --tests none --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
 
     - name: matioCpp installation
       shell: bash -l {0}
@@ -124,16 +78,15 @@ jobs:
         git clone https://github.com/ami-iit/matio-cpp --depth 1
         cd matio-cpp
         git checkout ${matiocpp_TAG}
-        cd ${GITHUB_WORKSPACE}/build
-        mkdir matio-cpp && cd matio-cpp
-        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DCMAKE_BUILD_TYPE=Release ${GITHUB_WORKSPACE}/matio-cpp
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release ../
         make install
 
     - name: iDynTree installation
       shell: bash -l {0}
       run: |
 
-        export IPOPT_DIR=${GITHUB_WORKSPACE}/build/install
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
 
@@ -141,9 +94,8 @@ jobs:
         git clone https://github.com/robotology/idyntree --depth 1
         cd idyntree
         git checkout ${iDynTree_TAG}
-        cd ${GITHUB_WORKSPACE}/build
-        mkdir idyntree && cd idyntree
-        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ${GITHUB_WORKSPACE}/idyntree
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ..
         make install
 
 
@@ -155,193 +107,34 @@ jobs:
       shell: bash -l {0}
       run: |
 
-        export IPOPT_DIR=${GITHUB_WORKSPACE}/build/install
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
         export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
 
-        cd ${GITHUB_WORKSPACE}/build
-        mkdir dynamical-planner && cd dynamical-planner
-        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/build/install -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/build/install -DBUILD_TESTING:BOOL=ON ${GITHUB_WORKSPACE}/
+        mkdir build && cd build
+        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DBUILD_TESTING:BOOL=ON ../
 
     - name: Build
       shell: bash -l {0}
       run: |
-        cd ${GITHUB_WORKSPACE}/build/dynamical-planner
+        cd ${GITHUB_WORKSPACE}/build/
         make
-
-    - name: Zip build folder
-      shell: bash
-      run: |
-        zip -r build.zip build/
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: Build
-        path: build.zip
-
-  test-different-parameter:
-    name: 'Test with different parameters'
-    needs: build
-    runs-on: ubuntu-20.04
-    strategy:
-      fail-fast: false
-      matrix:
-        complementarity: [dynamical, classical, hyperbolic]
-        velocity: [0.05, 0.06, 0.07]
-        normalForceDissipationRatio: [250.0]
-        normalForceHyperbolicSecantScaling: [500.0]
-        complementarityDissipation: [20.0]
-        dynamicComplementarityUpperBound: [0.05]
-        classicalComplementarityTolerance: [0.004]
-        include:
-          - complementarity: dynamical
-            velocity: 0.05
-            normalForceDissipationRatio: 250.0
-            normalForceHyperbolicSecantScaling: 500.0
-            complementarityDissipation: 10.0
-            dynamicComplementarityUpperBound: 0.05
-            classicalComplementarityTolerance: 0.004
-
-          - complementarity: dynamical
-            velocity: 0.05
-            normalForceDissipationRatio: 250.0
-            normalForceHyperbolicSecantScaling: 500.0
-            complementarityDissipation: 10.0
-            dynamicComplementarityUpperBound: 0.1
-            classicalComplementarityTolerance: 0.004
-
-          - complementarity: dynamical
-            velocity: 0.05
-            normalForceDissipationRatio: 250.0
-            normalForceHyperbolicSecantScaling: 500.0
-            complementarityDissipation: 20.0
-            dynamicComplementarityUpperBound: 0.1
-            classicalComplementarityTolerance: 0.004
-
-          - complementarity: classical
-            velocity: 0.05
-            normalForceDissipationRatio: 250.0
-            normalForceHyperbolicSecantScaling: 500.0
-            complementarityDissipation: 20.0
-            dynamicComplementarityUpperBound: 0.05
-            classicalComplementarityTolerance: 0.008
-
-          - complementarity: classical
-            velocity: 0.05
-            normalForceDissipationRatio: 250.0
-            normalForceHyperbolicSecantScaling: 500.0
-            complementarityDissipation: 20.0
-            dynamicComplementarityUpperBound: 0.05
-            classicalComplementarityTolerance: 0.012
-
-          - complementarity: classical
-            velocity: 0.05
-            normalForceDissipationRatio: 250.0
-            normalForceHyperbolicSecantScaling: 500.0
-            complementarityDissipation: 20.0
-            dynamicComplementarityUpperBound: 0.05
-            classicalComplementarityTolerance: 0.016
-
-          - complementarity: hyperbolic
-            velocity: 0.05
-            normalForceDissipationRatio: 125.0
-            normalForceHyperbolicSecantScaling: 400.0
-            complementarityDissipation: 20.0
-            dynamicComplementarityUpperBound: 0.05
-            classicalComplementarityTolerance: 0.004
-
-          - complementarity: hyperbolic
-            velocity: 0.05
-            normalForceDissipationRatio: 125.0
-            normalForceHyperbolicSecantScaling: 500.0
-            complementarityDissipation: 20.0
-            dynamicComplementarityUpperBound: 0.05
-            classicalComplementarityTolerance: 0.004
-
-          - complementarity: hyperbolic
-            velocity: 0.05
-            normalForceDissipationRatio: 250.0
-            normalForceHyperbolicSecantScaling: 400.0
-            complementarityDissipation: 20.0
-            dynamicComplementarityUpperBound: 0.05
-            classicalComplementarityTolerance: 0.004
-
-    steps:
-    - uses: actions/checkout@master
-
-    # Remove apt repos that are known to break from time to time
-    # See https://github.com/actions/virtual-environments/issues/323
-    - name: Remove broken apt repos
-      run: |
-        for apt_file in `grep -lr microsoft /etc/apt/sources.list.d/`; do sudo rm $apt_file; done
-
-    # Even if we download the build folder, we still have to install the system dependencies
-    - name: System dependencies
-      run: |
-        sudo apt update
-
-        # IPOPT dependencies
-        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libblas-dev libopenblas-dev libmetis-dev
-
-        # iDyntree dependencies
-        sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
-
-        #matioCpp dependencies
-        sudo apt install libmatio-dev
-
-        #FFMPEG dependencies
-        sudo apt install ffmpeg libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libpostproc-dev
-
-        #Xvfb, just to have a dummy screen
-        sudo apt install xvfb
-
-        #To zip the SavedVideos folder
-        sudo apt install zip unzip
-
-    - name: Download build folder
-      uses: actions/download-artifact@v3
-      with:
-        name: Build
-
-    - name: Unzip build
-      shell: bash
-      run: |
-        unzip build.zip
 
     - name: Test
       shell: bash
       run: |
-        cd build/dynamical-planner/bin
-        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest --complementarity ${{ matrix.complementarity }} \
-                                                                  --velocity ${{ matrix.velocity }} \
-                                                                  --normalForceDissipationRatio ${{ matrix.normalForceDissipationRatio }} \
-                                                                  --normalForceHyperbolicSecantScaling ${{ matrix.normalForceHyperbolicSecantScaling }} \
-                                                                  --complementarityDissipation ${{ matrix.complementarityDissipation }} \
-                                                                  --dynamicComplementarityUpperBound ${{ matrix.dynamicComplementarityUpperBound }} \
-                                                                  --classicalComplementarityTolerance ${{ matrix.classicalComplementarityTolerance }}
+        cd build/bin
+        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
 
     - name: Zip SavedVideos
       shell: bash
       run: |
-        cd build/dynamical-planner
+        cd build/
         zip -r SavedVideos.zip SavedVideos
 
     - uses: actions/upload-artifact@v3
-      if: matrix.complementarity == 'dynamical'
       with:
-        name: SavedVideos-${{ matrix.complementarity }}_v${{ matrix.velocity }}_ub${{ matrix.dynamicComplementarityUpperBound }}_K${{ matrix.complementarityDissipation }}
-        path: build/dynamical-planner/SavedVideos.zip
-
-    - uses: actions/upload-artifact@v3
-      if: matrix.complementarity == 'classical'
-      with:
-        name: SavedVideos-${{ matrix.complementarity }}_v${{ matrix.velocity }}_K${{ matrix.classicalComplementarityTolerance }}
-        path: build/dynamical-planner/SavedVideos.zip
-
-    - uses: actions/upload-artifact@v3
-      if: matrix.complementarity == 'hyperbolic'
-      with:
-        name: SavedVideos-${{ matrix.complementarity }}_v${{ matrix.velocity }}_sec${{ matrix.normalForceHyperbolicSecantScaling }}_K${{ matrix.normalForceDissipationRatio }}
-        path: build/dynamical-planner/SavedVideos.zip
+        name: SavedVideos
+        path: build/SavedVideos.zip
 
