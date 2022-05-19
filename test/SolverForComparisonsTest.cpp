@@ -25,6 +25,8 @@
 #include <filesystem>
 #include <iDynTree/Core/Utils.h>
 
+#include "cmdline.h"
+
 double maximumComplementarity(const DynamicalPlanner::State &state) {
 
     double maximum = 0;
@@ -47,7 +49,134 @@ double maximumComplementarity(const DynamicalPlanner::State &state) {
     return maximum;
 }
 
-int main() {
+class ExternalOptions
+{
+public:
+    std::string solver = "mumps";
+
+    DynamicalPlanner::ComplementarityType complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
+
+    double velocity = 0.05;
+
+    double normalForceDissipationRatio = 250.0;
+
+    double normalForceHyperbolicSecantScaling = 500.0;
+
+    double complementarityDissipation = 20.0;
+
+    double dynamicComplementarityUpperBound = 0.05;
+
+    double classicalComplementarityTolerance= 0.004;
+
+    ExternalOptions(const cmdline::parser &cmd)
+    {
+        m_valid = true;
+
+        solver = cmd.get<std::string>("solver");
+        std::string complementarity_string = cmd.get<std::string>("complementarity");
+
+        if (complementarity_string == "dynamical")
+        {
+            complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
+        }
+        else if (complementarity_string == "classical")
+        {
+            complementarity = DynamicalPlanner::ComplementarityType::Classical;
+        }
+        else if (complementarity_string == "hyperbolic")
+        {
+            complementarity = DynamicalPlanner::ComplementarityType::HyperbolicSecantInequality;
+        }
+        else
+        {
+            std::cout << "CONFIGURATION ERROR: The only available options for complementarity are dynamical, classical and hyperbolic." <<std::endl;
+            m_valid = false;
+        }
+
+        velocity = cmd.get<double>("velocity");
+        normalForceDissipationRatio = cmd.get<double>("normalForceDissipationRatio");
+        normalForceHyperbolicSecantScaling = cmd.get<double>("normalForceHyperbolicSecantScaling");
+        complementarityDissipation = cmd.get<double>("complementarityDissipation");
+        dynamicComplementarityUpperBound = cmd.get<double>("dynamicComplementarityUpperBound");
+        classicalComplementarityTolerance = cmd.get<double>("classicalComplementarityTolerance");
+    }
+
+    bool isValid() const{
+        return m_valid;
+    }
+
+private:
+    bool m_valid{false};
+};
+
+void addOptions(cmdline::parser &cmd)
+{
+    cmd.add<std::string>("solver", 's',
+                         "Linear solver to use with ipopt",
+                         false,
+                         "mumps");
+
+    cmd.add<std::string>("complementarity", 'c',
+                         "Type of complementairity condition",
+                         false,
+                         "dynamical");
+
+    cmd.add<double>("velocity", 'v',
+                    "Linear walking velocity",
+                    false,
+                    0.05);
+
+    cmd.add<double>("normalForceDissipationRatio", 0,
+                    "Normal Force Dissipation Ratio (one of the two parameters of the hyperbolic complementarity method).",
+                    false,
+                    250.0);
+
+    cmd.add<double>("normalForceHyperbolicSecantScaling", 0,
+                    "Normal Force Hyperbolic Secant Scaling (one of the two parameters of the hyperbolic complementarity method).",
+                    false,
+                    500.0);
+
+    cmd.add<double>("complementarityDissipation", 0,
+                    "The rate of dissipation for the complementarity (one of the two parameters of the dynamical complementarity method).",
+                    false,
+                    20.0);
+
+    cmd.add<double>("dynamicComplementarityUpperBound", 0,
+                    "The upper-bound for the dynamic complementairty (one of the two parameters of the dynamical complementarity method).",
+                    false,
+                    0.05);
+
+    cmd.add<double>("classicalComplementarityTolerance", 0,
+                    "The upper bound for the classical complementarity.",
+                    false,
+                    0.004);
+}
+
+void printParsedOptions(const cmdline::parser &cmd)
+{
+    std::cout << "--------------------------------" <<std::endl;
+    std::cout << "Parsed options:" << std::endl;
+    std::cout << "  - solver: " << cmd.get<std::string>("solver") << std::endl;
+    std::cout << "  - complementarity: " << cmd.get<std::string>("complementarity") << std::endl;
+    std::cout << "  - velocity: " << cmd.get<double>("velocity") << std::endl;
+    std::cout << "  - normalForceDissipationRatio: " << cmd.get<double>("normalForceDissipationRatio") << std::endl;
+    std::cout << "  - normalForceHyperbolicSecantScaling: " << cmd.get<double>("normalForceHyperbolicSecantScaling") << std::endl;
+    std::cout << "  - complementarityDissipation: " << cmd.get<double>("complementarityDissipation") << std::endl;
+    std::cout << "  - dynamicComplementarityUpperBound: " << cmd.get<double>("dynamicComplementarityUpperBound") << std::endl;
+    std::cout << "  - classicalComplementarityTolerance: " << cmd.get<double>("classicalComplementarityTolerance") << std::endl;
+    std::cout << "--------------------------------" <<std::endl;
+}
+
+
+int main(int argc, char** argv) {
+
+    cmdline::parser cmd;
+    addOptions(cmd);
+    cmd.parse_check(argc, argv);
+    printParsedOptions(cmd);
+
+    ExternalOptions externalOptions(cmd);
+    ASSERT_IS_TRUE(externalOptions.isValid());
 
     DynamicalPlanner::Solver solver;
 
@@ -239,7 +368,7 @@ int main() {
     settingsStruct.desiredCoMTrajectory  = comReference;
 
     iDynTree::VectorDynSize comVelocityReference(3);
-    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(0.05, 0.0, 0.0));
+    iDynTree::toEigen(comVelocityReference) = iDynTree::toEigen(iDynTree::Position(externalOptions.velocity, 0.0, 0.0));
     auto comVelocityTrajectory = std::make_shared<iDynTree::optimalcontrol::TimeInvariantVector>(comVelocityReference);
     settingsStruct.desiredCoMVelocityTrajectory  = comVelocityTrajectory;
 
@@ -302,12 +431,12 @@ int main() {
         settingsStruct.planarVelocityHyperbolicTangentScaling = 5.0; //scales the position along z
     }
 
-    settingsStruct.complementarity = DynamicalPlanner::ComplementarityType::Dynamical;
-    settingsStruct.normalForceDissipationRatio = 250.0;
-    settingsStruct.normalForceHyperbolicSecantScaling = 500.0;
-    settingsStruct.complementarityDissipation = 20.0;
-    settingsStruct.dynamicComplementarityUpperBound = 0.05;
-    settingsStruct.classicalComplementarityTolerance = 0.004;
+    settingsStruct.complementarity = externalOptions.complementarity;
+    settingsStruct.normalForceDissipationRatio = externalOptions.normalForceDissipationRatio;
+    settingsStruct.normalForceHyperbolicSecantScaling = externalOptions.normalForceHyperbolicSecantScaling;
+    settingsStruct.complementarityDissipation = externalOptions.complementarityDissipation;
+    settingsStruct.dynamicComplementarityUpperBound = externalOptions.dynamicComplementarityUpperBound;
+    settingsStruct.classicalComplementarityTolerance = externalOptions.classicalComplementarityTolerance;
 
     settingsStruct.minimumCoMHeight = 0.5 * initialState.comPosition(2);
 
@@ -319,9 +448,11 @@ int main() {
 
     ASSERT_IS_TRUE(ipoptSolver->isAvailable());
 
-    ok = ipoptSolver->setIpoptOption("linear_solver", "ma57");
+    ok = ipoptSolver->setIpoptOption("linear_solver", externalOptions.solver);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("ma57_pivtol", 1e-6);
+    ASSERT_IS_TRUE(ok);
+    ok = ipoptSolver->setIpoptOption("mumps_pivtol", 0.0);
     ASSERT_IS_TRUE(ok);
     ok = ipoptSolver->setIpoptOption("print_level", 5);
     ASSERT_IS_TRUE(ok);

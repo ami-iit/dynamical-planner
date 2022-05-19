@@ -1,0 +1,140 @@
+name: CI test
+
+on:
+  push:
+
+env:
+  iDynTree_TAG: ce1334ca4a3ef139f6fab72f767292b19c601e07
+  coinbrew_TAG: 3fc0806a430331615413701c11b3377ca2db0928
+  matiocpp_TAG: ed9b196360b8083c3eccd3348afa7969d3a4f1fa
+
+jobs:
+  build:
+    name: 'Build and testing'
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Display environment variables
+      shell: bash
+      run: env
+
+    # Remove apt repos that are known to break from time to time
+    # See https://github.com/actions/virtual-environments/issues/323
+    - name: Remove broken apt repos
+      run: |
+        for apt_file in `grep -lr microsoft /etc/apt/sources.list.d/`; do sudo rm $apt_file; done
+
+    # ============
+    # DEPENDENCIES
+    # ============
+
+    - name: System dependencies
+      run: |
+        sudo apt update
+
+        # IPOPT dependencies
+        sudo apt install make git wget tar patch dos2unix pkg-config gfortran liblapack-dev libblas-dev libopenblas-dev libmetis-dev
+
+        # iDyntree dependencies
+        sudo apt-get install build-essential cmake libeigen3-dev libxml2-dev libassimp-dev libirrlicht-dev
+
+        #matioCpp dependencies
+        sudo apt install libmatio-dev
+
+        #FFMPEG dependencies
+        sudo apt install ffmpeg libavcodec-dev libavformat-dev libavdevice-dev libavfilter-dev libswscale-dev libpostproc-dev
+
+        #Xvfb, just to have a dummy screen
+        sudo apt install xvfb
+
+        #To zip the SavedVideos folder
+        sudo apt install zip unzip
+
+    - name: Coinbrew and Ipopt fetching
+      shell: bash -l {0}
+      run: |
+        cd ${GITHUB_WORKSPACE}
+        mkdir coin-or
+        cd coin-or
+        #coinbrew
+        git clone https://github.com/coin-or/coinbrew
+        cd coinbrew/
+        chmod u+x coinbrew
+
+    - name: IPOPT installation
+      shell: bash -l {0}
+      run: |
+        cd ${GITHUB_WORKSPACE}/coin-or
+        coinbrew/coinbrew fetch Ipopt --no-prompt
+        coinbrew/coinbrew build Ipopt --prefix=install/ --no-prompt --tests none --verbosity=3 ADD_CFLAGS=-fopenmp ADD_FFLAGS=-fopenmp ADD_CXXFLAGS=-fopenmp
+
+    - name: matioCpp installation
+      shell: bash -l {0}
+      run: |
+
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/ami-iit/matio-cpp --depth 1
+        cd matio-cpp
+        git checkout ${matiocpp_TAG}
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release ../
+        make install
+
+    - name: iDynTree installation
+      shell: bash -l {0}
+      run: |
+
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
+        export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
+
+        cd ${GITHUB_WORKSPACE}
+        git clone https://github.com/robotology/idyntree --depth 1
+        cd idyntree
+        git checkout ${iDynTree_TAG}
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release -DIDYNTREE_USES_IRRLICHT:BOOL=ON ..
+        make install
+
+
+    # ===================
+    # CMAKE-BASED PROJECT
+    # ===================
+
+    - name: Configure
+      shell: bash -l {0}
+      run: |
+
+        export IPOPT_DIR=${GITHUB_WORKSPACE}/coin-or/install
+        export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:${IPOPT_DIR}/lib/pkgconfig/
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
+
+        mkdir build && cd build
+        cmake -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/install -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install -DBUILD_TESTING:BOOL=ON ../
+
+    - name: Build
+      shell: bash -l {0}
+      run: |
+        cd ${GITHUB_WORKSPACE}/build/
+        make
+
+    - name: Test
+      shell: bash
+      run: |
+        cd build/bin
+        OMP_NUM_THREADS=1 xvfb-run ./SolverForComparisonsUnitTest
+
+    - name: Zip SavedVideos
+      shell: bash
+      run: |
+        cd build/
+        zip -r SavedVideos.zip SavedVideos
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: SavedVideos
+        path: build/SavedVideos.zip
+
