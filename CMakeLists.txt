@@ -49,6 +49,7 @@ find_package(iDynTree 0.11.103 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(matioCpp REQUIRED)
 find_package(FFmpeg REQUIRED)
+find_package(Threads REQUIRED)
 
 add_subdirectory(extern)
 
@@ -166,6 +167,8 @@ target_include_directories(DynamicalPlannerPrivate PUBLIC $<BUILD_INTERFACE:${CM
 target_include_directories(DynamicalPlannerPrivate PRIVATE ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(DynamicalPlannerPrivate PUBLIC ${iDynTree_LIBRARIES})
 target_link_libraries(DynamicalPlannerPrivate PUBLIC levi::levi)
+target_link_libraries(DynamicalPlannerPrivate PUBLIC Threads::Threads)
+
 
 set(DPLANNER_HEADERS include/DynamicalPlanner/Settings.h
                      include/DynamicalPlanner/Solver.h
