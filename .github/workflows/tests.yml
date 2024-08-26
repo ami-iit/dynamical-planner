@@ -91,7 +91,7 @@ jobs:
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${IPOPT_DIR}/lib
 
         cd ${GITHUB_WORKSPACE}
-        git clone https://github.com/robotology/idyntree --depth 1
+        git clone https://github.com/robotology/idyntree
         cd idyntree
         git checkout ${iDynTree_TAG}
         mkdir build && cd build
